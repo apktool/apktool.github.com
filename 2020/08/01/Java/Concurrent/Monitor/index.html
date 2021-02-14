@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+  <link rel="alternate" href="/atom.xml" title="Acronymor's Blog" type="application/atom+xml">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Muse',
+    version: '7.5.0',
+    exturl: false,
+    sidebar: {"position":"right","display":"hide","offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: '',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    translation: {
+      copy_button: 'Copy',
+      copy_success: 'Copied',
+      copy_failure: 'Copy failed'
+    },
+    sidebarPadding: 40
+  };
+</script>
+
+  <meta name="description" content="Monitors由Per Brinch Hansen和C. A. R. Hoare发明, 最先在Pascal上实现，它是一个同步工具，它允许多个线程可以彼此互斥，等待某个条件变为false的能力和向其他线程发出已满足其条件的信号机制。Monitor本质上由mutex对象和Condition变量组成。 – WIKI Monitor (synchronization)">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Monitor">
+<meta property="og:url" content="http://acronymor.com/2020/08/01/Java/Concurrent/Monitor/index.html">
+<meta property="og:site_name" content="Acronymor&#39;s Blog">
+<meta property="og:description" content="Monitors由Per Brinch Hansen和C. A. R. Hoare发明, 最先在Pascal上实现，它是一个同步工具，它允许多个线程可以彼此互斥，等待某个条件变为false的能力和向其他线程发出已满足其条件的信号机制。Monitor本质上由mutex对象和Condition变量组成。 – WIKI Monitor (synchronization)">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="http://acronymor.com/2020/08/01/Java/Concurrent/Monitor/monitor-demo.png">
+<meta property="og:image" content="http://acronymor.com/2020/08/01/Java/Concurrent/Monitor/monitor-process.png">
+<meta property="article:published_time" content="2020-08-01T14:31:17.000Z">
+<meta property="article:modified_time" content="2020-08-01T14:40:29.000Z">
+<meta property="article:author" content="acronymor">
+<meta property="article:tag" content="Java">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://acronymor.com/2020/08/01/Java/Concurrent/Monitor/monitor-demo.png">
+
+<link rel="canonical" href="http://acronymor.com/2020/08/01/Java/Concurrent/Monitor/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true,
+    isPage: false,
+    isArchive: false
+  };
+</script>
+
+  <title>Monitor | Acronymor's Blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Acronymor's Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-movies">
+
+    <a href="/movies/" rel="section"><i class="fa fa-fw fa-film"></i>movies</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>About</a>
+
+  </li>
+  </ul>
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="en">
+    <link itemprop="mainEntityOfPage" href="http://acronymor.com/2020/08/01/Java/Concurrent/Monitor/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="acronymor">
+      <meta itemprop="description" content="I am who i am, the unique fooid">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Acronymor's Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Monitor
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+              
+
+              <time title="Created: 2020-08-01 22:31:17 / Modified: 22:40:29" itemprop="dateCreated datePublished" datetime="2020-08-01T22:31:17+08:00">2020-08-01</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Java%E5%B9%B6%E5%8F%91%E7%BC%96%E7%A8%8B/" itemprop="url" rel="index">
+                    <span itemprop="name">Java并发编程</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>Monitors由Per Brinch Hansen和C. A. R. Hoare发明, 最先在Pascal上实现，它是一个同步工具，它允许多个线程可以彼此互斥，等待某个条件变为false的能力和向其他线程发出已满足其条件的信号机制。Monitor本质上由mutex对象和Condition变量组成。 – <em><a href="https://www.wikiwand.com/en/Monitor_(synchronization)" target="_blank" rel="noopener">WIKI Monitor (synchronization)</a></em></p>
+<a id="more"></a>
+
+<p>Monitor 也可以说是一种同步机制，中文也翻译为管程，它通常被描述成一个对象，主要特点是：</p>
+<ul>
+<li>同步。对象内的所有方法都互斥的执行。好比一个 Monitor 只有一个运行许可，任一个线程进入任何一个方法都需要获得这个许可，离开时把许可归还。</li>
+<li>协作。通常提供signal机制：允许正持有许可的线程暂时放弃许可，等待某个监视条件成真，条件成立后，当前线程可以通知正在等待这个条件的线程，让它可以重新获得运行许可。</li>
+</ul>
+<h1 id="Monitor-组成"><a href="#Monitor-组成" class="headerlink" title="Monitor 组成"></a>Monitor 组成</h1><p>在 Monitor 模式中，主要有四种类型参与者。</p>
+<blockquote>
+<p><strong>同步方法</strong>使用<strong>监视锁</strong>和<strong>监视条件</strong>来决定方法是否需要阻塞或重新执行。</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th align="left">name</th>
+<th align="left">名称</th>
+<th align="left">说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">Monitor Object</td>
+<td align="left">监视折对象</td>
+<td align="left">负责公共的接口方法，这些公共的接口方法会在多线程的环境下被调用执行。</td>
+</tr>
+<tr>
+<td align="left">Sync Function</td>
+<td align="left">同步方法</td>
+<td align="left">这些方法是<strong>监视者对象</strong>所定义。为了防止竞争条件，无论是否有多个线程并发调用同步方法，还是监视者对象还用多个同步方法，在任一事件内只有一个同步方法能够执行。</td>
+</tr>
+<tr>
+<td align="left">Monitor Lock</td>
+<td align="left">监视锁</td>
+<td align="left">每一个监视者对象都会拥有一把监视锁。</td>
+</tr>
+<tr>
+<td align="left">Monitor Condition</td>
+<td align="left">监视条件</td>
+<td align="left"></td>
+</tr>
+</tbody></table>
+<h1 id="Monitor-执行序列"><a href="#Monitor-执行序列" class="headerlink" title="Monitor 执行序列"></a>Monitor 执行序列</h1><p>在 Monitor Object 模式中，参与者之间将发生如下协作过程：</p>
+<ul>
+<li>同步方法的调用和串行化。当某线程调用监视者对象的同步方法时，必须首先获得它的监视锁。只要监视者对象有其他同步方法正在执行，获取操作便不会成功，该线程将处于阻塞（BLOCKED）状态。当线程获得监控锁后，执行方法实现服务，一旦同步方法完成执行，监视锁自动释放。</li>
+<li>同步方法线程挂起。如果调用同步方法的线程必须被阻塞或是其他原因不能立刻进行，它能够在一个监视条件上等待，这将导致该客户线程暂时释放监视锁，并挂起（WAITING / TIMED_WAITING）在监视条件上。</li>
+<li>监视条件通知。线程能够通知一个监视条件，目的是为了让一个前期使自己挂起在一个监视条件上的同步方法线程恢复运行。</li>
+<li>同步方法线程回复。一旦早先挂起在某监视条件上的同步方法线程获取通知，它将继续在最初的等待监视条件的点上执行，执行的条件是唤醒后抢占到监视锁。</li>
+</ul>
+<p>下图描述了监视者对象的动态特性：</p>
+<img src="/2020/08/01/Java/Concurrent/Monitor/monitor-demo.png" class="" title="[Monitor demo]">
+
+<h1 id="Java-中的Monitor"><a href="#Java-中的Monitor" class="headerlink" title="Java 中的Monitor"></a>Java 中的Monitor</h1><p>实质上，Java 的 Object 类本身就是监视者对象，Java 对于 Monitor Object 模式做了内建的支持。</p>
+<table>
+<thead>
+<tr>
+<th align="left">name</th>
+<th align="left">说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">Monitor Object</td>
+<td align="left">Object类本身</td>
+</tr>
+<tr>
+<td align="left">Sync Function</td>
+<td align="left">Synchronized 关键字修饰方法和代码块就是<strong>同步方法</strong></td>
+</tr>
+<tr>
+<td align="left">Monitor Lock</td>
+<td align="left">每个 Object 都带了一把看不见的锁，通常叫 <strong>内部锁/Monitor锁/Instrinsic Lock</strong>, 这把锁就是<strong>监视锁</strong></td>
+</tr>
+<tr>
+<td align="left">Monitor Condition</td>
+<td align="left">wait()/notify()/notifyAll() 方法构成<strong>监视条件</strong></td>
+</tr>
+</tbody></table>
+<p>下图描述了 Java Monitor 的工作机理：</p>
+<img src="/2020/08/01/Java/Concurrent/Monitor/monitor-process.png" class="" title="[Monitor Process]">
+
+<p>如上图所示，一个线程通过1号门进入Entry Set(入口区)，如果在入口区没有线程等待，那么这个线程就会获取监视器成为监视器的Owner，然后执行监视区域的代码。如果在入口区中有其它线程在等待，那么新来的线程也会和这些线程一起等待。线程在持有监视器的过程中，有两个选择，一个是正常执行监视器区域的代码，释放监视器，通过5号门退出监视器；还有可能等待某个条件的出现，于是它会通过3号门到Wait Set（等待区）休息，直到相应的条件满足后再通过4号门进入重新获取监视器再执行（<strong>需要注意，这里同时也需要与2号门进来的线程争抢监视器，而Hotspot实现为非公平获取，正是如此，notify无法精确的唤醒某个线程</strong>）。</p>
+<blockquote>
+<p>注意:</p>
+<ul>
+<li>为了继续执行临界区代码，线程必须获取 Monitor 锁。如果获取锁成功，将成为该监视者对象的拥有者。任一时刻内，监视者对象只属于一个活动线程（The Owner）</li>
+<li>拥有监视者对象的线程可以调用 wait() 进入等待集合（Wait Set），同时释放监视锁，进入等待状态。</li>
+<li>其他线程调用 notify() / notifyAll() 接口唤醒等待集合中的线程，这些等待的线程需要重新获取监视锁后才能执行 wait() 之后的代码。</li>
+<li>同步方法执行完毕了，线程退出临界区，并释放监视锁。</li>
+</ul>
+</blockquote>
+<h2 id="Monitor-Condition"><a href="#Monitor-Condition" class="headerlink" title="Monitor Condition"></a>Monitor Condition</h2><h3 id="条件队列"><a href="#条件队列" class="headerlink" title="条件队列"></a>条件队列</h3><p>条件队列（上图中的 Wait Set）存储的是”处于等待状态的线程”，这些线程在等待某种特定的条件变成真。正如每个Java对象都可以作为一个锁，每个对象同样可以作为一个条件队列，这个对象的wait /notify / notifyAll就构成了内部条件队列的API。对象的监控锁与条件队列是相互关联的。要调用条件队列的任何一个方法，必须先持有该对对象上的锁，一个推论就是“wait / notify 方法只能出现在相应的同步块中”。如果不在同步方法或同步块中，运行时会报IllegalMonitorStateException。</p>
+<h3 id="实践举例"><a href="#实践举例" class="headerlink" title="实践举例"></a>实践举例</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">xxxMethod</span><span class="params">()</span> <span class="keyword">throws</span> InterruptedException</span>&#123;  </span><br><span class="line">    <span class="keyword">synchronized</span>(lock)&#123;  </span><br><span class="line">        <span class="keyword">while</span>(!conditionPredition)  </span><br><span class="line">            lock.wait();  </span><br><span class="line">        doSomething();  </span><br><span class="line">    &#125;  </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>注意</strong></p>
+<ul>
+<li>wait 必须在 synchronized 方法或代码块中</li>
+<li>用 while 而不是 if 判断监视条件，因为当线程被唤醒的时候，监视条件可能根本没有被满足。如当前线程调用的是 notifyAll</li>
+<li>lock可以是this</li>
+<li>notify 是从条件队列从随机选择一个线程来唤醒，而 notifyAll 是唤醒条件队列中的所有线程。</li>
+</ul>
+<blockquote>
+<p>只有同时满足下列两个条件时，才使用 notify 而不是 notifyAll：</p>
+<ul>
+<li>所有的等待线程类型相同：只有一个监视条件与条件队列相关，并且每个线程从 wait 返回后将执行相同的操作。</li>
+<li>单进单出：条件变量上的每次通知，最多只能唤醒一个线程来执行</li>
+</ul>
+</blockquote>
+<hr>
+<h1 id="Reference"><a href="#Reference" class="headerlink" title="Reference"></a>Reference</h1><p><a href="https://www.jianshu.com/p/6fe4bc3374a2" target="_blank" rel="noopener">Java 多线程</a><br><a href="https://www.cnblogs.com/noteless/p/10394054.html" target="_blank" rel="noopener">java锁与监视器概念</a></p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Java/" rel="tag"># Java</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-next post-nav-item">
+                <a href="/2020/08/01/Java/Concurrent/Atomic/" rel="next" title="Atomic家族">
+                  <i class="fa fa-chevron-left"></i> Atomic家族
+                </a>
+            </div>
+
+            <span class="post-nav-divider"></span>
+
+            <div class="post-nav-prev post-nav-item">
+                <a href="/2020/08/01/Java/Concurrent/Synchronized/" rel="prev" title="Synchronized">
+                  Synchronized <i class="fa fa-chevron-right"></i>
+                </a>
+            </div>
+          </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#Monitor-组成"><span class="nav-number">1.</span> <span class="nav-text">Monitor 组成</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Monitor-执行序列"><span class="nav-number">2.</span> <span class="nav-text">Monitor 执行序列</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Java-中的Monitor"><span class="nav-number">3.</span> <span class="nav-text">Java 中的Monitor</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Monitor-Condition"><span class="nav-number">3.1.</span> <span class="nav-text">Monitor Condition</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#条件队列"><span class="nav-number">3.1.1.</span> <span class="nav-text">条件队列</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#实践举例"><span class="nav-number">3.1.2.</span> <span class="nav-text">实践举例</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Reference"><span class="nav-number">4.</span> <span class="nav-text">Reference</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="acronymor"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">acronymor</p>
+  <div class="site-description" itemprop="description">I am who i am, the unique fooid</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives">
+          <span class="site-state-item-count">216</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+        <span class="site-state-item-count">27</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+        <span class="site-state-item-count">35</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="feed-link motion-element">
+    <a href="/atom.xml" rel="alternate">
+      <i class="fa fa-rss"></i>RSS
+    </a>
+  </div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/acronymor" title="GitHub &amp;rarr; https:&#x2F;&#x2F;github.com&#x2F;acronymor" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yourname@acronymor.com" title="E-Mail &amp;rarr; mailto:yourname@acronymor.com"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">acronymor</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> v4.2.0
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">Theme – <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> v7.5.0
+  </div>
+
+        
+
+
+
+
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+  <link rel="alternate" href="/atom.xml" title="Acronymor's Blog" type="application/atom+xml">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Muse',
+    version: '7.5.0',
+    exturl: false,
+    sidebar: {"position":"right","display":"hide","offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: '',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    translation: {
+      copy_button: 'Copy',
+      copy_success: 'Copied',
+      copy_failure: 'Copy failed'
+    },
+    sidebarPadding: 40
+  };
+</script>
+
+  <meta name="description" content="hive键，命名空间，表和Join">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Hive 基础">
+<meta property="og:url" content="http://acronymor.com/2018/03/25/Apache-Hive/chapter2/hive-basic-concept/index.html">
+<meta property="og:site_name" content="Acronymor&#39;s Blog">
+<meta property="og:description" content="hive键，命名空间，表和Join">
+<meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2018-03-25T01:55:46.000Z">
+<meta property="article:modified_time" content="2018-03-25T01:55:46.000Z">
+<meta property="article:author" content="acronymor">
+<meta property="article:tag" content="Hive">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://acronymor.com/2018/03/25/Apache-Hive/chapter2/hive-basic-concept/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true,
+    isPage: false,
+    isArchive: false
+  };
+</script>
+
+  <title>Hive 基础 | Acronymor's Blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Acronymor's Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-movies">
+
+    <a href="/movies/" rel="section"><i class="fa fa-fw fa-film"></i>movies</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>About</a>
+
+  </li>
+  </ul>
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="en">
+    <link itemprop="mainEntityOfPage" href="http://acronymor.com/2018/03/25/Apache-Hive/chapter2/hive-basic-concept/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="acronymor">
+      <meta itemprop="description" content="I am who i am, the unique fooid">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Acronymor's Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Hive 基础
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2018-03-25 09:55:46" itemprop="dateCreated datePublished" datetime="2018-03-25T09:55:46+08:00">2018-03-25</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Hive%E7%BC%96%E7%A8%8B%E6%8C%87%E5%8D%97/" itemprop="url" rel="index">
+                    <span itemprop="name">Hive编程指南</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>hive键，命名空间，表和Join</p>
+<a id="more"></a>
+
+<h1 id="键"><a href="#键" class="headerlink" title="键"></a>键</h1><p>Hive中并没有键的概念，但是用户可以对表建立索引。<br>Hive只有有限的索引功能，一张表的索引数据存储在另外一张表中。</p>
+<p>Hive没有主键或基于序列密钥生成的自增键的概念，如果可以的话，应避免对非标准化数据进行JOIN操作。复杂的数据类型，比如array，map和struct有助于实现在单行中存储一对多数据。</p>
+<p>CSV格式：值是用逗号分隔的<br>TSV格式：值是制表键分隔的</p>
+<h1 id="命名空间"><a href="#命名空间" class="headerlink" title="命名空间"></a>命名空间</h1><p>Hive中数据库概念本质上仅仅是表的一个目录或者命名空间，这样做可以避免表命名冲突。如果用户没有显式指定数据库，那么将会使用默认的数据库default。</p>
+<p>Hive会为每个数据库创建一个目录。数据库中的表将会以这个数据库目录的子目录形式存储，但是default数据库是个例外。因为该数据库本身没有自己的目录。</p>
+<p>Hive QL是Hive查询语言，和普遍使用的SQL方言一样，并不完全遵守任意一种ANSI SQL标准的修订版。</p>
+<h1 id="内部表和外部表"><a href="#内部表和外部表" class="headerlink" title="内部表和外部表"></a>内部表和外部表</h1><p>内部表：Hive会或多或少控制着数据的生命周期<br>外部表：Hive并非完全拥有这份数据，因此删除该表并不会删除掉这份数据，不过描述表的元数据信息会被删除掉。</p>
+<p>Hive默认情况下会将表的数据存储在由配置项<code>hive.metastore.warehouse.dir</code>，如<code>/user/hive/warehouse</code>所定义的目录的子目录下。这种表即管理表，有时也称为内部表。当删除管理表时，也会删除定义在该目录下对应的子目录。</p>
+<p>外部表则在创建表时使用<code>LOCATION</code>指明其存储路径。</p>
+<p>应该注意，HiveQL语法结构并不适用于外部表。从严格意义上来说，Hive是管理着这些目录和文件，但是并不具有对它们的完全控制权限。</p>
+<p>数据分区的可以有多种形式，但是最常用使用分区来水平分散压力，将数据从物理上转移到和使用最频繁的用户更近的地方，以及实现其他目的。</p>
+<h1 id="JOIN语句"><a href="#JOIN语句" class="headerlink" title="JOIN语句"></a>JOIN语句</h1><h2 id="INNER-JOIN"><a href="#INNER-JOIN" class="headerlink" title="INNER JOIN"></a>INNER JOIN</h2><p>只有进行连接的两张表中都存在与连接标准相匹配的数据才会保留下来。</p>
+<h2 id="LEFT-OUTER-JOIN"><a href="#LEFT-OUTER-JOIN" class="headerlink" title="LEFT OUTER JOIN"></a>LEFT OUTER JOIN</h2><p>JOIN操作符左边表中符号WHERE子句的所有记录将会被返回。JOIN操作符右边表中如果没有符号ON后面连接条件的记录时，那么从右边表指定选择的列的值将会是NULL</p>
+<h2 id="OUTER-JOIN"><a href="#OUTER-JOIN" class="headerlink" title="OUTER JOIN"></a>OUTER JOIN</h2><p>会忽略分区过滤条件</p>
+<h2 id="RIGHT-OUTER-JOIN"><a href="#RIGHT-OUTER-JOIN" class="headerlink" title="RIGHT OUTER JOIN"></a>RIGHT OUTER JOIN</h2><p>会返回右边表所有符合WHERE语句的记录。左表中匹配不上的字段用NULL代替</p>
+<h2 id="FULL-OUTER-JOIN"><a href="#FULL-OUTER-JOIN" class="headerlink" title="FULL OUTER JOIN"></a>FULL OUTER JOIN</h2><p>返回所有表中符号WHERE语句条件的所有记录，如果任一表的指定字段没有符合条件的值的话，那么就使用NULL值</p>
+<h2 id="LEFT-SEMI-JOIN"><a href="#LEFT-SEMI-JOIN" class="headerlink" title="LEFT SEMI-JOIN"></a>LEFT SEMI-JOIN</h2><p>左半开连接会返回左边表的记录，前提是其记录对于右边表满足ON语句中的判定条件。</p>
+<h2 id="笛卡尔积JOIN"><a href="#笛卡尔积JOIN" class="headerlink" title="笛卡尔积JOIN"></a>笛卡尔积JOIN</h2><p>笛卡尔积是一种连接，表示左边表的行数乘以右边表的行数等于笛卡尔积结果集的大小。</p>
+<h2 id="MAP-SIDE-JOIN"><a href="#MAP-SIDE-JOIN" class="headerlink" title="MAP-SIDE JOIN"></a>MAP-SIDE JOIN</h2><p>如果所有表中只有一个张表是小表，那么可以在最大的表通过mapper的时候，将小表完全放到内存中，Hive可以在map端执行连接过程，可以和内存中的小表进行逐一匹配，从而省略掉常规链接操作需要的reduce过程。</p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Hive/" rel="tag"># Hive</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-next post-nav-item">
+                <a href="/2018/03/22/Apache-Hive/chapter1/hive-basic-architecture/" rel="next" title="hive 基本架构">
+                  <i class="fa fa-chevron-left"></i> hive 基本架构
+                </a>
+            </div>
+
+            <span class="post-nav-divider"></span>
+
+            <div class="post-nav-prev post-nav-item">
+                <a href="/2018/03/27/Compute-Base-Knowledge/tcp-three-way-handshake/" rel="prev" title="TCP三次握手和SYN攻击">
+                  TCP三次握手和SYN攻击 <i class="fa fa-chevron-right"></i>
+                </a>
+            </div>
+          </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#键"><span class="nav-number">1.</span> <span class="nav-text">键</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#命名空间"><span class="nav-number">2.</span> <span class="nav-text">命名空间</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#内部表和外部表"><span class="nav-number">3.</span> <span class="nav-text">内部表和外部表</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#JOIN语句"><span class="nav-number">4.</span> <span class="nav-text">JOIN语句</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#INNER-JOIN"><span class="nav-number">4.1.</span> <span class="nav-text">INNER JOIN</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#LEFT-OUTER-JOIN"><span class="nav-number">4.2.</span> <span class="nav-text">LEFT OUTER JOIN</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#OUTER-JOIN"><span class="nav-number">4.3.</span> <span class="nav-text">OUTER JOIN</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#RIGHT-OUTER-JOIN"><span class="nav-number">4.4.</span> <span class="nav-text">RIGHT OUTER JOIN</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#FULL-OUTER-JOIN"><span class="nav-number">4.5.</span> <span class="nav-text">FULL OUTER JOIN</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#LEFT-SEMI-JOIN"><span class="nav-number">4.6.</span> <span class="nav-text">LEFT SEMI-JOIN</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#笛卡尔积JOIN"><span class="nav-number">4.7.</span> <span class="nav-text">笛卡尔积JOIN</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#MAP-SIDE-JOIN"><span class="nav-number">4.8.</span> <span class="nav-text">MAP-SIDE JOIN</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="acronymor"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">acronymor</p>
+  <div class="site-description" itemprop="description">I am who i am, the unique fooid</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives">
+          <span class="site-state-item-count">216</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+        <span class="site-state-item-count">27</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+        <span class="site-state-item-count">35</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="feed-link motion-element">
+    <a href="/atom.xml" rel="alternate">
+      <i class="fa fa-rss"></i>RSS
+    </a>
+  </div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/acronymor" title="GitHub &amp;rarr; https:&#x2F;&#x2F;github.com&#x2F;acronymor" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yourname@acronymor.com" title="E-Mail &amp;rarr; mailto:yourname@acronymor.com"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">acronymor</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> v4.2.0
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">Theme – <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> v7.5.0
+  </div>
+
+        
+
+
+
+
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

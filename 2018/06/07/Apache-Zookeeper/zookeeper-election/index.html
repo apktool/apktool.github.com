@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+  <link rel="alternate" href="/atom.xml" title="Acronymor's Blog" type="application/atom+xml">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Muse',
+    version: '7.5.0',
+    exturl: false,
+    sidebar: {"position":"right","display":"hide","offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: '',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    translation: {
+      copy_button: 'Copy',
+      copy_success: 'Copied',
+      copy_failure: 'Copy failed'
+    },
+    sidebarPadding: 40
+  };
+</script>
+
+  <meta name="description" content="Leader选举是ZooKeeper中最重要的技术之一，也是保证分布式数据一致性的关键所在。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="ZooKeeper的Leader选举">
+<meta property="og:url" content="http://acronymor.com/2018/06/07/Apache-Zookeeper/zookeeper-election/index.html">
+<meta property="og:site_name" content="Acronymor&#39;s Blog">
+<meta property="og:description" content="Leader选举是ZooKeeper中最重要的技术之一，也是保证分布式数据一致性的关键所在。">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="http://acronymor.com/2018/06/07/Apache-Zookeeper/zookeeper-election/zookeeper-state.png">
+<meta property="article:published_time" content="2018-06-07T04:09:44.000Z">
+<meta property="article:modified_time" content="2018-06-07T04:09:44.000Z">
+<meta property="article:author" content="acronymor">
+<meta property="article:tag" content="ZooKeeper">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://acronymor.com/2018/06/07/Apache-Zookeeper/zookeeper-election/zookeeper-state.png">
+
+<link rel="canonical" href="http://acronymor.com/2018/06/07/Apache-Zookeeper/zookeeper-election/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true,
+    isPage: false,
+    isArchive: false
+  };
+</script>
+
+  <title>ZooKeeper的Leader选举 | Acronymor's Blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Acronymor's Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-movies">
+
+    <a href="/movies/" rel="section"><i class="fa fa-fw fa-film"></i>movies</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>About</a>
+
+  </li>
+  </ul>
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="en">
+    <link itemprop="mainEntityOfPage" href="http://acronymor.com/2018/06/07/Apache-Zookeeper/zookeeper-election/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="acronymor">
+      <meta itemprop="description" content="I am who i am, the unique fooid">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Acronymor's Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          ZooKeeper的Leader选举
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2018-06-07 12:09:44" itemprop="dateCreated datePublished" datetime="2018-06-07T12:09:44+08:00">2018-06-07</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E5%88%86%E5%B8%83%E5%BC%8F%E5%9F%BA%E7%A1%80/" itemprop="url" rel="index">
+                    <span itemprop="name">分布式基础</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>Leader选举是ZooKeeper中最重要的技术之一，也是保证分布式数据一致性的关键所在。</p>
+<a id="more"></a>
+
+<p>这里假设有三个Server，即Server1, Server2, Server3</p>
+<h1 id="服务器启动时期的Leader选举"><a href="#服务器启动时期的Leader选举" class="headerlink" title="服务器启动时期的Leader选举"></a>服务器启动时期的Leader选举</h1><ul>
+<li>每个Server会发出一个投票</li>
+</ul>
+<p>每个Server投票包括两个基本元素(myid, ZXID)，因为是初始阶段，所以无论是哪个Server都会投给自己。即Server1的投票为(1, 0), Server2的投票为(2, 0)。然后各自将这个投票发给即群众其他所有的机器。</p>
+<ul>
+<li>接收来自各个服务器的投票</li>
+</ul>
+<p>每个服务器都会接收来自其他服务器的投票。集群中每个服务器在接收到投票后，首先会判断该投票的有效性，包括检查是否为本轮投票，是否来自LOOKING状态的服务器。</p>
+<ul>
+<li>处理投票</li>
+</ul>
+<p>在接收到来自其他服务器的投票后，针对每一个投票，服务器都需要将别人的投票和自己的投票进行PK，PK的规则如下。</p>
+<blockquote>
+<p>优先检查ZXID。ZXID比较大的服务器优先作为Leader<br>如果ZXID相同的话，那么就比较myid。myid比较大的服务器作为Leader</p>
+</blockquote>
+<p>所以对于Server1来说，自己的投票是(1, 0)，而收到的投票是(2, 0)。首先会比较ZXID，因为均是0，所以无法定夺谁是Leader，接着比较myid，很显然发现接收到的投票中的myid是2，比自己的大，于是更新自己的投票为(2, 0)，然后将投票发出去。对于Server2来说，不需要更新自己的投票消息，只是再一次向集群中所有机器发出上一次投票消息即可。</p>
+<ul>
+<li>统计投票</li>
+</ul>
+<p>每个投票后，服务器都会统计所有投票，判断是否已有过半(&gt;=(n/2+1))的机器接收到相同的投票信息。</p>
+<p>很显然，当Server1和Server2都收到相同的投票信息(2, 0)的时候，即认为已经选出了Leader。</p>
+<ul>
+<li>改变服务器状态</li>
+</ul>
+<p>一旦确定了Leader，每个服务器就会更新自己的状态。</p>
+<p>如果是Follower，那么就变更为FOLLOWING，如果是Leader，那么就变更为LEADING。</p>
+<h1 id="服务器运行期间的Leader选举"><a href="#服务器运行期间的Leader选举" class="headerlink" title="服务器运行期间的Leader选举"></a>服务器运行期间的Leader选举</h1><p>ZooKeeper集群正常运行过程中，一旦选出一个Leader，那么所有服务器集群角色不再发生变化。但是如果Leader所在的服务器挂了，那么整个集群将暂时无法对外服务，而是进入新一轮的Leader选举。服务器运行期间的Leader选举和启动时期的Leader选举基本过程是一致的。</p>
+<p>假设当前正在运行的ZooKeeper服务器由3台机器组成，分别是Server1，Server2和Server3。当前的Leader是Server2。假设在某一个瞬间，Leader挂了，这个时候便开始了Leader选举。</p>
+<ul>
+<li>变更状态</li>
+</ul>
+<p>当Leader挂了之后，余下的非Observer服务器都会将自己的服务器状态变更为LOOKING，然后开始进入Leader选举流程。</p>
+<ul>
+<li>每个Server会发出一个投票</li>
+</ul>
+<p>因为是在运行期间，因此每个服务器上的ZXID可能不同，假定Server1的ZXID为123，而Server3的ZXID为122。在第一轮投票中，Server1和Server3都会投自己，即分别产生投票(1, 123)和(3, 122)。然后将这个投票发给集群中所有机器。</p>
+<ul>
+<li><p>接收来自各个服务器的投票</p>
+</li>
+<li><p>处理投票</p>
+</li>
+</ul>
+<p>对于投票的处理，和上面提到的服务器启动期间的处理规则是一致的。在这个例子里面，显然Server1会成为Leader。</p>
+<ul>
+<li><p>统计投票</p>
+</li>
+<li><p>改变服务器状态</p>
+</li>
+</ul>
+<hr>
+<p>ZAB协议中存在着四种状态，每个节点都属于以下四种中的一种：</p>
+<ul>
+<li>Looking: 寻找Leader状态。当服务器处于该状态时，它会认为集群中没有Leader，因此需要进入Leader选举流程。</li>
+<li>Following: 跟随者状态，表明当前服务器角色是Follower。Follower与Leader处于数据同步阶段；</li>
+<li>Leading: 领导者状态，表明当前服务器角色是Leader。前集群中有一个Leader为主进程；</li>
+<li>Observing: 观察者状态，表明当前服务器角色是Observer。</li>
+</ul>
+<img src="/2018/06/07/Apache-Zookeeper/zookeeper-election/zookeeper-state.png" class="" title="[ZooKeeper State]">
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/ZooKeeper/" rel="tag"># ZooKeeper</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-next post-nav-item">
+                <a href="/2018/06/05/MySQL/mysql-explain/" rel="next" title="MySQL explain命令介绍">
+                  <i class="fa fa-chevron-left"></i> MySQL explain命令介绍
+                </a>
+            </div>
+
+            <span class="post-nav-divider"></span>
+
+            <div class="post-nav-prev post-nav-item">
+                <a href="/2018/06/11/MySQL/mysql-foreignkey/" rel="prev" title="MySQL外键">
+                  MySQL外键 <i class="fa fa-chevron-right"></i>
+                </a>
+            </div>
+          </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#服务器启动时期的Leader选举"><span class="nav-number">1.</span> <span class="nav-text">服务器启动时期的Leader选举</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#服务器运行期间的Leader选举"><span class="nav-number">2.</span> <span class="nav-text">服务器运行期间的Leader选举</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="acronymor"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">acronymor</p>
+  <div class="site-description" itemprop="description">I am who i am, the unique fooid</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives">
+          <span class="site-state-item-count">216</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+        <span class="site-state-item-count">27</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+        <span class="site-state-item-count">35</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="feed-link motion-element">
+    <a href="/atom.xml" rel="alternate">
+      <i class="fa fa-rss"></i>RSS
+    </a>
+  </div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/acronymor" title="GitHub &amp;rarr; https:&#x2F;&#x2F;github.com&#x2F;acronymor" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yourname@acronymor.com" title="E-Mail &amp;rarr; mailto:yourname@acronymor.com"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">acronymor</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> v4.2.0
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">Theme – <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> v7.5.0
+  </div>
+
+        
+
+
+
+
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

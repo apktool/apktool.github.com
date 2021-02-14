@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+  <link rel="alternate" href="/atom.xml" title="Acronymor's Blog" type="application/atom+xml">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Muse',
+    version: '7.5.0',
+    exturl: false,
+    sidebar: {"position":"right","display":"hide","offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: '',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    translation: {
+      copy_button: 'Copy',
+      copy_success: 'Copied',
+      copy_failure: 'Copy failed'
+    },
+    sidebarPadding: 40
+  };
+</script>
+
+  <meta name="description" content="HBase是一种Log-Structured Merge Tree架构模式，用户数据写入先写WAL，再写缓存，满足一定条件后缓存数据会执行flush操作真正落盘，形成一个数据文件HFile。随着数据写入不断增多，flush次数也会不断增多，进而HFile数据文件就会越来越多。然而，太多数据文件会导致数据查询IO次数增多，因此HBase尝试着不断对这些文件进行合并，这个合并过程称为Compactio">
+<meta property="og:type" content="article">
+<meta property="og:title" content="HBase之MinorCompact">
+<meta property="og:url" content="http://acronymor.com/2019/04/29/Apache-HBase/hbase-minor-compaction/index.html">
+<meta property="og:site_name" content="Acronymor&#39;s Blog">
+<meta property="og:description" content="HBase是一种Log-Structured Merge Tree架构模式，用户数据写入先写WAL，再写缓存，满足一定条件后缓存数据会执行flush操作真正落盘，形成一个数据文件HFile。随着数据写入不断增多，flush次数也会不断增多，进而HFile数据文件就会越来越多。然而，太多数据文件会导致数据查询IO次数增多，因此HBase尝试着不断对这些文件进行合并，这个合并过程称为Compactio">
+<meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2019-04-29T07:24:57.000Z">
+<meta property="article:modified_time" content="2019-04-29T07:24:58.000Z">
+<meta property="article:author" content="acronymor">
+<meta property="article:tag" content="HBase">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://acronymor.com/2019/04/29/Apache-HBase/hbase-minor-compaction/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true,
+    isPage: false,
+    isArchive: false
+  };
+</script>
+
+  <title>HBase之MinorCompact | Acronymor's Blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Acronymor's Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-movies">
+
+    <a href="/movies/" rel="section"><i class="fa fa-fw fa-film"></i>movies</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>About</a>
+
+  </li>
+  </ul>
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="en">
+    <link itemprop="mainEntityOfPage" href="http://acronymor.com/2019/04/29/Apache-HBase/hbase-minor-compaction/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="acronymor">
+      <meta itemprop="description" content="I am who i am, the unique fooid">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Acronymor's Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          HBase之MinorCompact
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+              
+
+              <time title="Created: 2019-04-29 15:24:57 / Modified: 15:24:58" itemprop="dateCreated datePublished" datetime="2019-04-29T15:24:57+08:00">2019-04-29</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/HBase%E7%BB%86%E8%8A%82/" itemprop="url" rel="index">
+                    <span itemprop="name">HBase细节</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>HBase是一种Log-Structured Merge Tree架构模式，用户数据写入先写WAL，再写缓存，满足一定条件后缓存数据会执行flush操作真正落盘，形成一个数据文件HFile。随着数据写入不断增多，flush次数也会不断增多，进而HFile数据文件就会越来越多。然而，太多数据文件会导致数据查询IO次数增多，因此HBase尝试着不断对这些文件进行合并，这个合并过程称为Compaction。</p>
+<a id="more"></a>
+
+<p>Compaction会从一个region的一个store中选择一些hfile文件进行合并。合并说来原理很简单，先从这些待合并的数据文件中读出KeyValues，再按照由小到大排列后写入一个新的文件中。之后，这个新生成的文件就会取代之前待合并的所有文件对外提供服务。</p>
+<h1 id="Compaction-分类"><a href="#Compaction-分类" class="headerlink" title="Compaction 分类"></a>Compaction 分类</h1><p>HBase根据合并规模将Compaction分为了两类：MinorCompaction和MajorCompaction。</p>
+<h2 id="Minor-Compaction"><a href="#Minor-Compaction" class="headerlink" title="Minor Compaction"></a>Minor Compaction</h2><p>Minor Compaction是指选取一些小的、相邻的StoreFile将他们合并成一个更大的StoreFile，在这个过程中不会处理已经Deleted或Expired的Cell。一次Minor Compaction的结果是更少并且更大的StoreFile。</p>
+<h2 id="Major-Compaction"><a href="#Major-Compaction" class="headerlink" title="Major Compaction"></a>Major Compaction</h2><p>Major Compaction是指将所有的StoreFile合并成一个StoreFile，这个过程还会清理三类无意义数据：被删除的数据、TTL过期数据、版本号超过设定版本号的数据。另外，一般情况下，Major Compaction时间会持续比较长，整个过程会消耗大量系统资源，对上层业务有比较大的影响。因此线上业务都会将关闭自动触发Major Compaction功能，改为手动在业务低峰期触发。</p>
+<blockquote>
+<p>一般情况下都是做 Minor Compaction 合并，Major Compaction 不少集群都是禁止。在实际生产实践中，当集群负载较小时，会手动进行Major合并。</p>
+</blockquote>
+<h1 id="Compaction触发时机"><a href="#Compaction触发时机" class="headerlink" title="Compaction触发时机"></a>Compaction触发时机</h1><p>HBase中可以触发compaction的因素有很多，最常见的因素有这么三种：<code>Memstore Flush</code>、<code>后台线程周期性检查</code>、<code>手动触发</code>。</p>
+<h2 id="Memstore-Flush"><a href="#Memstore-Flush" class="headerlink" title="Memstore Flush"></a>Memstore Flush</h2><p>应该说compaction操作的源头就来自flush操作，memstore flush会产生HFile文件，文件越来越多就需要compact。因此在每次执行完Flush操作之后，都会对当前Store中的文件数进行判断，一旦文件数＃ &gt; ，就会触发compaction。需要说明的是，compaction都是以Store为单位进行的，而在Flush触发条件下，整个Region的所有Store都会执行compact，所以会在短时间内执行多次compaction。</p>
+<h2 id="后台线程周期性检查"><a href="#后台线程周期性检查" class="headerlink" title="后台线程周期性检查"></a>后台线程周期性检查</h2><p>后台线程CompactionChecker定期触发检查是否需要执行compaction，检查周期为：<code>hbase.server.thread.wakefrequency*hbase.server.compactchecker.interval.multiplier</code>。</p>
+<p>和flush不同的是，该线程优先检查文件数是否大于<code>hbase.hstore.compaction.min</code>，一旦大于就会触发compaction。如果不满足，它会接着检查是否满足major compaction条件，简单来说，如果当前store中hfile的最早更新时间早于某个值mcTime，就会触发major compaction，HBase预想通过这种机制定期删除过期数据。上文mcTime是一个浮动值，浮动区间默认为［7-7<em>0.2，7+7</em>0.2］，其中7为hbase.hregion.majorcompaction，0.2为hbase.hregion.majorcompaction.jitter，可见默认在7天左右就会执行一次major compaction。用户如果想禁用major compaction，只需要将参数<code>hbase.hregion.majorcompaction</code>设为0。</p>
+<h2 id="手动触发"><a href="#手动触发" class="headerlink" title="手动触发"></a>手动触发</h2><p>一般来讲，手动触发compaction通常是为了执行major compaction 原因有三</p>
+<ul>
+<li>其一是因为很多业务担心自动major compaction影响读写性能，因此会选择低峰期手动触发；</li>
+<li>其二也有可能是用户在执行完alter操作之后希望立刻生效，执行手动触发major compaction；</li>
+<li>其三是HBase管理员发现硬盘容量不够的情况下手动触发major compaction删除大量过期数据；</li>
+</ul>
+<p>无论哪种触发动机，一旦手动触发，HBase会不做很多自动化检查，直接执行合并。</p>
+<h1 id="Minor-Compaction过程"><a href="#Minor-Compaction过程" class="headerlink" title="Minor Compaction过程"></a>Minor Compaction过程</h1><p>当确定为需要Minor Compact时，便开始Region合并过程。</p>
+<ol>
+<li>选出待执行Compact的storefiles。由于在Store中的文件可能已经在进行Compacting，因此，这里取出未执行Compacting的文件，将其加入到Candidates中。</li>
+<li>执行compactSelection算法，在Candidates中选出需要进行compact的文件，并封装成CompactSelection对象当中（这里面还是很复杂的）。</li>
+</ol>
+<blockquote>
+<p>这一步主要是过滤掉过期的hfiles。过滤minVersion=0，并且storefile.maxTimeStamp+ store.ttl &lt; now_timestamp。这意味着整个文件最大的时间戳的kv，都已经过期了，从而证明整个storefile都已经过期了。CompactSelection如果发现这样的storefile，会优先选择出来，作为Min然后提交给Store进行处理。</p>
+</blockquote>
+<ol start="3">
+<li><p>判断fileToCompact队列中的文件是否超过了maxCompactSize，如果超过，则过滤掉该文件，避免对于大文件进行compaction。（这一步可以忽略，因为默认maxCompactSize为Long.MaxValue，很少有文件大于这个值。</p>
+</li>
+<li><p>如果确定Minor Compaction方式执行，会检查经过过滤过的fileToCompact的大小是否满足minFilesToCompact最低标准（默认为3，即超过3个hfile文件则启动合并），如果不满足，忽略本次操作。确定执行的Minor Compaction的操作时，会使用一个smart算法，从filesToCompact当中选出匹配的storefiles。</p>
+</li>
+</ol>
+<hr>
+<h1 id="Minor-Compaction选择待合并文件的策略"><a href="#Minor-Compaction选择待合并文件的策略" class="headerlink" title="Minor Compaction选择待合并文件的策略"></a>Minor Compaction选择待合并文件的策略</h1><p>HBase主要有两种minor策略：RatioBasedCompactionPolicy和ExploringCompactionPolicy。</p>
+<h2 id="RatioBasedCompactionPolicy"><a href="#RatioBasedCompactionPolicy" class="headerlink" title="RatioBasedCompactionPolicy"></a>RatioBasedCompactionPolicy</h2><p>从老到新逐一扫描所有候选文件，满足其中条件之一便停止扫描：</p>
+<ol>
+<li><p>当前文件大小 &lt; 比它更新的所有文件大小总和 * ratio，其中ratio是一个可变的比例，在高峰期时ratio为1.2，非高峰期为5，也就是非高峰期允许compact更大的文件。那什么时候是高峰期，什么时候是非高峰期呢？用户可以配置参数hbase.offpeak.start.hour和hbase.offpeak.end.hour来设置高峰期</p>
+</li>
+<li><p>当前所剩候选文件数 &lt;= hbase.store.compaction.min（默认为3）</p>
+</li>
+</ol>
+<p>停止扫描后，待合并文件就选择出来了，即为当前扫描文件+比它更新的所有文件</p>
+<h2 id="ExploringCompactionPolicy"><a href="#ExploringCompactionPolicy" class="headerlink" title="ExploringCompactionPolicy"></a>ExploringCompactionPolicy</h2><p>该策略思路基本和RatioBasedCompactionPolicy相同，不同的是，Ratio策略在找到一个合适的文件集合之后就停止扫描了，而Exploring策略会记录下所有合适的文件集合，并在这些文件集合中寻找最优解。最优解可以理解为：待合并文件数最多或者待合并文件数相同的情况下文件大小较小，这样有利于减少compaction带来的IO消耗。</p>
+<hr>
+<h1 id="Reference"><a href="#Reference" class="headerlink" title="Reference"></a>Reference</h1><p><a href="https://blog.csdn.net/u014297175/article/details/50456147" target="_blank" rel="noopener">HBase之MinorCompact全程解析</a><br><a href="http://hbasefly.com/2016/07/13/hbase-compaction-1" target="_blank" rel="noopener">HBase Compaction的前生今世－身世之旅</a></p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/HBase/" rel="tag"># HBase</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-next post-nav-item">
+                <a href="/2019/04/28/Compute-Base-Knowledge/lscpu-command/" rel="next" title="lscpu 命令详解">
+                  <i class="fa fa-chevron-left"></i> lscpu 命令详解
+                </a>
+            </div>
+
+            <span class="post-nav-divider"></span>
+
+            <div class="post-nav-prev post-nav-item">
+                <a href="/2019/05/10/Apache-HBase/HBase-bulkload/" rel="prev" title="HBase bulkload">
+                  HBase bulkload <i class="fa fa-chevron-right"></i>
+                </a>
+            </div>
+          </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#Compaction-分类"><span class="nav-number">1.</span> <span class="nav-text">Compaction 分类</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Minor-Compaction"><span class="nav-number">1.1.</span> <span class="nav-text">Minor Compaction</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Major-Compaction"><span class="nav-number">1.2.</span> <span class="nav-text">Major Compaction</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Compaction触发时机"><span class="nav-number">2.</span> <span class="nav-text">Compaction触发时机</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Memstore-Flush"><span class="nav-number">2.1.</span> <span class="nav-text">Memstore Flush</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#后台线程周期性检查"><span class="nav-number">2.2.</span> <span class="nav-text">后台线程周期性检查</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#手动触发"><span class="nav-number">2.3.</span> <span class="nav-text">手动触发</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Minor-Compaction过程"><span class="nav-number">3.</span> <span class="nav-text">Minor Compaction过程</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Minor-Compaction选择待合并文件的策略"><span class="nav-number">4.</span> <span class="nav-text">Minor Compaction选择待合并文件的策略</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#RatioBasedCompactionPolicy"><span class="nav-number">4.1.</span> <span class="nav-text">RatioBasedCompactionPolicy</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#ExploringCompactionPolicy"><span class="nav-number">4.2.</span> <span class="nav-text">ExploringCompactionPolicy</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Reference"><span class="nav-number">5.</span> <span class="nav-text">Reference</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="acronymor"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">acronymor</p>
+  <div class="site-description" itemprop="description">I am who i am, the unique fooid</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives">
+          <span class="site-state-item-count">216</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+        <span class="site-state-item-count">27</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+        <span class="site-state-item-count">35</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="feed-link motion-element">
+    <a href="/atom.xml" rel="alternate">
+      <i class="fa fa-rss"></i>RSS
+    </a>
+  </div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/acronymor" title="GitHub &amp;rarr; https:&#x2F;&#x2F;github.com&#x2F;acronymor" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yourname@acronymor.com" title="E-Mail &amp;rarr; mailto:yourname@acronymor.com"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">acronymor</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> v4.2.0
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">Theme – <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> v7.5.0
+  </div>
+
+        
+
+
+
+
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

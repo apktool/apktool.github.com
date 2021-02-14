@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+  <link rel="alternate" href="/atom.xml" title="Acronymor's Blog" type="application/atom+xml">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Muse',
+    version: '7.5.0',
+    exturl: false,
+    sidebar: {"position":"right","display":"hide","offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: '',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    translation: {
+      copy_button: 'Copy',
+      copy_success: 'Copied',
+      copy_failure: 'Copy failed'
+    },
+    sidebarPadding: 40
+  };
+</script>
+
+  <meta name="description" content="分区功能并不是在存储引擎层完成的，因此不只有InnoDB存储引擎支持分区，常见的存储引擎MyISAM、NDB等都支持分区。但是并不是所有的存储引擎都支持，如CSV、FEDORATED、MERGE等就不支持分区。在使用此分区功能前，应该对选择的存储引擎对分区的支持有所了解。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="MySQL分区">
+<meta property="og:url" content="http://acronymor.com/2018/12/02/MySQL/mysql-partitioning/index.html">
+<meta property="og:site_name" content="Acronymor&#39;s Blog">
+<meta property="og:description" content="分区功能并不是在存储引擎层完成的，因此不只有InnoDB存储引擎支持分区，常见的存储引擎MyISAM、NDB等都支持分区。但是并不是所有的存储引擎都支持，如CSV、FEDORATED、MERGE等就不支持分区。在使用此分区功能前，应该对选择的存储引擎对分区的支持有所了解。">
+<meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2018-12-02T07:52:34.000Z">
+<meta property="article:modified_time" content="2018-12-02T07:52:34.000Z">
+<meta property="article:author" content="acronymor">
+<meta property="article:tag" content="MySQL">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://acronymor.com/2018/12/02/MySQL/mysql-partitioning/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true,
+    isPage: false,
+    isArchive: false
+  };
+</script>
+
+  <title>MySQL分区 | Acronymor's Blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Acronymor's Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-movies">
+
+    <a href="/movies/" rel="section"><i class="fa fa-fw fa-film"></i>movies</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>About</a>
+
+  </li>
+  </ul>
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="en">
+    <link itemprop="mainEntityOfPage" href="http://acronymor.com/2018/12/02/MySQL/mysql-partitioning/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="acronymor">
+      <meta itemprop="description" content="I am who i am, the unique fooid">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Acronymor's Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          MySQL分区
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2018-12-02 15:52:34" itemprop="dateCreated datePublished" datetime="2018-12-02T15:52:34+08:00">2018-12-02</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/MySQL%E6%8A%80%E6%9C%AF%E5%86%85%E5%B9%95/" itemprop="url" rel="index">
+                    <span itemprop="name">MySQL技术内幕</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>分区功能并不是在存储引擎层完成的，因此不只有InnoDB存储引擎支持分区，常见的存储引擎MyISAM、NDB等都支持分区。但是并不是所有的存储引擎都支持，如CSV、FEDORATED、MERGE等就不支持分区。在使用此分区功能前，应该对选择的存储引擎对分区的支持有所了解。</p>
+<a id="more"></a>
+
+<p>MySQL数据库在5.1版本时添加了对分区的支持，分区的过程是将一个表或索引分解为多个更小、更可管理的部分。就访问数据库的应用而言，从逻辑上讲，只有一个表或一个索引，但是在物理上这个表或索引可能由数十个物理分区组成。每个分区都是独立的对象，可以独自处理，也可以作为一个更大对象的一部分进行处理。</p>
+<p>MySQL数据库支持的分区类型为水平分区（指将同一个表中不同行的记录分配到不同的物理文件中），并不支持垂直分区（指将同一表中不同列的记录分配到不同的物理文件中）。此外，MySQL数据库的分区是局部分区索引，一个分区中既存放了数据又存放了索引。而全局分区是指，数据存放在各个分区中，但是所有数据的索引放在一个对象中。目前，MySQL数据库还不支持全局分区。</p>
+<p>这里简单说明下，如果对某张数据表进行了分区，下面简称分区表。</p>
+<h1 id="MySQL分区的作用"><a href="#MySQL分区的作用" class="headerlink" title="MySQL分区的作用"></a>MySQL分区的作用</h1><p>分区在一下场景中起到非常大的作用：</p>
+<ul>
+<li>表非常大以至于无法全部都放在内存中，或者只在表的最后部分有热点数据，其他均是历史数据；</li>
+<li>分区表的数据更容易维护。例如：想批量删除大量数据可以使用清除整个分区的方式。另外还可以对一个独立分区进行优化、检查、修改等操作。</li>
+<li>分区表的数据可以分布在不同的物理设备上，从而高效的利用多个硬件设备。</li>
+<li>可以使用分区表来避免特殊的瓶颈，例如InnoDB的单个索引的互斥访问、ext3文件系统的inode锁竞争等。</li>
+<li>如果需要，还可以备份和恢复独立的分区，这在非常大的数据集的场景下效果非常好。</li>
+</ul>
+<h1 id="MySQL分区类型"><a href="#MySQL分区类型" class="headerlink" title="MySQL分区类型"></a>MySQL分区类型</h1><h2 id="RANGE分区"><a href="#RANGE分区" class="headerlink" title="RANGE分区"></a>RANGE分区</h2><p>基于属于一个给定连续区间的列值，把多行分配给分区。</p>
+<h2 id="LIST分区"><a href="#LIST分区" class="headerlink" title="LIST分区"></a>LIST分区</h2><p>LIST分区和RANGE分区类似，区别在于LIST分区是基于列值匹配一个离散值集合中的某个值来进行选择，而非连续的。</p>
+<h2 id="HASH分区"><a href="#HASH分区" class="headerlink" title="HASH分区"></a>HASH分区</h2><p>HASH分区的目的是将数据均匀地分布到预先定义的各个分区中，保证各分区的数据量大致都是一样的。在RANGE和LIST分区中，必须明确指定一个给定的列值或列值集合应该保存在哪个分区中；而在HASH分区中，MySQL自动完成这些工作，用户所要做的只是基于将要进行哈希分区的列值指定一个列值或表达式，以及指定被分区的表将要被分隔成的分区数量。</p>
+<h2 id="LINER-HASH"><a href="#LINER-HASH" class="headerlink" title="LINER HASH"></a>LINER HASH</h2><p>MySQL还支持线性哈希功能，它与常规哈希的区别在于，线性哈希功能使用的一个线性的2的幂（powers-of-two）运算法则，而常规哈希使用的是求哈希函数值的模数。</p>
+<h2 id="KEY分区"><a href="#KEY分区" class="headerlink" title="KEY分区"></a>KEY分区</h2><p>KEY分区和HASH分区相似，不同之处在于HASH分区使用用户定义的函数进行分区，支持字符串HASH分区，KEY分区使用MySQL数据库提供的函数进行分区，这些函数基于与PASSWORD()一样的运算法则。</p>
+<h2 id="COLUMNS分区"><a href="#COLUMNS分区" class="headerlink" title="COLUMNS分区"></a>COLUMNS分区</h2><p>在前面说了RANGE、LIST、HASH和KEY这四种分区中，分区的条件是：数据必须为整形（interger），如果不是整形，那应该需要通过函数将其转化为整形，如YEAR()，TO_DAYS()，MONTH()等函数。MySQL5.5版本开始支持COLUMNS分区，可视为RANGE分区和LIST分区的一种进化。COLUMNS分区可以直接使用非整形的数据进行分区，分区根据类型直接比较而得，不需要转化为整形。此外，RANGE COLUMNS分区可以对多个列的值进行分区。</p>
+<p>COLUMNS分区支持以下的数据类型：</p>
+<ul>
+<li>所有的整形类型，如INT、SMALLINT、TINYINT和BIGINT。而FLOAT和DECIMAL则不予支持。</li>
+<li>日期类型，如DATE何DATETIME。其余的日期类型不予支持。</li>
+<li>字符串类型，如CHAR、VARCHAR、BINARY和VARBINARY。而BLOB和TEXT类型不予支持。</li>
+</ul>
+<h2 id="Subpartitioning"><a href="#Subpartitioning" class="headerlink" title="Subpartitioning"></a>Subpartitioning</h2><p>子分区（subparttitioning）是在分区的基础上再进行分区，有时也称这种分区为复合分区。MySQL数据库允许在RANGE和LIST的分区上再进行HASH或KEY的子分区。</p>
+<p>子分区的建立需要注意以下几个问题：</p>
+<ul>
+<li>每个子分区的数量必须相同。</li>
+<li>要在一个分区表的任何分区上使用subpartition来明确定义任何子分区，就必须定义所有的子分区。</li>
+<li>每个subpartition子句必须包括子分区的一个名字。</li>
+<li>子分区的名字必须是唯一的。</li>
+</ul>
+<h1 id="分区中的NULL值"><a href="#分区中的NULL值" class="headerlink" title="分区中的NULL值"></a>分区中的NULL值</h1><p>MySQL数据库允许对NULL值做分区，但是处理的方法与其他数据库可能完全不同。MySQL数据库的分区总是视NULL值小于任何的一个非NULL值，这和MySQL数据库中处理NULL值的ORDER BY操作是一样的。因此对于不同的分区类型，MySQL数据库对于NULL值的处理也是各不相同。</p>
+<ul>
+<li>对于RANGE分区，如果向分区列插入了NULL值，则MySQL数据库会将该值放入最左边的分区。</li>
+<li>对于LIST分区，如果向分区列插入了NULL值，则必须显示地指出哪个分区放入NULL值，否则会报错。</li>
+<li>对于HASH和KEY分区，对于NULL值的处理方法和RANGE分区、LIST分区不一样。任何分区函数都会将含有NULL值的记录返回为0。</li>
+</ul>
+<h1 id="分区表和合并表"><a href="#分区表和合并表" class="headerlink" title="分区表和合并表"></a>分区表和合并表</h1><h2 id="分区表"><a href="#分区表" class="headerlink" title="分区表"></a>分区表</h2><ul>
+<li>MySQL分区表只能在使用分区函数的列本身进行比较时才能过滤分区，而不能根据表达式去过滤分区，即使这个表达式就是分区函数也不行。</li>
+<li>分区表在过滤分区后能够很大的提高查询的效率，但分区表对于单条记录的查询没有优势。</li>
+</ul>
+<p>分区严格来说是一个逻辑上的概念，用户无法访问底层的各个分区，对用户来说，分区是透明的。</p>
+<p>MySQL实现分区表的方式——对底层表的封装——意味着索引也是按照分区的字表定义的，而没有全局索引。MySQL 在创建表时使用PARTITION BY子句定义每个分区存放的数据。在执行查询的时候，优化器会根据分区定义过滤那些没有我们需要的数据分区，这样查询就无须扫描所有的分区——只需要查找包含需要数据的分区就可以了。</p>
+<h3 id="分区表的原理"><a href="#分区表的原理" class="headerlink" title="分区表的原理"></a>分区表的原理</h3><p>分区表有多个相关的底层表实现，这些地层表也是有句柄对象表示，所以我们也可以直接访问各个分区。存储引擎管理分区的各个地层表和管理普通表一样，分区表的索引只是在各个底层表上各自加上一个完全相同的索引。从存储引擎的角度来看，底层表和一个普通表没有任何不同，存储引擎也无需知道这是一个普通表还是一个分区表的一部分。</p>
+<p>分区表上的操作可以按照下面的操作逻辑进行：</p>
+<ul>
+<li>select查询：当查询一个分区表的时候，分区层先打开并锁住所有底层表，优化器判断是否可以过滤部分分区，然后再调用对应的存储引擎接口访问各个分区的数据。</li>
+<li>insert操作：当写入一条记录时，分区层先打开并锁住所有的底层表，然后确定那个分区接受这条记录，再将记录写入对应底层表。</li>
+<li>delete操作：当删除一条记录时，分区层先打开并锁住所有的底层表，然后确定数据对应的分区，最后对相应表进行删除操作。</li>
+<li>update操作：当更新一条记录时，分区层先打开并锁住所有的底层表，mysql先确定需要更新的记录在那个分区，然后取出数据并更新，在判断更新后的数据该放在那个分区，然后对底层表进行写入操作，并对原数据所在的底层表进行删除操作。</li>
+</ul>
+<p>虽然每个操作都会“先打开并锁住所有底层表”，但这并不是说分区表在处理过程中是锁住全表的。如果存储引擎能够自己实现行级锁，例如InnoDB，则会在分区层释放对应的表锁。</p>
+<h2 id="合并表"><a href="#合并表" class="headerlink" title="合并表"></a>合并表</h2><ul>
+<li>执行范围查询时，需要在每一个子表上各执行一次，这比直接访问单个表的性能差很多，而且子表越多，性能越糟。</li>
+<li>全表扫描和普通表的全表扫描速度相同。</li>
+<li>在合并表上做唯一键和主键查询时，一旦找到一行数据就停止。所以一旦查询在合并表的某一个子表中找到一行数据，就立刻返回，不会再访问任何其他的表。</li>
+<li>子表的读取顺序和create table语句中的顺序相同。如果需要频繁地按照某个特定顺序访问表，那么可以通过这个特性让合并排序操作更高效。</li>
+</ul>
+<hr>
+<h1 id="Reference"><a href="#Reference" class="headerlink" title="Reference"></a>Reference</h1><p><a href="https://dev.mysql.com/doc/refman/8.0/en/partitioning-types.html" target="_blank" rel="noopener">Partitioning Types</a><br><a href="http://www.ywnds.com/?p=7226" target="_blank" rel="noopener">MySQL表分区详解</a></p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/MySQL/" rel="tag"># MySQL</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-next post-nav-item">
+                <a href="/2018/12/02/MySQL/mysql-integrity/" rel="next" title="数据库完整性和数据库一致性">
+                  <i class="fa fa-chevron-left"></i> 数据库完整性和数据库一致性
+                </a>
+            </div>
+
+            <span class="post-nav-divider"></span>
+
+            <div class="post-nav-prev post-nav-item">
+                <a href="/2018/12/02/MySQL/innodb-index/" rel="prev" title="InnoDB索引">
+                  InnoDB索引 <i class="fa fa-chevron-right"></i>
+                </a>
+            </div>
+          </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#MySQL分区的作用"><span class="nav-number">1.</span> <span class="nav-text">MySQL分区的作用</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#MySQL分区类型"><span class="nav-number">2.</span> <span class="nav-text">MySQL分区类型</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#RANGE分区"><span class="nav-number">2.1.</span> <span class="nav-text">RANGE分区</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#LIST分区"><span class="nav-number">2.2.</span> <span class="nav-text">LIST分区</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#HASH分区"><span class="nav-number">2.3.</span> <span class="nav-text">HASH分区</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#LINER-HASH"><span class="nav-number">2.4.</span> <span class="nav-text">LINER HASH</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#KEY分区"><span class="nav-number">2.5.</span> <span class="nav-text">KEY分区</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#COLUMNS分区"><span class="nav-number">2.6.</span> <span class="nav-text">COLUMNS分区</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Subpartitioning"><span class="nav-number">2.7.</span> <span class="nav-text">Subpartitioning</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#分区中的NULL值"><span class="nav-number">3.</span> <span class="nav-text">分区中的NULL值</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#分区表和合并表"><span class="nav-number">4.</span> <span class="nav-text">分区表和合并表</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#分区表"><span class="nav-number">4.1.</span> <span class="nav-text">分区表</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#分区表的原理"><span class="nav-number">4.1.1.</span> <span class="nav-text">分区表的原理</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#合并表"><span class="nav-number">4.2.</span> <span class="nav-text">合并表</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Reference"><span class="nav-number">5.</span> <span class="nav-text">Reference</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="acronymor"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">acronymor</p>
+  <div class="site-description" itemprop="description">I am who i am, the unique fooid</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives">
+          <span class="site-state-item-count">216</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+        <span class="site-state-item-count">27</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+        <span class="site-state-item-count">35</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="feed-link motion-element">
+    <a href="/atom.xml" rel="alternate">
+      <i class="fa fa-rss"></i>RSS
+    </a>
+  </div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/acronymor" title="GitHub &amp;rarr; https:&#x2F;&#x2F;github.com&#x2F;acronymor" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yourname@acronymor.com" title="E-Mail &amp;rarr; mailto:yourname@acronymor.com"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">acronymor</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> v4.2.0
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">Theme – <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> v7.5.0
+  </div>
+
+        
+
+
+
+
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

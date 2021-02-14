@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+  <link rel="alternate" href="/atom.xml" title="Acronymor's Blog" type="application/atom+xml">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Muse',
+    version: '7.5.0',
+    exturl: false,
+    sidebar: {"position":"right","display":"hide","offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: '',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    translation: {
+      copy_button: 'Copy',
+      copy_success: 'Copied',
+      copy_failure: 'Copy failed'
+    },
+    sidebarPadding: 40
+  };
+</script>
+
+  <meta name="description" content="HBase RegionServer的启动流程代码大约4K行，看起来非常繁琐，但实际上并不算复杂。主要完成了参数初始化，连接HMaster和Zookeeper，创建线程池等。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="HBase之RegionServer启动流程">
+<meta property="og:url" content="http://acronymor.com/2020/09/26/Apache-HBase/hbase-regionserver-startup/index.html">
+<meta property="og:site_name" content="Acronymor&#39;s Blog">
+<meta property="og:description" content="HBase RegionServer的启动流程代码大约4K行，看起来非常繁琐，但实际上并不算复杂。主要完成了参数初始化，连接HMaster和Zookeeper，创建线程池等。">
+<meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2020-09-26T02:40:52.000Z">
+<meta property="article:modified_time" content="2020-09-26T02:41:12.000Z">
+<meta property="article:author" content="acronymor">
+<meta property="article:tag" content="HBase">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://acronymor.com/2020/09/26/Apache-HBase/hbase-regionserver-startup/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true,
+    isPage: false,
+    isArchive: false
+  };
+</script>
+
+  <title>HBase之RegionServer启动流程 | Acronymor's Blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Acronymor's Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-movies">
+
+    <a href="/movies/" rel="section"><i class="fa fa-fw fa-film"></i>movies</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>About</a>
+
+  </li>
+  </ul>
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="en">
+    <link itemprop="mainEntityOfPage" href="http://acronymor.com/2020/09/26/Apache-HBase/hbase-regionserver-startup/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="acronymor">
+      <meta itemprop="description" content="I am who i am, the unique fooid">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Acronymor's Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          HBase之RegionServer启动流程
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+              
+
+              <time title="Created: 2020-09-26 10:40:52 / Modified: 10:41:12" itemprop="dateCreated datePublished" datetime="2020-09-26T10:40:52+08:00">2020-09-26</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/HBase%E6%BA%90%E7%A0%81/" itemprop="url" rel="index">
+                    <span itemprop="name">HBase源码</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>HBase RegionServer的启动流程代码大约4K行，看起来非常繁琐，但实际上并不算复杂。主要完成了参数初始化，连接HMaster和Zookeeper，创建线程池等。</p>
+<a id="more"></a>
+
+<h1 id="入口"><a href="#入口" class="headerlink" title="入口"></a>入口</h1><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">HRegionServer</span> <span class="keyword">extends</span> <span class="title">HasThread</span> <span class="keyword">implements</span> <span class="title">RegionServerServices</span>, <span class="title">LastSequenceId</span>, <span class="title">ConfigurationObserver</span> </span>&#123;</span><br><span class="line">  ...</span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> <span class="keyword">throws</span> Exception </span>&#123;</span><br><span class="line">    LOG.info(<span class="string">"STARTING executorService "</span> + HRegionServer<span class="class">.<span class="keyword">class</span>.<span class="title">getSimpleName</span>())</span>;</span><br><span class="line">    VersionInfo.logVersion();</span><br><span class="line">    Configuration conf = HBaseConfiguration.create();</span><br><span class="line">    <span class="meta">@SuppressWarnings</span>(<span class="string">"unchecked"</span>)</span><br><span class="line">    Class&lt;? extends HRegionServer&gt; regionServerClass = (Class&lt;? extends HRegionServer&gt;) conf</span><br><span class="line">        .getClass(HConstants.REGION_SERVER_IMPL, HRegionServer<span class="class">.<span class="keyword">class</span>)</span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">new</span> HRegionServerCommandLine(regionServerClass).doMain(args);</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这部分主要完成了获取<code>hbase-site.xml</code>和<code>hbase-defalut.xml</code>中的配置信息（存储倒Configuration），接着将该配置信息作为参数，通过反射的方式创建HRegionServer实例。最后调用HRegionServer中的run()方法，启动HRegionServer。</p>
+<h1 id="HRegionServer的构造方法"><a href="#HRegionServer的构造方法" class="headerlink" title="HRegionServer的构造方法"></a>HRegionServer的构造方法</h1><p>构造方法作为HRegionerver实例化时的重要一步，它完成了大量的初始化工作。简单来说就是初始化和校验工作。其中初始化包括参数初始化，线程池初始化，RPC Client初始化，以及其他初始化。</p>
+<h2 id="初始化"><a href="#初始化" class="headerlink" title="初始化"></a>初始化</h2><h3 id="参数初始化"><a href="#参数初始化" class="headerlink" title="参数初始化"></a>参数初始化</h3><table>
+<thead>
+<tr>
+<th align="left">参数名称</th>
+<th align="left">配置名称</th>
+<th align="center">默认值</th>
+<th align="left">说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">masterless</td>
+<td align="left">hbase.masterless</td>
+<td align="center">false</td>
+<td align="left"></td>
+</tr>
+<tr>
+<td align="left"></td>
+<td align="left">dfs.client.read.shortcircuit.skip.checksum</td>
+<td align="center">false</td>
+<td align="left"></td>
+</tr>
+<tr>
+<td align="left"></td>
+<td align="left">hbase.regionserver.checksum.verify</td>
+<td align="center">true</td>
+<td align="left"></td>
+</tr>
+<tr>
+<td align="left"></td>
+<td align="left">dfs.client.read.shortcircuit.buffer.size</td>
+<td align="center"></td>
+<td align="left"></td>
+</tr>
+<tr>
+<td align="left"></td>
+<td align="left">hbase.meta.replicas.use</td>
+<td align="center">false</td>
+<td align="left"></td>
+</tr>
+<tr>
+<td align="left">numRetries</td>
+<td align="left">hbase.client.retries.number</td>
+<td align="center">15</td>
+<td align="left"></td>
+</tr>
+<tr>
+<td align="left">threadWakeFrequency</td>
+<td align="left">hbase.server.thread.wakefrequency</td>
+<td align="center">10 * 1000</td>
+<td align="left"></td>
+</tr>
+<tr>
+<td align="left">compactionCheckFrequency</td>
+<td align="left">hbase.regionserver.compaction.check.period</td>
+<td align="center">10 * 1000</td>
+<td align="left"></td>
+</tr>
+<tr>
+<td align="left">flushCheckFrequency</td>
+<td align="left">hbase.regionserver.flush.check.period</td>
+<td align="center">10 * 1000</td>
+<td align="left"></td>
+</tr>
+<tr>
+<td align="left">msgInterval</td>
+<td align="left">hbase.regionserver.msginterval</td>
+<td align="center">3 * 1000</td>
+<td align="left"></td>
+</tr>
+<tr>
+<td align="left"></td>
+<td align="left">hbase.regionserver.nonces.enabled</td>
+<td align="center">true</td>
+<td align="left"></td>
+</tr>
+<tr>
+<td align="left">numRegionsToReport</td>
+<td align="left">hbase.regionserver.numregionstoreport</td>
+<td align="center">10</td>
+<td align="left"></td>
+</tr>
+<tr>
+<td align="left">operationTimeout</td>
+<td align="left">hbase.client.operation.timeout</td>
+<td align="center">1200000</td>
+<td align="left"></td>
+</tr>
+<tr>
+<td align="left">shortOperationTimeout</td>
+<td align="left">hbase.rpc.shortoperation.timeout</td>
+<td align="center">10000</td>
+<td align="left"></td>
+</tr>
+<tr>
+<td align="left">useThisHostnameInstead</td>
+<td align="left">hbase.regionserver.hostname</td>
+<td align="center"></td>
+<td align="left">短路读时访问的hostname</td>
+</tr>
+<tr>
+<td align="left">useThisHostnameInstead</td>
+<td align="left">hbase.regionserver.hostname.disable.master.reversedns</td>
+<td align="center">false</td>
+<td align="left"></td>
+</tr>
+<tr>
+<td align="left"></td>
+<td align="left">hbase.testing.nocluster</td>
+<td align="center">false</td>
+<td align="left"></td>
+</tr>
+</tbody></table>
+<h3 id="RPC初始化"><a href="#RPC初始化" class="headerlink" title="RPC初始化"></a>RPC初始化</h3><table>
+<thead>
+<tr>
+<th align="left">参数名称</th>
+<th align="left">配置名称</th>
+<th align="center">默认值</th>
+<th align="left">说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">masterless</td>
+<td align="left">hbase.masterless</td>
+<td align="center">false</td>
+<td align="left"></td>
+</tr>
+<tr>
+<td align="left">eventLoopGroupConfig</td>
+<td align="left"></td>
+<td align="center">setupNetty(this.conf)</td>
+<td align="left"></td>
+</tr>
+<tr>
+<td align="left">rpcServices</td>
+<td align="left"></td>
+<td align="center">new RSRpcServices(this)</td>
+<td align="left"></td>
+</tr>
+<tr>
+<td align="left">rpcControllerFactory</td>
+<td align="left">hbase.rpc.controllerfactory.class</td>
+<td align="center">org.apache.hadoop.hbase.ipc.RpcControllerFactory.class</td>
+<td align="left"></td>
+</tr>
+<tr>
+<td align="left">rpcRetryingCallerFactory</td>
+<td align="left"></td>
+<td align="center">new RpcRetryingCallerFactory(…)</td>
+<td align="left"></td>
+</tr>
+</tbody></table>
+<h3 id="其他初始化"><a href="#其他初始化" class="headerlink" title="其他初始化"></a>其他初始化</h3><table>
+<thead>
+<tr>
+<th align="left">参数名称</th>
+<th align="left">配置名称</th>
+<th align="center">默认值</th>
+<th align="left">说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">userProvider</td>
+<td align="left">hbase.client.userprovider.class</td>
+<td align="center">UserProvider.class</td>
+<td align="left"></td>
+</tr>
+<tr>
+<td align="left">sleeper</td>
+<td align="left"></td>
+<td align="center">new Sleeper(this.msgInterval, this)</td>
+<td align="left"></td>
+</tr>
+<tr>
+<td align="left">nonceManager</td>
+<td align="left"></td>
+<td align="center">new ServerNonceMananger(this.conf)</td>
+<td align="left"></td>
+</tr>
+<tr>
+<td align="left">zookeeper</td>
+<td align="left"></td>
+<td align="center">new ZKWatcher(conf, …)</td>
+<td align="left"></td>
+</tr>
+<tr>
+<td align="left">masterAddressTracker</td>
+<td align="left"></td>
+<td align="center">new MasterAddressTracker(…)</td>
+<td align="left"></td>
+</tr>
+<tr>
+<td align="left">clusterStatusTracker</td>
+<td align="left"></td>
+<td align="center">new ClusterStatusTracker(…)</td>
+<td align="left"></td>
+</tr>
+<tr>
+<td align="left">choreService</td>
+<td align="left"></td>
+<td align="center">new ChoreService(getName(), true)</td>
+<td align="left"></td>
+</tr>
+<tr>
+<td align="left">executorService</td>
+<td align="left"></td>
+<td align="center">new ExecutorService(getName())</td>
+<td align="left"></td>
+</tr>
+</tbody></table>
+<h2 id="校验"><a href="#校验" class="headerlink" title="校验"></a>校验</h2><table>
+<thead>
+<tr>
+<th align="left">方法名称</th>
+<th align="left">说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">MemorySizeUtil.checkForClusterFreeHeapMemoryLimit(this.conf)</td>
+<td align="left"></td>
+</tr>
+<tr>
+<td align="left">HFile.checkHFileVersion(this.conf)</td>
+<td align="left"></td>
+</tr>
+<tr>
+<td align="left">checkCodecs(this.conf)</td>
+<td align="left"></td>
+</tr>
+</tbody></table>
+<h1 id="HRegionServer的run方法"><a href="#HRegionServer的run方法" class="headerlink" title="HRegionServer的run方法"></a>HRegionServer的run方法</h1><p>整个run方法实际上就由两个 <code>try ... catch</code> 语句和若干<code>if</code>组成。这两个 <code>try ... catch</code> 语句描述了RegionServer正常工作时的样子。后续的<code>if</code>语句描述了RegionServer关闭后的一些步骤。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">run</span><span class="params">()</span> </span>&#123;</span><br><span class="line">  <span class="keyword">try</span> &#123;</span><br><span class="line">    preRegistrationInitialization();</span><br><span class="line">  &#125; <span class="keyword">catch</span> (Throwable e) &#123;</span><br><span class="line">    abort(<span class="string">"Fatal exception during initialization"</span>, e);</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">try</span> &#123;</span><br><span class="line">    ...</span><br><span class="line">  &#125; <span class="keyword">catch</span> (Throwable t) &#123;</span><br><span class="line">    <span class="keyword">if</span> (!rpcServices.checkOOME(t)) &#123;</span><br><span class="line">      String prefix = t <span class="keyword">instanceof</span> YouAreDeadException? <span class="string">""</span>: <span class="string">"Unhandled: "</span>;</span><br><span class="line">      abort(prefix + t.getMessage(), t);</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="preRegistrationInitialization"><a href="#preRegistrationInitialization" class="headerlink" title="preRegistrationInitialization"></a>preRegistrationInitialization</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">private</span> <span class="keyword">void</span> <span class="title">preRegistrationInitialization</span><span class="params">()</span> </span>&#123;</span><br><span class="line">  <span class="keyword">try</span> &#123;</span><br><span class="line">    initializeZooKeeper();</span><br><span class="line">    setupClusterConnection();</span><br><span class="line">    <span class="keyword">this</span>.rpcClient = RpcClientFactory.createClient(conf, clusterId, <span class="keyword">new</span> InetSocketAddress(<span class="keyword">this</span>.rpcServices.isa.getAddress(), <span class="number">0</span>), clusterConnection.getConnectionMetrics());</span><br><span class="line">  &#125; <span class="keyword">catch</span> (Throwable t) &#123;</span><br><span class="line">    <span class="keyword">this</span>.rpcServices.stop();</span><br><span class="line">    abort(<span class="string">"Initialization of RS failed.  Hence aborting RS."</span>, t);</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="initializeZooKeeper"><a href="#initializeZooKeeper" class="headerlink" title="initializeZooKeeper"></a>initializeZooKeeper</h3><ol>
+<li>检查ZNode<code>/hbase/master</code>是否已经被赋值，如果没有，则阻塞等待;</li>
+<li>检查ZNode<code>/hbase/running</code>是否已经被赋值，如果没有，则阻塞等待;</li>
+<li>初始化rspm(region server procedure manager)</li>
+</ol>
+<h3 id="setupClusterConnection"><a href="#setupClusterConnection" class="headerlink" title="setupClusterConnection"></a>setupClusterConnection</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">protected</span> ClusterConnection <span class="title">createClusterConnection</span><span class="params">()</span> <span class="keyword">throws</span> IOException </span>&#123;</span><br><span class="line">    <span class="comment">// 将conf复制一份，然后取消 hbase.client.zookeeper.quorum 配置项</span></span><br><span class="line">    ...</span><br><span class="line">    <span class="keyword">return</span> ConnectionUtils.createShortCircuitConnection(conf, <span class="keyword">null</span>, userProvider.getCurrent(), serverName, rpcServices, rpcServices);</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>一般在使用HBase API时，会创建连接，默认情况下会使用 <code>ConnectionImplementation</code> 进行实例化。而在HRegionServer在建立连接的时候，启用短路的方式，则会使用<code>ShortCircuitingClusterConnection</code>进行实例化连接。从类的继承关系来看，<code>ShortCircuitingClusterConnection</code>继承自<code>ConnectionImplementation</code>。</p>
+<p>而<code>ShortCircuitingClusterConnection</code>的实现逻辑也非常简单。如果从配置文件中获取到的当前servername与传入的serername一致，那么取本地的链接便可。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">static</span> <span class="class"><span class="keyword">class</span> <span class="title">ShortCircuitingClusterConnection</span> <span class="keyword">extends</span> <span class="title">ConnectionImplementation</span> </span>&#123;</span><br><span class="line">  <span class="meta">@Override</span></span><br><span class="line">  <span class="keyword">public</span> AdminService.<span class="function">BlockingInterface <span class="title">getAdmin</span><span class="params">(ServerName sn)</span> <span class="keyword">throws</span> IOException </span>&#123;</span><br><span class="line">    <span class="keyword">return</span> serverName.equals(sn) ? <span class="keyword">this</span>.localHostAdmin : <span class="keyword">super</span>.getAdmin(sn);</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="meta">@Override</span></span><br><span class="line">  <span class="keyword">public</span> ClientService.<span class="function">BlockingInterface <span class="title">getClient</span><span class="params">(ServerName sn)</span> <span class="keyword">throws</span> IOException </span>&#123;</span><br><span class="line">    <span class="keyword">return</span> serverName.equals(sn) ? <span class="keyword">this</span>.localHostClient : <span class="keyword">super</span>.getClient(sn);</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="meta">@Override</span></span><br><span class="line">  <span class="function"><span class="keyword">public</span> MasterKeepAliveConnection <span class="title">getMaster</span><span class="params">()</span> <span class="keyword">throws</span> IOException </span>&#123;</span><br><span class="line">    <span class="keyword">if</span> (<span class="keyword">this</span>.localHostClient <span class="keyword">instanceof</span> MasterService.BlockingInterface) &#123;</span><br><span class="line">      <span class="keyword">return</span> <span class="keyword">new</span> ShortCircuitMasterConnection(</span><br><span class="line">        (MasterService.BlockingInterface) <span class="keyword">this</span>.localHostClient);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> <span class="keyword">super</span>.getMaster();</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="rpcClient"><a href="#rpcClient" class="headerlink" title="rpcClient"></a>rpcClient</h3><p>最后初始化rpcClient，默认初始化为<code>NettyRpcClient</code>。</p>
+<h2 id="try-…-catch-…"><a href="#try-…-catch-…" class="headerlink" title="try … catch …"></a>try … catch …</h2><h3 id="未停止并且未终止"><a href="#未停止并且未终止" class="headerlink" title="未停止并且未终止"></a>未停止并且未终止</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> (!isStopped() &amp;&amp; !isAborted()) &#123;</span><br><span class="line">  ...</span><br><span class="line">  <span class="keyword">while</span> (keepLooping()) &#123;</span><br><span class="line">    RegionServerStartupResponse w = reportForDuty();</span><br><span class="line">    <span class="keyword">if</span> (w == <span class="keyword">null</span>) &#123;</span><br><span class="line">      <span class="keyword">long</span> sleepTime = rc.getBackoffTimeAndIncrementAttempts();</span><br><span class="line">      LOG.warn(<span class="string">"reportForDuty failed; sleeping &#123;&#125; ms and then retrying."</span>, sleepTime);</span><br><span class="line">      <span class="keyword">this</span>.sleeper.sleep(sleepTime);</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">      handleReportForDutyResponse(w);</span><br><span class="line">      <span class="keyword">break</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>reportForDuty</code>是个非常重要的方法，完成了下述，但不止下述的功能。</p>
+<ol>
+<li>重置 <code>requestCount</code> <code>rpcGetRequestCount</code> <code>rpcScanRequestCount</code> <code>rpcMultiRequestCount</code> <code>rpcMutateRequestCount</code></li>
+<li>创建regionserver status</li>
+</ol>
+<p><code>handleReportForDutyResponse()</code>是个非常重要的方法，完成了下述，但不止下述的功能。</p>
+<ol>
+<li><code>createMyEphemeralNode()</code>创建zookeeper上的所有临时节点</li>
+<li><code>initializeFileSystem()</code>初始化HDFS上面的目录结构</li>
+<li><code>setupWALAndReplication()</code>初始化WAL和replica</li>
+<li><code>startServices()</code>启动服务，包括<code>flusher</code>, <code>compactsplit</code>，<code>leases</code>，<code>movedRegionsCleaner</code>，<code>storefileRefresher</code>，<code>walRoller</code>，<code>procedureResultReporter</code>，<code>executorService</code>，<code>......</code></li>
+<li><code>startReplicationService()</code>启动并初始化repilca相关的服务</li>
+</ol>
+<h3 id="未停止并且状态健康"><a href="#未停止并且状态健康" class="headerlink" title="未停止并且状态健康"></a>未停止并且状态健康</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> (!isStopped() &amp;&amp; isHealthy()) &#123;</span><br><span class="line">  <span class="number">1</span>. 启动rspm(region server procedure manager)。</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="未停止并且状态健康-1"><a href="#未停止并且状态健康-1" class="headerlink" title="未停止并且状态健康"></a>未停止并且状态健康</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">while</span> (!isStopped() &amp;&amp; isHealthy()) &#123;</span><br><span class="line">  <span class="keyword">if</span> (!isClusterUp()) &#123;</span><br><span class="line">    <span class="keyword">if</span> (isOnlineRegionsEmpty()) &#123;</span><br><span class="line">      stop(<span class="string">"Exiting; cluster shutdown set and not carrying any regions"</span>);</span><br><span class="line">    &#125; <span class="keyword">else</span> <span class="keyword">if</span> (!<span class="keyword">this</span>.stopping) &#123;</span><br><span class="line">      <span class="keyword">this</span>.stopping = <span class="keyword">true</span>;</span><br><span class="line">      closeUserRegions(<span class="keyword">this</span>.abortRequested);</span><br><span class="line">    &#125; <span class="keyword">else</span> <span class="keyword">if</span> (<span class="keyword">this</span>.stopping) &#123;</span><br><span class="line">      <span class="keyword">boolean</span> allUserRegionsOffline = areAllUserRegionsOffline();</span><br><span class="line">      <span class="keyword">if</span> (allUserRegionsOffline) &#123;</span><br><span class="line">        <span class="keyword">if</span> (oldRequestCount == getWriteRequestCount()) &#123;</span><br><span class="line">          stop(<span class="string">"Stopped; only catalog regions remaining online"</span>);</span><br><span class="line">          <span class="keyword">break</span>;</span><br><span class="line">        &#125;</span><br><span class="line">        oldRequestCount = getWriteRequestCount();</span><br><span class="line">      &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        closeUserRegions(<span class="keyword">this</span>.abortRequested);</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">long</span> now = System.currentTimeMillis();</span><br><span class="line">  <span class="keyword">if</span> ((now - lastMsg) &gt;= msgInterval) &#123;</span><br><span class="line">    tryRegionServerReport(lastMsg, now);</span><br><span class="line">    lastMsg = System.currentTimeMillis();</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">if</span> (!isStopped() &amp;&amp; !isAborted()) &#123;</span><br><span class="line">    <span class="keyword">this</span>.sleeper.sleep();</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">if</span> (...) &#123;</span><br><span class="line">    ...</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h1 id="Reference"><a href="#Reference" class="headerlink" title="Reference"></a>Reference</h1><p><a href="https://blog.csdn.net/u014297175/article/details/50456147" target="_blank" rel="noopener">HBase之MinorCompact全程解析</a><br><a href="http://hbasefly.com/2016/07/13/hbase-compaction-1" target="_blank" rel="noopener">HBase Compaction的前生今世－身世之旅</a></p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/HBase/" rel="tag"># HBase</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-next post-nav-item">
+                <a href="/2020/09/01/Java/Concurrent/ThreadPoolExecutor/" rel="next" title="ThreadPoolExecutor">
+                  <i class="fa fa-chevron-left"></i> ThreadPoolExecutor
+                </a>
+            </div>
+
+            <span class="post-nav-divider"></span>
+
+            <div class="post-nav-prev post-nav-item">
+            </div>
+          </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#入口"><span class="nav-number">1.</span> <span class="nav-text">入口</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#HRegionServer的构造方法"><span class="nav-number">2.</span> <span class="nav-text">HRegionServer的构造方法</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#初始化"><span class="nav-number">2.1.</span> <span class="nav-text">初始化</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#参数初始化"><span class="nav-number">2.1.1.</span> <span class="nav-text">参数初始化</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#RPC初始化"><span class="nav-number">2.1.2.</span> <span class="nav-text">RPC初始化</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#其他初始化"><span class="nav-number">2.1.3.</span> <span class="nav-text">其他初始化</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#校验"><span class="nav-number">2.2.</span> <span class="nav-text">校验</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#HRegionServer的run方法"><span class="nav-number">3.</span> <span class="nav-text">HRegionServer的run方法</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#preRegistrationInitialization"><span class="nav-number">3.1.</span> <span class="nav-text">preRegistrationInitialization</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#initializeZooKeeper"><span class="nav-number">3.1.1.</span> <span class="nav-text">initializeZooKeeper</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#setupClusterConnection"><span class="nav-number">3.1.2.</span> <span class="nav-text">setupClusterConnection</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#rpcClient"><span class="nav-number">3.1.3.</span> <span class="nav-text">rpcClient</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#try-…-catch-…"><span class="nav-number">3.2.</span> <span class="nav-text">try … catch …</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#未停止并且未终止"><span class="nav-number">3.2.1.</span> <span class="nav-text">未停止并且未终止</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#未停止并且状态健康"><span class="nav-number">3.2.2.</span> <span class="nav-text">未停止并且状态健康</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#未停止并且状态健康-1"><span class="nav-number">3.2.3.</span> <span class="nav-text">未停止并且状态健康</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Reference"><span class="nav-number">4.</span> <span class="nav-text">Reference</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="acronymor"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">acronymor</p>
+  <div class="site-description" itemprop="description">I am who i am, the unique fooid</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives">
+          <span class="site-state-item-count">216</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+        <span class="site-state-item-count">27</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+        <span class="site-state-item-count">35</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="feed-link motion-element">
+    <a href="/atom.xml" rel="alternate">
+      <i class="fa fa-rss"></i>RSS
+    </a>
+  </div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/acronymor" title="GitHub &amp;rarr; https:&#x2F;&#x2F;github.com&#x2F;acronymor" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yourname@acronymor.com" title="E-Mail &amp;rarr; mailto:yourname@acronymor.com"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">acronymor</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> v4.2.0
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">Theme – <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> v7.5.0
+  </div>
+
+        
+
+
+
+
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

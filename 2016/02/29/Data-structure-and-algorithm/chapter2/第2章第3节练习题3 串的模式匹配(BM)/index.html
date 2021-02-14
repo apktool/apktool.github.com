@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+  <link rel="alternate" href="/atom.xml" title="Acronymor's Blog" type="application/atom+xml">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Muse',
+    version: '7.5.0',
+    exturl: false,
+    sidebar: {"position":"right","display":"hide","offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: '',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    translation: {
+      copy_button: 'Copy',
+      copy_success: 'Copied',
+      copy_failure: 'Copy failed'
+    },
+    sidebarPadding: 40
+  };
+</script>
+
+  <meta name="description" content="问题描述 设有主串S和子串T，子串T的定位就是要在主串S中找到一个与子串T相等的子串。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="第2章第3节练习题3 串的模式匹配(BM)">
+<meta property="og:url" content="http://acronymor.com/2016/02/29/Data-structure-and-algorithm/chapter2/%E7%AC%AC2%E7%AB%A0%E7%AC%AC3%E8%8A%82%E7%BB%83%E4%B9%A0%E9%A2%983%20%E4%B8%B2%E7%9A%84%E6%A8%A1%E5%BC%8F%E5%8C%B9%E9%85%8D(BM)/index.html">
+<meta property="og:site_name" content="Acronymor&#39;s Blog">
+<meta property="og:description" content="问题描述 设有主串S和子串T，子串T的定位就是要在主串S中找到一个与子串T相等的子串。">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="http://blog.csdn.net/u013595419/article/details/50571792/">
+<meta property="article:published_time" content="2016-02-28T17:55:17.000Z">
+<meta property="article:modified_time" content="2016-02-28T17:55:17.000Z">
+<meta property="article:author" content="acronymor">
+<meta property="article:tag" content="数据结构">
+<meta property="article:tag" content="串">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://blog.csdn.net/u013595419/article/details/50571792/">
+
+<link rel="canonical" href="http://acronymor.com/2016/02/29/Data-structure-and-algorithm/chapter2/%E7%AC%AC2%E7%AB%A0%E7%AC%AC3%E8%8A%82%E7%BB%83%E4%B9%A0%E9%A2%983%20%E4%B8%B2%E7%9A%84%E6%A8%A1%E5%BC%8F%E5%8C%B9%E9%85%8D(BM)/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true,
+    isPage: false,
+    isArchive: false
+  };
+</script>
+
+  <title>第2章第3节练习题3 串的模式匹配(BM) | Acronymor's Blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Acronymor's Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-movies">
+
+    <a href="/movies/" rel="section"><i class="fa fa-fw fa-film"></i>movies</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>About</a>
+
+  </li>
+  </ul>
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="en">
+    <link itemprop="mainEntityOfPage" href="http://acronymor.com/2016/02/29/Data-structure-and-algorithm/chapter2/%E7%AC%AC2%E7%AB%A0%E7%AC%AC3%E8%8A%82%E7%BB%83%E4%B9%A0%E9%A2%983%20%E4%B8%B2%E7%9A%84%E6%A8%A1%E5%BC%8F%E5%8C%B9%E9%85%8D(BM)/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="acronymor">
+      <meta itemprop="description" content="I am who i am, the unique fooid">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Acronymor's Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          第2章第3节练习题3 串的模式匹配(BM)
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2016-02-29 01:55:17" itemprop="dateCreated datePublished" datetime="2016-02-29T01:55:17+08:00">2016-02-29</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E4%B8%8E%E7%AE%97%E6%B3%95/" itemprop="url" rel="index">
+                    <span itemprop="name">数据结构与算法</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h1 id="问题描述"><a href="#问题描述" class="headerlink" title="问题描述"></a>问题描述</h1><blockquote>
+<p>设有主串S和子串T，子串T的定位就是要在主串S中找到一个与子串T相等的子串。</p>
+</blockquote>
+<a id="more"></a>
+
+<h1 id="算法简述"><a href="#算法简述" class="headerlink" title="算法简述"></a>算法简述</h1><p>在 <img src="http://blog.csdn.net/u013595419/article/details/50571792/" alt="第2章第3节练习题2 串的模式匹配(KMP)">中对KMP算法进行了详细分析，本节对BM算法进行扼要分析。</p>
+<p>BM算法即Boyer-Moore字符串搜索算法，是一种非常高效的字符串搜索算法。它由Bob Boyer和J Strother Moore二人于1977年提出，对子串进行了一次预处理，从而使得子串与主串无需逐次比较。</p>
+<p>本节中采用的主串和子串如下：</p>
+<blockquote>
+<p>主串：HERE-IS-A-SIMPLE-EXAMPLE<br>子串：EXAMPLE</p>
+</blockquote>
+<p>BM算法采用的后缀匹配的思想，即匹配字符串时并不是传统意义上的从左向右进行，而是采用自右向左进行比较。为了更快的比较，BM算法定义了<code>好后缀</code>与<code>坏字符</code>两个概念以及两个相关规则：<code>好后缀规则</code>和<code>坏字符规则</code>，定义如下：</p>
+<blockquote>
+<p>坏字符：主串与子串从后向前比较时，不相同的字符。<br>好后缀：主串与子串从后向前比较时，保持连续相同的若干个字符及其包含的右对齐子字符；</p>
+</blockquote>
+<p>用下面的例子简单的介绍下坏字符和好后缀。</p>
+<table>
+<thead>
+<tr>
+<th align="center">主串</th>
+<th align="center">A</th>
+<th align="center">-</th>
+<th align="center">S</th>
+<th align="center">I</th>
+<th align="center">M</th>
+<th align="center">P</th>
+<th align="center">L</th>
+<th align="center">E</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">子串</td>
+<td align="center"></td>
+<td align="center">E</td>
+<td align="center">X</td>
+<td align="center">A</td>
+<td align="center">M</td>
+<td align="center">P</td>
+<td align="center">L</td>
+<td align="center">E</td>
+</tr>
+</tbody></table>
+<p>根据坏字符和好后缀的定义，得到该例中的坏后缀和好字符：</p>
+<blockquote>
+<p>好后缀有： MPLE， PLE， LE， E<br>坏字符为： A</p>
+</blockquote>
+<p>上面介绍完了坏字符和好后缀的基本定义，下面便对坏字符规则和好后缀规则做一个简单的介绍，并对执行过程进行一次梳理。</p>
+<blockquote>
+<p>坏字符规则： 后移位数 = 坏字符的位置 - 搜索词中的上一次出现位置；<br>好后缀规则： 后移位数 = 好后缀的位置 - 搜索词中的上一次出现位置。</p>
+</blockquote>
+<p>这里先从整体上简单的梳理下执行过程。<br>| i | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20 | 21 | 22 | 23 |<br>| :–: | :–:|:–:| :–:| :–:|:–:| :–:| :–:|:–:| :–:| :–:| :–: | :–: | :–: | :–: | :–: | :–: | :–: | :–: | :–: | :–: | :–: | :–: | :–: | :–: |<br>| S[i] | H | E | R | E | - | I | S | - | A | - | S | I | M | P | L | E | - | E | X | A | M | P | L | E |<br>| T | E | X | A | M | P | L | E |<br>| T | | | | | | | | E | X | A | M | P | L | E |<br>| T | | | | | | |  |  | | E | X | A | M | P | L | E |<br>| T | |  |  |  |  |  |  | | | | | | | | | E | X | A | M | P | L | E |<br>| T | |  |  |  |  |  |  | | | | | | | | | | | E | X | A | M | P | L | E |</p>
+<blockquote>
+<ul>
+<li>第一轮比较中，S[6]!=T[6]，同时发现S[6]并不在子串T中，根据坏字符规则，即将子串T后移<code>6-(-1)=7</code>位，因为无好后缀，进入第二轮比较；</li>
+<li>第二轮比较中，S[13]!=T[6]，但发现S[13]在子串T中，根据坏字符规则，将子串T后移<code>6-4=2</code>位，因为无好后缀，进入第三轮比较；</li>
+<li>第三轮比较中，S[17]==T[6]，接着比较S[16]和T[5]，发现S[16]==T[5]，然后依次可以得到S[15]==T[4]， S[14]==T[3]， 直至S[13]!=T[2]。 根据坏字符规则， 子串应后移<code>2-(-1)=3</code>位；根据好后缀规则， 子串应后移<code>6-0=6</code>位；取较大的后移数，子串后移6位。</li>
+<li>第四轮比较中，S[21]!=T[7]，但发现S[21]在子串T中，根据坏字符规则，将子串T后移<code>6-4=2</code>位，因为无好后缀，进入第五轮比较；</li>
+<li>第五轮比较中，依次自右向左比较，发现子串T与主串S全部匹配，模式匹配成功。</li>
+</ul>
+</blockquote>
+<h1 id="算法详解"><a href="#算法详解" class="headerlink" title="算法详解"></a>算法详解</h1><p>为了能够使用程序实现上述算法，对坏字符和坏字符规则进行处理，形成坏字符表；对好后缀和好后缀规则进行处理，形成好后缀表。对于坏字符表的定义，可以根据坏字符的两种情况进行处理：</p>
+<ul>
+<li>主串中的坏字符在子串中找不到</li>
+</ul>
+<blockquote>
+<p>将子串直接后移至坏字符的下一个位置。</p>
+</blockquote>
+<ul>
+<li>主串中的坏字符在子串中能找到</li>
+</ul>
+<blockquote>
+<p>只需将主串中的坏字符与子串中的该字符对其便可，即将子串后移使得该“坏字符”与主串中的坏字符对齐。</p>
+</blockquote>
+<p>坏字符规则： 后移位数 = 坏字符的位置 - 搜索词中的上一次出现位置；<br>将坏字符规则使用公式表示出来便为bad[T[i]]-</p>
+<table>
+<thead>
+<tr>
+<th align="center">ASCII</th>
+<th align="center">A</th>
+<th align="center">B</th>
+<th align="center">C</th>
+<th align="center">D</th>
+<th align="center">E</th>
+<th align="center">F</th>
+<th align="center">G</th>
+<th align="center">H</th>
+<th align="center">I</th>
+<th align="center">J</th>
+<th align="center">K</th>
+<th align="center">L</th>
+<th align="center">M</th>
+<th align="center">N</th>
+<th align="center">O</th>
+<th align="center">P</th>
+<th align="center">Q</th>
+<th align="center">R</th>
+<th align="center">S</th>
+<th align="center">T</th>
+<th align="center">U</th>
+<th align="center">V</th>
+<th align="center">W</th>
+<th align="center">X</th>
+<th align="center">Y</th>
+<th align="center">Z</th>
+<th align="center">-</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">1</td>
+<td align="center">7</td>
+<td align="center">7</td>
+<td align="center">7</td>
+<td align="center">7</td>
+<td align="center">7</td>
+<td align="center">7</td>
+<td align="center">7</td>
+<td align="center">7</td>
+<td align="center">7</td>
+<td align="center">7</td>
+<td align="center">7</td>
+<td align="center">7</td>
+<td align="center">7</td>
+<td align="center">7</td>
+<td align="center">7</td>
+<td align="center">7</td>
+<td align="center">7</td>
+<td align="center">7</td>
+<td align="center">7</td>
+<td align="center">7</td>
+<td align="center">7</td>
+<td align="center">7</td>
+<td align="center">7</td>
+<td align="center">7</td>
+<td align="center">7</td>
+<td align="center">7</td>
+<td align="center">7</td>
+</tr>
+<tr>
+<td align="center">2</td>
+<td align="center">4</td>
+<td align="center">7</td>
+<td align="center">7</td>
+<td align="center">7</td>
+<td align="center">6</td>
+<td align="center">7</td>
+<td align="center">7</td>
+<td align="center">7</td>
+<td align="center">7</td>
+<td align="center">7</td>
+<td align="center">7</td>
+<td align="center">1</td>
+<td align="center">3</td>
+<td align="center">7</td>
+<td align="center">7</td>
+<td align="center">2</td>
+<td align="center">7</td>
+<td align="center">7</td>
+<td align="center">7</td>
+<td align="center">7</td>
+<td align="center">7</td>
+<td align="center">7</td>
+<td align="center">7</td>
+<td align="center">5</td>
+<td align="center">7</td>
+<td align="center">7</td>
+<td align="center">7</td>
+</tr>
+<tr>
+<td align="center">3</td>
+<td align="center">4</td>
+<td align="center">7</td>
+<td align="center">7</td>
+<td align="center">7</td>
+<td align="center">0</td>
+<td align="center">7</td>
+<td align="center">7</td>
+<td align="center">7</td>
+<td align="center">7</td>
+<td align="center">7</td>
+<td align="center">7</td>
+<td align="center">1</td>
+<td align="center">3</td>
+<td align="center">7</td>
+<td align="center">7</td>
+<td align="center">2</td>
+<td align="center">7</td>
+<td align="center">7</td>
+<td align="center">7</td>
+<td align="center">7</td>
+<td align="center">7</td>
+<td align="center">7</td>
+<td align="center">7</td>
+<td align="center">5</td>
+<td align="center">7</td>
+<td align="center">7</td>
+<td align="center">7</td>
+</tr>
+</tbody></table>
+<p>算法描述如下：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">BadC</span><span class="params">(<span class="keyword">String</span>* T,<span class="keyword">int</span> bad[])</span></span>&#123;</span><br><span class="line">	<span class="keyword">for</span>(<span class="keyword">int</span> i=<span class="number">0</span>;i&lt;ASIZE;i++)&#123;</span><br><span class="line">		bad[i]=T-&gt;length;</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">for</span>(<span class="keyword">int</span> i=<span class="number">0</span>;i&lt;T-&gt;length;i++)&#123;</span><br><span class="line">		bad[T-&gt;data[i]]=T-&gt;length<span class="number">-1</span>-i;</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+<p>$$ \color{red}{\diamondsuit 未完待续…\diamondsuit}  $$</p>
+<p>具体代码见附件。</p>
+<hr>
+<h1 id="附件"><a href="#附件" class="headerlink" title="附件"></a>附件</h1><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br><span class="line">146</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;stdio.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;stdlib.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> ASIZE 256 <span class="comment">//ASCII_256</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> XSIZE 256</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> MaxSize 100</span></span><br><span class="line"><span class="keyword">typedef</span> <span class="keyword">char</span> ElemType;</span><br><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span>&#123;</span></span><br><span class="line">	ElemType data[MaxSize];</span><br><span class="line">	<span class="keyword">int</span> length;</span><br><span class="line">&#125;<span class="keyword">String</span>;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">StrCreat</span><span class="params">(<span class="keyword">String</span>*)</span></span>;</span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">Print</span><span class="params">(<span class="keyword">String</span>*)</span></span>;</span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">BadC</span><span class="params">(<span class="keyword">String</span>*,<span class="keyword">int</span>*)</span></span>;</span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">GoodS</span><span class="params">(<span class="keyword">String</span>*,<span class="keyword">int</span>*)</span></span>;</span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">BM</span><span class="params">(<span class="keyword">String</span>*,<span class="keyword">String</span>*,<span class="keyword">int</span>*,<span class="keyword">int</span>*)</span></span>;</span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">suffixes</span><span class="params">(<span class="keyword">String</span>*,<span class="keyword">int</span>*)</span></span>;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">(<span class="keyword">int</span> argc, <span class="keyword">char</span>* argv[])</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	<span class="keyword">String</span> *s;</span><br><span class="line">	s=(<span class="keyword">String</span>*)<span class="built_in">malloc</span>(<span class="keyword">sizeof</span>(<span class="keyword">String</span>));</span><br><span class="line">	StrCreat(s);</span><br><span class="line"></span><br><span class="line">	<span class="keyword">String</span> *t;</span><br><span class="line">	t=(<span class="keyword">String</span>*)<span class="built_in">malloc</span>(<span class="keyword">sizeof</span>(<span class="keyword">String</span>));</span><br><span class="line">	StrCreat(t);</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">	<span class="keyword">int</span> bad[ASIZE]=&#123;<span class="number">0</span>&#125;;</span><br><span class="line">	<span class="keyword">int</span> good[XSIZE]=&#123;<span class="number">0</span>&#125;;</span><br><span class="line"></span><br><span class="line">	BadC(t,bad);</span><br><span class="line">	GoodS(t,good);</span><br><span class="line"></span><br><span class="line">	<span class="keyword">int</span> flag=BM(s,t,good,bad);</span><br><span class="line">	<span class="built_in">printf</span>(<span class="string">"\n"</span>);</span><br><span class="line">	<span class="keyword">if</span>(flag!=<span class="number">-1</span>)&#123;</span><br><span class="line">		<span class="built_in">printf</span>(<span class="string">"position:%d\n"</span>,flag+<span class="number">1</span>);</span><br><span class="line">	&#125;<span class="keyword">else</span>&#123;</span><br><span class="line">		<span class="built_in">printf</span>(<span class="string">"No find!\n"</span>);</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">StrCreat</span><span class="params">(<span class="keyword">String</span>* S)</span></span>&#123;</span><br><span class="line">	<span class="keyword">char</span> x;</span><br><span class="line">	S-&gt;length=<span class="number">0</span>;</span><br><span class="line">	<span class="built_in">printf</span>(<span class="string">"Please input String(End of '#'):\n"</span>);</span><br><span class="line">	<span class="built_in">scanf</span>(<span class="string">"%c"</span>,&amp;x);</span><br><span class="line">	<span class="keyword">while</span>(x!=<span class="string">'#'</span>)&#123;</span><br><span class="line">		S-&gt;data[S-&gt;length++]=x;</span><br><span class="line">		<span class="built_in">scanf</span>(<span class="string">"%c"</span>,&amp;x);</span><br><span class="line">	&#125;</span><br><span class="line">	getchar();</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">Print</span><span class="params">(<span class="keyword">String</span> *S)</span></span>&#123;</span><br><span class="line">	<span class="keyword">for</span>(<span class="keyword">int</span> i=<span class="number">0</span>;i&lt;S-&gt;length;i++)&#123;</span><br><span class="line">		<span class="built_in">printf</span>(<span class="string">"%c"</span>,S-&gt;data[i]);</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="built_in">printf</span>(<span class="string">"\n"</span>);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">BM</span><span class="params">(<span class="keyword">String</span>* S,<span class="keyword">String</span>* T,<span class="keyword">int</span> good[],<span class="keyword">int</span> bad[])</span></span>&#123;</span><br><span class="line">	<span class="comment">//int max;</span></span><br><span class="line">	<span class="keyword">int</span> i=T-&gt;length<span class="number">-1</span>;</span><br><span class="line">	<span class="keyword">int</span> j=T-&gt;length<span class="number">-1</span>;</span><br><span class="line">	<span class="keyword">while</span>(j&lt;S-&gt;length)&#123;</span><br><span class="line">		<span class="keyword">while</span>(i!=<span class="number">0</span>&amp;&amp;S-&gt;data[j]==T-&gt;data[i])&#123;</span><br><span class="line">			--i;</span><br><span class="line">			--j;</span><br><span class="line">		&#125;</span><br><span class="line">		<span class="keyword">if</span>(i==<span class="number">0</span>)&#123;</span><br><span class="line">			<span class="keyword">return</span> j;</span><br><span class="line">		&#125;<span class="keyword">else</span>&#123;</span><br><span class="line">			<span class="keyword">if</span>(good[i]&gt;bad[S-&gt;data[j]])&#123;</span><br><span class="line">				j=j+good[i];</span><br><span class="line">			&#125;<span class="keyword">else</span>&#123;</span><br><span class="line">				j=j+bad[S-&gt;data[j]];</span><br><span class="line">			&#125;</span><br><span class="line"><span class="comment">//			j += good[i]&gt;bad[S-&gt;data[j]] ? good[i] : bad[S-&gt;data[j]];</span></span><br><span class="line">			i=T-&gt;length<span class="number">-1</span>;</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">return</span> <span class="number">-1</span>;</span><br><span class="line">&#125;</span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">BadC</span><span class="params">(<span class="keyword">String</span>* T,<span class="keyword">int</span> bad[])</span></span>&#123;</span><br><span class="line">	<span class="keyword">for</span>(<span class="keyword">int</span> i=<span class="number">0</span>;i&lt;ASIZE;i++)&#123;</span><br><span class="line">		bad[i]=T-&gt;length;</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">for</span>(<span class="keyword">int</span> i=<span class="number">0</span>;i&lt;T-&gt;length;i++)&#123;</span><br><span class="line">		bad[T-&gt;data[i]]=T-&gt;length<span class="number">-1</span>-i;</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">for</span>(<span class="keyword">int</span> i=<span class="number">0</span>;i&lt;T-&gt;length;i++)&#123;</span><br><span class="line">		<span class="built_in">printf</span>(<span class="string">"%4d"</span>,bad[T-&gt;data[i]]);</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="built_in">printf</span>(<span class="string">"\n"</span>);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">suffixes</span><span class="params">(<span class="keyword">String</span>* T, <span class="keyword">int</span>* suff)</span></span>&#123;</span><br><span class="line">	suff[T-&gt;length<span class="number">-1</span>]=T-&gt;length;</span><br><span class="line">	<span class="keyword">int</span> q;</span><br><span class="line">	<span class="keyword">for</span>(<span class="keyword">int</span> i=T-&gt;length<span class="number">-2</span>;i&gt;=<span class="number">0</span>;--i)&#123;</span><br><span class="line">		q=i;</span><br><span class="line">		<span class="keyword">while</span>(q&gt;=<span class="number">0</span>&amp;&amp;T-&gt;data[q]==T-&gt;data[T-&gt;length<span class="number">-1</span>-(i-q)])&#123;</span><br><span class="line">			--q;</span><br><span class="line">		&#125;</span><br><span class="line">		suff[i]=i-q;</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">for</span>(<span class="keyword">int</span> i=<span class="number">0</span>;i&lt;T-&gt;length;i++)&#123;</span><br><span class="line">		<span class="built_in">printf</span>(<span class="string">"%4d"</span>,suff[i]);</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="built_in">printf</span>(<span class="string">"\n"</span>);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">GoodS</span><span class="params">(<span class="keyword">String</span>* T, <span class="keyword">int</span> good[])</span></span>&#123;</span><br><span class="line">	<span class="keyword">int</span> suff[XSIZE];</span><br><span class="line"></span><br><span class="line">	suffixes(T, suff);</span><br><span class="line"></span><br><span class="line">	<span class="keyword">for</span>(<span class="keyword">int</span> i=<span class="number">0</span>;i&lt;T-&gt;length;++i)&#123;</span><br><span class="line">		good[i]=T-&gt;length;</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">for</span>(<span class="keyword">int</span> i=T-&gt;length<span class="number">-1</span>;i&gt;= <span class="number">0</span>;--i)&#123;</span><br><span class="line">		<span class="keyword">if</span> (suff[i]==i+<span class="number">1</span>)&#123;</span><br><span class="line">			<span class="keyword">for</span> (<span class="keyword">int</span> j=<span class="number">0</span>;j&lt;T-&gt;length<span class="number">-1</span>-i;++j)&#123;</span><br><span class="line">				<span class="keyword">if</span> (good[j]==T-&gt;length)&#123;</span><br><span class="line">					good[j]=T-&gt;length<span class="number">-1</span>-i;</span><br><span class="line">				&#125;</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">for</span>(<span class="keyword">int</span> i=<span class="number">0</span>;i&lt;T-&gt;length<span class="number">-1</span>;++i)&#123;</span><br><span class="line">		good[T-&gt;length<span class="number">-1</span>-suff[i]]=T-&gt;length<span class="number">-1</span>-i;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="keyword">for</span>(<span class="keyword">int</span> i=<span class="number">0</span>;i&lt;T-&gt;length;i++)&#123;</span><br><span class="line">		<span class="built_in">printf</span>(<span class="string">"%4d"</span>,good[i]);</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<hr>
+<p>参考文献<br>Moore R S B S. Afaststringsearching algorithm[J]. Communications of the Acm, 1977, 20:762-772.<br>参考Blog<br><a href="http://www-igm.univ-mlv.fr/~lecroq/string/node14.html" target="_blank" rel="noopener">http://www-igm.univ-mlv.fr/~lecroq/string/node14.html</a><br><a href="http://www.ruanyifeng.com/blog/2013/05/boyer-moore_string_search_algorithm.html" target="_blank" rel="noopener">http://www.ruanyifeng.com/blog/2013/05/boyer-moore_string_search_algorithm.html</a><br><a href="http://blog.csdn.net/joylnwang/article/details/6785743" target="_blank" rel="noopener">http://blog.csdn.net/joylnwang/article/details/6785743</a><br><a href="http://www.searchtb.com/2011/07/字符串匹配那些事（一）.html" target="_blank" rel="noopener">http://www.searchtb.com/2011/07/字符串匹配那些事（一）.html</a></p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/" rel="tag"># 数据结构</a>
+              <a href="/tags/%E4%B8%B2/" rel="tag"># 串</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-next post-nav-item">
+                <a href="/2016/01/23/Data-structure-and-algorithm/chapter2/%E7%AC%AC2%E7%AB%A0%E7%AC%AC3%E8%8A%82%E7%BB%83%E4%B9%A0%E9%A2%982%20%E4%B8%B2%E7%9A%84%E6%A8%A1%E5%BC%8F%E5%8C%B9%E9%85%8D(KMP)/" rel="next" title="第2章第3节练习题2 串的模式匹配(KMP)">
+                  <i class="fa fa-chevron-left"></i> 第2章第3节练习题2 串的模式匹配(KMP)
+                </a>
+            </div>
+
+            <span class="post-nav-divider"></span>
+
+            <div class="post-nav-prev post-nav-item">
+                <a href="/2016/03/04/Data-structure-and-algorithm/chapter3/%E7%AC%AC3%E7%AB%A0%E7%BA%BF%E6%80%A7%E8%A1%A8%E7%9A%84%E6%8E%A8%E5%B9%BF/" rel="prev" title="第3章线性表的推广">
+                  第3章线性表的推广 <i class="fa fa-chevron-right"></i>
+                </a>
+            </div>
+          </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#问题描述"><span class="nav-number">1.</span> <span class="nav-text">问题描述</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#算法简述"><span class="nav-number">2.</span> <span class="nav-text">算法简述</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#算法详解"><span class="nav-number">3.</span> <span class="nav-text">算法详解</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#附件"><span class="nav-number">4.</span> <span class="nav-text">附件</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="acronymor"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">acronymor</p>
+  <div class="site-description" itemprop="description">I am who i am, the unique fooid</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives">
+          <span class="site-state-item-count">216</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+        <span class="site-state-item-count">27</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+        <span class="site-state-item-count">35</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="feed-link motion-element">
+    <a href="/atom.xml" rel="alternate">
+      <i class="fa fa-rss"></i>RSS
+    </a>
+  </div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/acronymor" title="GitHub &amp;rarr; https:&#x2F;&#x2F;github.com&#x2F;acronymor" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yourname@acronymor.com" title="E-Mail &amp;rarr; mailto:yourname@acronymor.com"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">acronymor</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> v4.2.0
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">Theme – <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> v7.5.0
+  </div>
+
+        
+
+
+
+
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

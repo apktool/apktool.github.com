@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+  <link rel="alternate" href="/atom.xml" title="Acronymor's Blog" type="application/atom+xml">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Muse',
+    version: '7.5.0',
+    exturl: false,
+    sidebar: {"position":"right","display":"hide","offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: '',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    translation: {
+      copy_button: 'Copy',
+      copy_success: 'Copied',
+      copy_failure: 'Copy failed'
+    },
+    sidebarPadding: 40
+  };
+</script>
+
+  <meta name="description" content="State 指一个具体的 task&#x2F;operator 的状态，State Backends 指具体状态的存储介质，而 checkpoint 则表示了一个 Flink Job 如何一组 state 如何存储以及如何实现容错。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Flink state, State Backends, Checkpoint, Savepoint">
+<meta property="og:url" content="http://acronymor.com/2020/07/06/Apache-Flink/Flink-State/index.html">
+<meta property="og:site_name" content="Acronymor&#39;s Blog">
+<meta property="og:description" content="State 指一个具体的 task&#x2F;operator 的状态，State Backends 指具体状态的存储介质，而 checkpoint 则表示了一个 Flink Job 如何一组 state 如何存储以及如何实现容错。">
+<meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2020-07-06T07:16:57.000Z">
+<meta property="article:modified_time" content="2020-07-06T07:18:00.000Z">
+<meta property="article:author" content="acronymor">
+<meta property="article:tag" content="Flink">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://acronymor.com/2020/07/06/Apache-Flink/Flink-State/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true,
+    isPage: false,
+    isArchive: false
+  };
+</script>
+
+  <title>Flink state, State Backends, Checkpoint, Savepoint | Acronymor's Blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Acronymor's Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-movies">
+
+    <a href="/movies/" rel="section"><i class="fa fa-fw fa-film"></i>movies</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>About</a>
+
+  </li>
+  </ul>
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="en">
+    <link itemprop="mainEntityOfPage" href="http://acronymor.com/2020/07/06/Apache-Flink/Flink-State/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="acronymor">
+      <meta itemprop="description" content="I am who i am, the unique fooid">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Acronymor's Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Flink state, State Backends, Checkpoint, Savepoint
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+              
+
+              <time title="Created: 2020-07-06 15:16:57 / Modified: 15:18:00" itemprop="dateCreated datePublished" datetime="2020-07-06T15:16:57+08:00">2020-07-06</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Flink/" itemprop="url" rel="index">
+                    <span itemprop="name">Flink</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>State 指一个具体的 task/operator 的状态，State Backends 指具体状态的存储介质，而 checkpoint 则表示了一个 Flink Job 如何一组 state 如何存储以及如何实现容错。</p>
+<a id="more"></a>
+
+<h1 id="State"><a href="#State" class="headerlink" title="State"></a>State</h1><p>state 本质上有点像分布式缓存，用来存储 task/operator 的状态。</p>
+
+
+<h2 id="Managed-State-VS-Raw-State"><a href="#Managed-State-VS-Raw-State" class="headerlink" title="Managed State VS Raw State"></a>Managed State VS Raw State</h2><p>Managed State 是 Flink 自动管理的 State，而 Raw State 是原生态 State。</p>
+<table>
+<thead>
+<tr>
+<th align="left">区分角度</th>
+<th align="left">Managed State</th>
+<th align="left">Raw State</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">从状态管理方式来说</td>
+<td align="left">由 Flink Runtime 管理，自动存储，自动恢复，在内存管理上有优化</td>
+<td align="left">Raw State 需要用户自己管理，需要自己序列化，Flink 不知道 State 中存入的数据是什么结构，只有用户自己知道，需要最终序列化为可存储的数据结构</td>
+</tr>
+<tr>
+<td align="left">从状态数据结构来说</td>
+<td align="left">支持已知的数据结构，如 Value、List、Map 等</td>
+<td align="left">只支持字节数组 ，所有状态都要转换为二进制字节数组才可以</td>
+</tr>
+<tr>
+<td align="left">从推荐使用场景来说</td>
+<td align="left">大多数情况下均可使用</td>
+<td align="left">比如需要自定义 Operator 时，推荐使用 Raw State。</td>
+</tr>
+</tbody></table>
+<h2 id="Keyed-State-VS-Operator-State"><a href="#Keyed-State-VS-Operator-State" class="headerlink" title="Keyed State VS Operator State"></a>Keyed State VS Operator State</h2><p>Managed State 分为两种，一种是 Keyed State；另外一种是 Operator State。</p>
+<p>在 Flink Stream 模型中，Datastream 经过 keyBy 的操作可以变为 KeyedStream 。在 Flink Stream 模型中，Datastream 经过 keyBy 的操作可以变为 KeyedStream 。每个 Key 对应一个 State，即一个 Operator 实例处理多个 Key，访问相应的多个 State，并由此就衍生了 Keyed State。</p>
+<table>
+<thead>
+<tr>
+<th align="left">区分角度</th>
+<th align="left">Keyed State</th>
+<th align="left">Operator State</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">从使用方式来看</td>
+<td align="left">只能用在 KeyedStream 的算子中，即在整个程序中没有 keyBy 的过程就没有办法使用 KeyedStream</td>
+<td align="left">可以用于所有算子，相对于数据源有一个更好的匹配方式，常用于 Source</td>
+</tr>
+<tr>
+<td align="left">从访问角度来看</td>
+<td align="left">通过 RuntimeContext 访问，这需要 Operator 是一个 Rich Function</td>
+<td align="left">需要自己实现 CheckpointedFunction 或 ListCheckpointed 接口</td>
+</tr>
+<tr>
+<td align="left">从数据结构来看</td>
+<td align="left">支持较多的数据结构</td>
+<td align="left">支持较少的数据结构</td>
+</tr>
+</tbody></table>
+<h1 id="State-Backends"><a href="#State-Backends" class="headerlink" title="State Backends"></a>State Backends</h1><p>目前支持的 State Backends 有</p>
+<table>
+<thead>
+<tr>
+<th align="left">StateBackend</th>
+<th align="left">in-flight</th>
+<th align="center">checkpoint</th>
+<th align="center">吞吐</th>
+<th align="left">推荐使用场景</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">MemoryStateBackend</td>
+<td align="left">TaskManager Memory</td>
+<td align="center">JM Memory</td>
+<td align="center">高</td>
+<td align="left">调试、无状态或对数据丢失或重复无要求</td>
+</tr>
+<tr>
+<td align="left">FsStateBackend</td>
+<td align="left">TaskManager Memory</td>
+<td align="center">FS/HDFS</td>
+<td align="center">高</td>
+<td align="left">普通状态、窗口、KV 结构</td>
+</tr>
+<tr>
+<td align="left">RocksDBStateBackend</td>
+<td align="left">RocksDB on TaskManager</td>
+<td align="center">FS/HDFS</td>
+<td align="center">低</td>
+<td align="left">超大状态、超长窗口、大型 KV 结构</td>
+</tr>
+</tbody></table>
+<h1 id="Checkpoint"><a href="#Checkpoint" class="headerlink" title="Checkpoint"></a>Checkpoint</h1><p>Checkpoint 本质上是一个机制，规定了如何保存和利用 State 实现容错。</p>
+<h1 id="Savepoint"><a href="#Savepoint" class="headerlink" title="Savepoint"></a>Savepoint</h1><p>Savepoint 是通过 Flink 的 Checkpoint 创建的流作业执行状态的一致快照，可以使用 Savepoints 来停止和恢复，分叉或更新 Flink 作业。</p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Flink/" rel="tag"># Flink</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-next post-nav-item">
+                <a href="/2020/06/13/Apache-Flink/watermark/" rel="next" title="Flink Watermark">
+                  <i class="fa fa-chevron-left"></i> Flink Watermark
+                </a>
+            </div>
+
+            <span class="post-nav-divider"></span>
+
+            <div class="post-nav-prev post-nav-item">
+                <a href="/2020/07/17/Apache-Flink/Flink-Checkpoint/" rel="prev" title="Flink Checkpoint">
+                  Flink Checkpoint <i class="fa fa-chevron-right"></i>
+                </a>
+            </div>
+          </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#State"><span class="nav-number">1.</span> <span class="nav-text">State</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Managed-State-VS-Raw-State"><span class="nav-number">1.1.</span> <span class="nav-text">Managed State VS Raw State</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Keyed-State-VS-Operator-State"><span class="nav-number">1.2.</span> <span class="nav-text">Keyed State VS Operator State</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#State-Backends"><span class="nav-number">2.</span> <span class="nav-text">State Backends</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Checkpoint"><span class="nav-number">3.</span> <span class="nav-text">Checkpoint</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Savepoint"><span class="nav-number">4.</span> <span class="nav-text">Savepoint</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="acronymor"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">acronymor</p>
+  <div class="site-description" itemprop="description">I am who i am, the unique fooid</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives">
+          <span class="site-state-item-count">216</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+        <span class="site-state-item-count">27</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+        <span class="site-state-item-count">35</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="feed-link motion-element">
+    <a href="/atom.xml" rel="alternate">
+      <i class="fa fa-rss"></i>RSS
+    </a>
+  </div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/acronymor" title="GitHub &amp;rarr; https:&#x2F;&#x2F;github.com&#x2F;acronymor" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yourname@acronymor.com" title="E-Mail &amp;rarr; mailto:yourname@acronymor.com"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">acronymor</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> v4.2.0
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">Theme – <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> v7.5.0
+  </div>
+
+        
+
+
+
+
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

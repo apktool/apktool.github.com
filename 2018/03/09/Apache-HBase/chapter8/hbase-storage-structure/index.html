@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+  <link rel="alternate" href="/atom.xml" title="Acronymor's Blog" type="application/atom+xml">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Muse',
+    version: '7.5.0',
+    exturl: false,
+    sidebar: {"position":"right","display":"hide","offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: '',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    translation: {
+      copy_button: 'Copy',
+      copy_success: 'Copied',
+      copy_failure: 'Copy failed'
+    },
+    sidebarPadding: 40
+  };
+</script>
+
+  <meta name="description" content="目前主流的RDBMS和其他非关系型数据库底层数据库结构大都会使用B树或B+树，有时还会使用LSM树(Log-Structured Tree)。HBase与BitTable一样，是基于LSM树的系统。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="HBase 架构 | 存储目录结构">
+<meta property="og:url" content="http://acronymor.com/2018/03/09/Apache-HBase/chapter8/hbase-storage-structure/index.html">
+<meta property="og:site_name" content="Acronymor&#39;s Blog">
+<meta property="og:description" content="目前主流的RDBMS和其他非关系型数据库底层数据库结构大都会使用B树或B+树，有时还会使用LSM树(Log-Structured Tree)。HBase与BitTable一样，是基于LSM树的系统。">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="http://acronymor.com/2018/03/09/Apache-HBase/chapter8/hbase-storage-structure/store-in-hdfs.png">
+<meta property="og:image" content="http://acronymor.com/2018/03/09/Apache-HBase/chapter8/hbase-storage-structure/query_data.png">
+<meta property="og:image" content="http://acronymor.com/2018/03/09/Apache-HBase/chapter8/hbase-storage-structure/hbase-root.png">
+<meta property="og:image" content="http://acronymor.com/2018/03/09/Apache-HBase/chapter8/hbase-storage-structure/hbase-table.png">
+<meta property="og:image" content="http://acronymor.com/2018/03/09/Apache-HBase/chapter8/hbase-storage-structure/hbase-region.png">
+<meta property="og:image" content="http://acronymor.com/2018/03/09/Apache-HBase/chapter8/hbase-storage-structure/split-region.png">
+<meta property="article:published_time" content="2018-03-09T12:29:39.000Z">
+<meta property="article:modified_time" content="2018-03-17T11:20:00.000Z">
+<meta property="article:author" content="acronymor">
+<meta property="article:tag" content="HBase">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://acronymor.com/2018/03/09/Apache-HBase/chapter8/hbase-storage-structure/store-in-hdfs.png">
+
+<link rel="canonical" href="http://acronymor.com/2018/03/09/Apache-HBase/chapter8/hbase-storage-structure/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true,
+    isPage: false,
+    isArchive: false
+  };
+</script>
+
+  <title>HBase 架构 | 存储目录结构 | Acronymor's Blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Acronymor's Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-movies">
+
+    <a href="/movies/" rel="section"><i class="fa fa-fw fa-film"></i>movies</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>About</a>
+
+  </li>
+  </ul>
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="en">
+    <link itemprop="mainEntityOfPage" href="http://acronymor.com/2018/03/09/Apache-HBase/chapter8/hbase-storage-structure/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="acronymor">
+      <meta itemprop="description" content="I am who i am, the unique fooid">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Acronymor's Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          HBase 架构 | 存储目录结构
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2018-03-09 20:29:39" itemprop="dateCreated datePublished" datetime="2018-03-09T20:29:39+08:00">2018-03-09</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                <span class="post-meta-item-text">Edited on</span>
+                <time title="Modified: 2018-03-17 19:20:00" itemprop="dateModified" datetime="2018-03-17T19:20:00+08:00">2018-03-17</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/HBase%E6%9D%83%E5%A8%81%E6%8C%87%E5%8D%97/" itemprop="url" rel="index">
+                    <span itemprop="name">HBase权威指南</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>目前主流的RDBMS和其他非关系型数据库底层数据库结构大都会使用B树或B+树，有时还会使用LSM树(Log-Structured Tree)。HBase与BitTable一样，是基于LSM树的系统。</p>
+<a id="more"></a>
+
+<h1 id="基本结构"><a href="#基本结构" class="headerlink" title="基本结构"></a>基本结构</h1><h2 id="HBase-组件介绍"><a href="#HBase-组件介绍" class="headerlink" title="HBase 组件介绍"></a>HBase 组件介绍</h2><p>为了了解HBase存储层，下图给出了一个顶层结构图。</p>
+<img src="/2018/03/09/Apache-HBase/chapter8/hbase-storage-structure/store-in-hdfs.png" class="" title="[store in hdfs]">
+
+<ol>
+<li>HMaster节点</li>
+</ol>
+<ul>
+<li>协调HRegionServer<ul>
+<li>启动时HRegion的分配，以及负载均衡和修复时HRegion的重新分配</li>
+<li>监控集群中所有HRegionServer的状态(通过Heartbeat和监听ZooKeeper中的状态)。</li>
+</ul>
+</li>
+<li>Admin职能<ul>
+<li>创建、删除、修改Table的定义(DDL)。</li>
+<li>管理namespace和table的元数据（实际存储在HDFS上）。</li>
+<li>权限控制（ACL）。</li>
+</ul>
+</li>
+</ul>
+<ol start="2">
+<li>HRegionServer节点</li>
+</ol>
+<ul>
+<li>存放和管理本地HRegion。</li>
+<li>读写HDFS，管理Table中的数据。</li>
+<li>Client直接通过HRegionServer读写数据（从HMaster中获取元数据，找到RowKey所在的HRegion/HRegionServer后）。</li>
+</ul>
+<ol start="3">
+<li>ZooKeeper集群扮演协调系统的角色</li>
+</ol>
+<ul>
+<li>管理着HMaster和HRegionServer的状态(available/alive等)，并且会在它们宕机时通知给HMaster，从而HMaster可以实现HMaster之间的failover</li>
+<li>存放整个HBase集群的元数据以及集群的状态信息。</li>
+</ul>
+<h2 id="注意"><a href="#注意" class="headerlink" title="注意"></a>注意</h2><ul>
+<li>HBase Client通过RPC方式和HMaster、HRegionServer通信；</li>
+<li>一个HRegionServer可以存放1000个HRegion；</li>
+<li>底层Table数据存储于HDFS中，而HRegion所处理的数据尽量和数据所在的DataNode在一起，实现数据的本地化；</li>
+<li>数据本地化并不是总能实现，比如在HRegion移动(如因Split)时，需要等下一次Compact才能继续回到本地化。</li>
+</ul>
+<h1 id="HBase查询流程"><a href="#HBase查询流程" class="headerlink" title="HBase查询流程"></a>HBase查询流程</h1><p>一个基本的流程分为三步：</p>
+<ol>
+<li>通过<code>ZooKeeper</code>查询到含有<code>-ROOT-</code>的region server A</li>
+<li>通过region server A查询到含有<code>.META.</code>表中对应的region server B</li>
+<li>通过region server B查询到行健信息</li>
+</ol>
+<p>用户region的映射从空缓存开始，客户端需要进行3次查询，其过程如下图所示：</p>
+<img src="/2018/03/09/Apache-HBase/chapter8/hbase-storage-structure/query_data.png" class="" title="[query data]">
+
+<p>事实上，查找region服务器A和region服务器B的主要内容（比如region的位置）都被缓存下来了，之后客户端可以直接通过缓存信息很好的定位所需的数据位置，而不用再次查找<code>.META.</code>表。因此只需要查询一次<code>-ROOT-</code>和<code>.META.</code>。</p>
+<h2 id="注意-1"><a href="#注意-1" class="headerlink" title="注意"></a>注意</h2><ul>
+<li><code>-ROOT-</code>存在于zookeeper上，类似于RDBMS里的database这个概念，可以更好的做权限管理和安全控制；</li>
+<li><code>.META.</code>的信息作为一种Region存放在Region Server上。</li>
+<li>在新版本的HBase里面，<code>-ROOT-</code>表已经改名为<code>hbase:namespace</code>，<code>.META.</code>表改名为<code>hbase:meta</code>。</li>
+</ul>
+<blockquote>
+<p><em>查看-ROOT-</em></p>
+<p>启动zookeeper client，可以使用<code>ls /hbase/namespace</code> 查询得到<br>启动hbase shell，可以使用<code>scan &#39;hbase:namespace&#39;</code>查询得到</p>
+<p><em>查看.META.</em><br>启动hbase shell，可以使用<code>scan &#39;hbase:meta&#39;</code>查询得到</p>
+</blockquote>
+<h1 id="HBase之HDFS目录结构和文件说明"><a href="#HBase之HDFS目录结构和文件说明" class="headerlink" title="HBase之HDFS目录结构和文件说明"></a>HBase之HDFS目录结构和文件说明</h1><h2 id="目录结构"><a href="#目录结构" class="headerlink" title="目录结构"></a>目录结构</h2><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line">.</span><br><span class="line">├── habse.version</span><br><span class="line">├── hbase.id</span><br><span class="line">├── .logs</span><br><span class="line">│   └── fnn1</span><br><span class="line">│       └─── 930123345583ac9d0easafdafasdgaen          &lt;WAL HLog files for the RegionServer&gt;</span><br><span class="line">├── .corrupt</span><br><span class="line">├── splitlog</span><br><span class="line">└── data</span><br><span class="line">    └── default                                                &lt;Namespace&gt;</span><br><span class="line">        ├── t1                                                 &lt;Table&gt;</span><br><span class="line">        │   ├── f1f21fee947157f277b042f11d127e82               &lt;Region&gt;</span><br><span class="line">        │   │   ├── .regioninfo</span><br><span class="line">        │   │   ├── c1                                         &lt;ColumnFamily&gt;</span><br><span class="line">        │   │   │   └── 5201b34c76d646c2870c58949f54e776       &lt;StoreFile&gt;</span><br><span class="line">        │   │   └── splits</span><br><span class="line">        │   ├── .tabledesc</span><br><span class="line">        │   │   └── .tableinfo.0000000001</span><br><span class="line">        │   └── .tmp</span><br><span class="line">        └── testtable</span><br><span class="line">            ├── 2e1f76c4bf66f2e2c16cff1b1a676bbd</span><br><span class="line">            │   ├── .regioninfo</span><br><span class="line">            │   ├── colfam1</span><br><span class="line">            │   ├── recovered.edits</span><br><span class="line">            │   │   └── 2.seqid</span><br><span class="line">            │   ├── splits</span><br><span class="line">            │   └── .tmp</span><br><span class="line">            ├── .tabledesc</span><br><span class="line">            │   └── .tableinfo.0000000001</span><br><span class="line">            └── .tmp</span><br></pre></td></tr></table></figure>
+
+<p>HBase使用一个HDFS中可配置的根目录，用户可以使用<code>hdfs</code>命令来查看，也可以使用<a href="http://gethue.com/" target="_blank" rel="noopener">hue</a>这款工具来查询，这里使用hue进行示范。</p>
+<p>文件可以被分为两类，一类位于HBase根目录下，另一类位于根目录中的表目录下。</p>
+<h2 id="根级文件"><a href="#根级文件" class="headerlink" title="根级文件"></a>根级文件</h2><img src="/2018/03/09/Apache-HBase/chapter8/hbase-storage-structure/hbase-root.png" class="" title="[hbase root]">
+
+<table>
+<thead>
+<tr>
+<th align="center">目录/文件名</th>
+<th align="left">用途</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">wals</td>
+<td align="left">由HLog实例管理</td>
+</tr>
+<tr>
+<td align="center">hbase.id</td>
+<td align="left">文件包含集群唯一的ID和文件格式版本信息</td>
+</tr>
+<tr>
+<td align="center">hbase.version</td>
+<td align="left">文件格式版本信息</td>
+</tr>
+<tr>
+<td align="center">splitlog</td>
+<td align="left">存储日志拆分过程中产生的中间拆分文件</td>
+</tr>
+<tr>
+<td align="center">corrupt</td>
+<td align="left">存储日志拆分过程中产生的中间损坏日志</td>
+</tr>
+</tbody></table>
+<h2 id="表级文件"><a href="#表级文件" class="headerlink" title="表级文件"></a>表级文件</h2><img src="/2018/03/09/Apache-HBase/chapter8/hbase-storage-structure/hbase-table.png" class="" title="[hbase-table]">
+
+<p>在HBase中，每张表都有自己的目录，其位于文件系统的HBase根目录下。</p>
+<table>
+<thead>
+<tr>
+<th align="center">目录/文件名</th>
+<th align="left">用途</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">.tableinfo</td>
+<td align="left">存储相应的表序列化后的<code>HTableDescriptor</code>，表和列族的定义</td>
+</tr>
+<tr>
+<td align="center">.tmp</td>
+<td align="left">临时数据，比如更新.tableinfo文件时生成的临时数据</td>
+</tr>
+<tr>
+<td align="center">md5..</td>
+<td align="left">region级文件</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p>.tableinfo文件在.tabledesc目录里面</p>
+</blockquote>
+<h2 id="region级文件"><a href="#region级文件" class="headerlink" title="region级文件"></a>region级文件</h2><img src="/2018/03/09/Apache-HBase/chapter8/hbase-storage-structure/hbase-region.png" class="" title="[hbase region]">
+
+<p>region级文件位于表目录里面。region级文件的目录时一部分region名字的MD5散列值。</p>
+<table>
+<thead>
+<tr>
+<th align="center">目录/文件名</th>
+<th align="left">用途</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">.regioninfo</td>
+<td align="left">对应region的HRegionInfo实例反序列化的信息</td>
+</tr>
+<tr>
+<td align="center">.tmp</td>
+<td align="left">存放合并中的临时文件</td>
+</tr>
+<tr>
+<td align="center">recovered.edits</td>
+<td align="left">存放临时的拆分文件</td>
+</tr>
+</tbody></table>
+<ul>
+<li>在WAL回收时，任何未提交的修改都会被写入到每个region的一个单独的文件(splitlog)中。</li>
+<li>将上述文件移动到临时的recovered.edits文件中</li>
+<li>若region被打开，region服务器将会看到需要恢复的文件，并放回其中对应的条目</li>
+</ul>
+<p>一旦region超过了配置中region大小的最大值，region就需要拆分，其会创建一个对应的splits目录，它被用来临时存放两个region相关的数据。如果拆分成功（通常这个过程持续几秒或更短），之后它们会被移动到表目录中，并形成两个新的region，每个region代表原始值的一半。</p>
+<blockquote>
+<p>当用户看到region的目录中：</p>
+<ul>
+<li>没有.tmp目录，意味着还没有进行过压缩操作</li>
+<li>没有recovered.edits目录，意味着WAL没有进行过回放操作</li>
+</ul>
+</blockquote>
+<h3 id="region拆分"><a href="#region拆分" class="headerlink" title="region拆分"></a>region拆分</h3><p>在拆分过程中，所有的步骤在ZooKeeper中都进行跟踪，这使得一个服务器失效时，其他进程可以直到这个region的状态。</p>
+<img src="/2018/03/09/Apache-HBase/chapter8/hbase-storage-structure/split-region.png" class="" title="[split-region]">
+
+<h3 id="region合并"><a href="#region合并" class="headerlink" title="region合并"></a>region合并</h3><p>存储文件会被后台的管理进程仔细的监控起来以确保它们处于控制值夏，随着memstore的写入会生成很多的磁盘文件，如果文件的数目达到阈值，合并过程将会把它们合并成数量更少，体积更大的文件。这个过程持续到这些文件超过配置的最大存储文件大小，会触发一个<strong>region拆分</strong></p>
+<p>压缩合并有两种，即minor和major。</p>
+<ul>
+<li>minor合并负责重写最后生成的几个文件到一个更大的文件中。</li>
+<li>major合并会将所有文件压缩成一个单独的文件，在执行压缩检查时，系统自动决定运行哪种合并。</li>
+</ul>
+<p>minor合并可以处理的最大文件数量默认是10，用户可以通过<code>hbase.hstore.compaction.max</code>来配置。<br>如果海没有达到major合并的执行周期，系统会选择minor合并执行。当minor合并包括所有的存储文件，且所有文件均未达到设置的每次压缩的最大文件数时，minor合并可能被提升成major合并。</p>
+<hr>
+<h1 id="Reference"><a href="#Reference" class="headerlink" title="Reference"></a>Reference</h1><p><a href="http://archive.cloudera.com/cdh5/cdh/5/hbase-0.98.1-cdh5.1.3/book/trouble.namenode.html#trouble.namenode.hbase.objects" target="_blank" rel="noopener">Browsing HDFS for HBase Objects</a></p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/HBase/" rel="tag"># HBase</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-next post-nav-item">
+                <a href="/2018/03/07/Apache-HBase/chapter6/hbase-client/" rel="next" title="HBase客户端">
+                  <i class="fa fa-chevron-left"></i> HBase客户端
+                </a>
+            </div>
+
+            <span class="post-nav-divider"></span>
+
+            <div class="post-nav-prev post-nav-item">
+                <a href="/2018/03/09/Apache-HBase/chapter8/hbase-storage-hfile/" rel="prev" title="HBase 架构 | HFile结构">
+                  HBase 架构 | HFile结构 <i class="fa fa-chevron-right"></i>
+                </a>
+            </div>
+          </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#基本结构"><span class="nav-number">1.</span> <span class="nav-text">基本结构</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#HBase-组件介绍"><span class="nav-number">1.1.</span> <span class="nav-text">HBase 组件介绍</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#注意"><span class="nav-number">1.2.</span> <span class="nav-text">注意</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#HBase查询流程"><span class="nav-number">2.</span> <span class="nav-text">HBase查询流程</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#注意-1"><span class="nav-number">2.1.</span> <span class="nav-text">注意</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#HBase之HDFS目录结构和文件说明"><span class="nav-number">3.</span> <span class="nav-text">HBase之HDFS目录结构和文件说明</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#目录结构"><span class="nav-number">3.1.</span> <span class="nav-text">目录结构</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#根级文件"><span class="nav-number">3.2.</span> <span class="nav-text">根级文件</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#表级文件"><span class="nav-number">3.3.</span> <span class="nav-text">表级文件</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#region级文件"><span class="nav-number">3.4.</span> <span class="nav-text">region级文件</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#region拆分"><span class="nav-number">3.4.1.</span> <span class="nav-text">region拆分</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#region合并"><span class="nav-number">3.4.2.</span> <span class="nav-text">region合并</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Reference"><span class="nav-number">4.</span> <span class="nav-text">Reference</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="acronymor"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">acronymor</p>
+  <div class="site-description" itemprop="description">I am who i am, the unique fooid</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives">
+          <span class="site-state-item-count">216</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+        <span class="site-state-item-count">27</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+        <span class="site-state-item-count">35</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="feed-link motion-element">
+    <a href="/atom.xml" rel="alternate">
+      <i class="fa fa-rss"></i>RSS
+    </a>
+  </div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/acronymor" title="GitHub &amp;rarr; https:&#x2F;&#x2F;github.com&#x2F;acronymor" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yourname@acronymor.com" title="E-Mail &amp;rarr; mailto:yourname@acronymor.com"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">acronymor</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> v4.2.0
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">Theme – <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> v7.5.0
+  </div>
+
+        
+
+
+
+
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

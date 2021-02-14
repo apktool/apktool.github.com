@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+  <link rel="alternate" href="/atom.xml" title="Acronymor's Blog" type="application/atom+xml">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Muse',
+    version: '7.5.0',
+    exturl: false,
+    sidebar: {"position":"right","display":"hide","offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: '',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    translation: {
+      copy_button: 'Copy',
+      copy_success: 'Copied',
+      copy_failure: 'Copy failed'
+    },
+    sidebarPadding: 40
+  };
+</script>
+
+  <meta name="description" content="Cookie（复数形态Cookies），中文名称为小型文本文件或小甜饼，指某些网站为了辨别用户身份而储存在用户本地终端（Client Side）上的数据（通常经过加密）。定义于RFC2109。是网景公司的前雇员Lou Montulli在1993年3月的发明。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Cookie简介">
+<meta property="og:url" content="http://acronymor.com/2018/03/20/Compute-Base-Knowledge/cookie-brief/index.html">
+<meta property="og:site_name" content="Acronymor&#39;s Blog">
+<meta property="og:description" content="Cookie（复数形态Cookies），中文名称为小型文本文件或小甜饼，指某些网站为了辨别用户身份而储存在用户本地终端（Client Side）上的数据（通常经过加密）。定义于RFC2109。是网景公司的前雇员Lou Montulli在1993年3月的发明。">
+<meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2018-03-20T02:23:42.000Z">
+<meta property="article:modified_time" content="2018-03-20T02:23:42.000Z">
+<meta property="article:author" content="acronymor">
+<meta property="article:tag" content="Cookie">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://acronymor.com/2018/03/20/Compute-Base-Knowledge/cookie-brief/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true,
+    isPage: false,
+    isArchive: false
+  };
+</script>
+
+  <title>Cookie简介 | Acronymor's Blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Acronymor's Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-movies">
+
+    <a href="/movies/" rel="section"><i class="fa fa-fw fa-film"></i>movies</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>About</a>
+
+  </li>
+  </ul>
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="en">
+    <link itemprop="mainEntityOfPage" href="http://acronymor.com/2018/03/20/Compute-Base-Knowledge/cookie-brief/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="acronymor">
+      <meta itemprop="description" content="I am who i am, the unique fooid">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Acronymor's Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Cookie简介
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2018-03-20 10:23:42" itemprop="dateCreated datePublished" datetime="2018-03-20T10:23:42+08:00">2018-03-20</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E8%AE%A1%E7%AE%97%E6%9C%BA%E5%9F%BA%E7%A1%80/" itemprop="url" rel="index">
+                    <span itemprop="name">计算机基础</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>Cookie（复数形态Cookies），中文名称为小型文本文件或小甜饼，指某些网站为了辨别用户身份而储存在用户本地终端（Client Side）上的数据（通常经过加密）。定义于RFC2109。是网景公司的前雇员Lou Montulli在1993年3月的发明。</p>
+<a id="more"></a>
+
+<h1 id="分类"><a href="#分类" class="headerlink" title="分类"></a>分类</h1><p>Cookie总是保存在客户端中，按在客户端中的存储位置，可分为内存Cookie和硬盘Cookie。</p>
+<h2 id="内存Cookie"><a href="#内存Cookie" class="headerlink" title="内存Cookie"></a>内存Cookie</h2><p>内存Cookie由浏览器维护，保存在内存中，浏览器关闭后就消失了，其存在时间是短暂的。</p>
+<h2 id="硬盘Cookie"><a href="#硬盘Cookie" class="headerlink" title="硬盘Cookie"></a>硬盘Cookie</h2><p>硬盘Cookie保存在硬盘里，有一个过期时间，除非用户手工清理或到了过期时间，硬盘Cookie不会被删除，其存在时间是长期的。所以，按存在时间，可分为非持久Cookie和持久Cookie。</p>
+<h1 id="Cookie的用途"><a href="#Cookie的用途" class="headerlink" title="Cookie的用途"></a>Cookie的用途</h1><h2 id="Session管理"><a href="#Session管理" class="headerlink" title="Session管理"></a>Session管理</h2><p>http协议本身是是无状态的，但是现代站点很多都需要维持登录态，也就是维持会话。最基本的维持会话的方式是Base Auth，但是这种方式，早期的网站用户名和密码在每次请求中会以明文的方式发送到客户端，很容易受到中间人攻击，存在很大的安全隐患。</p>
+<p>所以现在大多数站点采用基于Cookie的Session管理方式：</p>
+<p>当用户登录一个网站时，网站往往会请求用户输入用户名和密码，并且用户可以勾选“下次自动登录”。如果勾选了，那么下次访问同一网站时，用户会发现没输入用户名和密码就已经登录了。这正是因为前一次登录时，服务器发送了包含登录凭据（用户名加密码的某种加密形式）的Cookie到用户的硬盘上。第二次登录时，（如果该Cookie尚未到期）浏览器会发送该Cookie，服务器验证凭据，于是不必输入用户名和密码就让用户登录了。</p>
+<h2 id="提供个性化服务"><a href="#提供个性化服务" class="headerlink" title="提供个性化服务"></a>提供个性化服务</h2><p>Cookie可以被用于记录一些信息，以便于在后续用户浏览页面时展示相关内容。典型的例子是购物站点的购物车功能。</p>
+<p>在购物场景中，当用户选购了第一项商品，服务器在向用户发送网页的同时，还发送了一段Cookie，记录着那项商品的信息。当用户访问另一个页面，浏览器会把Cookie发送给服务器，于是服务器知道他之前选购了什么。用户继续选购，服务器就在原来那段Cookie里追加新的商品信息。结帐时，服务器读取发送来的Cookie就行了。</p>
+<p>另一个个性化应用是广告定制。你访问过的网站会写入一些Cookies在你的浏览器里，这些Cookies会被一些广告公司用来售卖更精准的广告。比如你曾访问过一家汽车网站，那你浏览其他网站时可能就会看到一些汽车类的广告。</p>
+<h2 id="用户行为追踪"><a href="#用户行为追踪" class="headerlink" title="用户行为追踪"></a>用户行为追踪</h2><p>Cookie也可以用于追踪用户行为，例如是否访问过本站点，有过哪些操作等。</p>
+<h1 id="Cookie的基本特性"><a href="#Cookie的基本特性" class="headerlink" title="Cookie的基本特性"></a>Cookie的基本特性</h1><h2 id="http-request"><a href="#http-request" class="headerlink" title="http request"></a>http request</h2><p>浏览器向服务器发起的每个请求都会带上Cookie：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">GET &#x2F;index.html HTTP&#x2F;1.1</span><br><span class="line">Host: www.example.org</span><br><span class="line">Cookie: foo&#x3D;value1;bar&#x3D;value2</span><br><span class="line">Accept: *&#x2F;*</span><br></pre></td></tr></table></figure>
+
+<h2 id="http-response"><a href="#http-response" class="headerlink" title="http response"></a>http response</h2><p>服务器给浏览器的返回可以设置Cookie：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">HTTP&#x2F;1.1 200 OK</span><br><span class="line">Content-type: text&#x2F;html</span><br><span class="line">Set-Cookie: name&#x3D;value</span><br><span class="line">Set-Cookie: name2&#x3D;value2; Expires&#x3D;Wed,09 June 2021 10:18:32 GMT</span><br><span class="line"></span><br><span class="line">(content of page)</span><br></pre></td></tr></table></figure>
+
+<h2 id="标识用户环境和信息"><a href="#标识用户环境和信息" class="headerlink" title="标识用户环境和信息"></a>标识用户环境和信息</h2><p>如果在一台计算机中安装多个浏览器，每个浏览器都会以独立的空间存放Cookie。</p>
+<p>因为Cookie中不但可以确认用户信息，还能包含计算机和浏览器的信息，所以一个用户使用不同的浏览器登录或者用不同的计算机登录，都会得到不同的Cookie信息，另一方面，对于在同一台计算机上使用同一浏览器的多用户群，Cookie不会区分他们的身份，除非他们使用不同的用户名登录。</p>
+<h1 id="Cookie分类"><a href="#Cookie分类" class="headerlink" title="Cookie分类"></a>Cookie分类</h1><h2 id="Session-Cookie"><a href="#Session-Cookie" class="headerlink" title="Session Cookie"></a>Session Cookie</h2><p>当Cookie没有设置超时时间，那么Cookie会在浏览器退出时销毁，这种Cookie是Session Cookie。</p>
+<h2 id="Persistent-Cookie-Tracking-Cookie"><a href="#Persistent-Cookie-Tracking-Cookie" class="headerlink" title="Persistent Cookie/Tracking Cookie"></a>Persistent Cookie/Tracking Cookie</h2><p>设置了超时时间的Cookie，会在指定时间销毁，Cookie的维持时间可以持续到浏览器退出之后，这种Cookie被持久化在浏览器中。</p>
+<p>很多站点用Cookie跟踪用户的历史记录，例如广告类站点会使用Cookie记录浏览过哪些内容，搜索引擎会使用Cookie记录历史搜索记录，这时也可以称作Tracking Cookie，因为它被用于追踪用户行为。</p>
+<h2 id="Secure-Cookie"><a href="#Secure-Cookie" class="headerlink" title="Secure Cookie"></a>Secure Cookie</h2><p>服务器端设置Cookie的时候，可以指定Secure属性，这时Cookie只有通过https协议传输的时候才会带到网络请求中，不加密的http请求不会带有Secure Cookie。</p>
+<p>设置secure cookie的方式举例：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">Set-Cookie: foo&#x3D;bar; Path&#x3D;&#x2F;; Secure</span><br></pre></td></tr></table></figure>
+
+<h2 id="HttpOnly-Cookie"><a href="#HttpOnly-Cookie" class="headerlink" title="HttpOnly Cookie"></a>HttpOnly Cookie</h2><p>服务器端设置Cookie的时候，也可以指定一个HttpOnly属性。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">Set-Cookie: foo&#x3D;bar; Path&#x3D;&#x2F;; HttpOnly</span><br></pre></td></tr></table></figure>
+
+<p>设置了这个属性的Cookie在javascript中无法获取到，只会在网络传输过程中带到服务器。</p>
+<h2 id="Third-Party-Cookie"><a href="#Third-Party-Cookie" class="headerlink" title="Third-Party Cookie"></a>Third-Party Cookie</h2><p>第三方Cookie的使用场景通常是iframe，例如<a href="http://www.a.com嵌入了一个www.ad.com的广告iframe，那么www.ad.com设置的cookie属于不属于www.a.com，被称作第三方Cookie。" target="_blank" rel="noopener">www.a.com嵌入了一个www.ad.com的广告iframe，那么www.ad.com设置的cookie属于不属于www.a.com，被称作第三方Cookie。</a></p>
+<h2 id="Supercookie"><a href="#Supercookie" class="headerlink" title="Supercookie"></a>Supercookie</h2><p>Cookie会从属于一个域名，例如<a href="http://www.a.com，或者属于一个子域，例如b.a.com。但是如果Cookie被声明为属于.com会发生什么？这个Cookie会在任何.com域名生效。这有很大的安全性问题。这种Cookie被称作Supercookie。">www.a.com，或者属于一个子域，例如b.a.com。但是如果Cookie被声明为属于.com会发生什么？这个Cookie会在任何.com域名生效。这有很大的安全性问题。这种Cookie被称作Supercookie。</a></p>
+<p>浏览器做出了限制，不允许设置顶级域名Cookie(例如.com，.net)和pubic suffix cookie(例如.co.uk，.com.cn)。</p>
+<p>现代主流浏览器都很好的处理了Supercookie问题，但是如果有些第三方浏览器使用的顶级域名和public suffix列表有问题，那么就可以针对Supercookie进行攻击。</p>
+<h2 id="Zombie-Cookie-Evercookie"><a href="#Zombie-Cookie-Evercookie" class="headerlink" title="Zombie Cookie/Evercookie"></a>Zombie Cookie/Evercookie</h2><p>僵尸Cookie是指当用户通过浏览器的设置清除Cookie后可以自动重新创建的Cookie。原理是通过使用多重技术记录同样的内容(例如flash，silverlight)，当Cookie被删除时，从其他存储中恢复。</p>
+<p>Evercookie是实现僵尸Cookie的主要技术手段。</p>
+<hr>
+<h1 id="Reference"><a href="#Reference" class="headerlink" title="Reference"></a>Reference</h1><p><a href="https://www.wikiwand.com/en/HTTP_cookie" target="_blank" rel="noopener">HTTP cookie</a><br><a href="https://g2ex.github.io/2015/06/29/Cookie-and-Cookie-Injection" target="_blank" rel="noopener">Cookie与Cookie劫持</a></p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Cookie/" rel="tag"># Cookie</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-next post-nav-item">
+                <a href="/2018/03/20/Compute-Base-Knowledge/jwt-brief/" rel="next" title="JWT 简介">
+                  <i class="fa fa-chevron-left"></i> JWT 简介
+                </a>
+            </div>
+
+            <span class="post-nav-divider"></span>
+
+            <div class="post-nav-prev post-nav-item">
+                <a href="/2018/03/22/Apache-Hive/chapter1/hive-basic-architecture/" rel="prev" title="hive 基本架构">
+                  hive 基本架构 <i class="fa fa-chevron-right"></i>
+                </a>
+            </div>
+          </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#分类"><span class="nav-number">1.</span> <span class="nav-text">分类</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#内存Cookie"><span class="nav-number">1.1.</span> <span class="nav-text">内存Cookie</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#硬盘Cookie"><span class="nav-number">1.2.</span> <span class="nav-text">硬盘Cookie</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Cookie的用途"><span class="nav-number">2.</span> <span class="nav-text">Cookie的用途</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Session管理"><span class="nav-number">2.1.</span> <span class="nav-text">Session管理</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#提供个性化服务"><span class="nav-number">2.2.</span> <span class="nav-text">提供个性化服务</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#用户行为追踪"><span class="nav-number">2.3.</span> <span class="nav-text">用户行为追踪</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Cookie的基本特性"><span class="nav-number">3.</span> <span class="nav-text">Cookie的基本特性</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#http-request"><span class="nav-number">3.1.</span> <span class="nav-text">http request</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#http-response"><span class="nav-number">3.2.</span> <span class="nav-text">http response</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#标识用户环境和信息"><span class="nav-number">3.3.</span> <span class="nav-text">标识用户环境和信息</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Cookie分类"><span class="nav-number">4.</span> <span class="nav-text">Cookie分类</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Session-Cookie"><span class="nav-number">4.1.</span> <span class="nav-text">Session Cookie</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Persistent-Cookie-Tracking-Cookie"><span class="nav-number">4.2.</span> <span class="nav-text">Persistent Cookie&#x2F;Tracking Cookie</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Secure-Cookie"><span class="nav-number">4.3.</span> <span class="nav-text">Secure Cookie</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#HttpOnly-Cookie"><span class="nav-number">4.4.</span> <span class="nav-text">HttpOnly Cookie</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Third-Party-Cookie"><span class="nav-number">4.5.</span> <span class="nav-text">Third-Party Cookie</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Supercookie"><span class="nav-number">4.6.</span> <span class="nav-text">Supercookie</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Zombie-Cookie-Evercookie"><span class="nav-number">4.7.</span> <span class="nav-text">Zombie Cookie&#x2F;Evercookie</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Reference"><span class="nav-number">5.</span> <span class="nav-text">Reference</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="acronymor"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">acronymor</p>
+  <div class="site-description" itemprop="description">I am who i am, the unique fooid</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives">
+          <span class="site-state-item-count">216</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+        <span class="site-state-item-count">27</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+        <span class="site-state-item-count">35</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="feed-link motion-element">
+    <a href="/atom.xml" rel="alternate">
+      <i class="fa fa-rss"></i>RSS
+    </a>
+  </div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/acronymor" title="GitHub &amp;rarr; https:&#x2F;&#x2F;github.com&#x2F;acronymor" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yourname@acronymor.com" title="E-Mail &amp;rarr; mailto:yourname@acronymor.com"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">acronymor</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> v4.2.0
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">Theme – <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> v7.5.0
+  </div>
+
+        
+
+
+
+
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

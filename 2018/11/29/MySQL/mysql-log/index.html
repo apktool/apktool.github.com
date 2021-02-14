@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+  <link rel="alternate" href="/atom.xml" title="Acronymor's Blog" type="application/atom+xml">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Muse',
+    version: '7.5.0',
+    exturl: false,
+    sidebar: {"position":"right","display":"hide","offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: '',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    translation: {
+      copy_button: 'Copy',
+      copy_success: 'Copied',
+      copy_failure: 'Copy failed'
+    },
+    sidebarPadding: 40
+  };
+</script>
+
+  <meta name="description" content="MySQL变量和日志">
+<meta property="og:type" content="article">
+<meta property="og:title" content="MySQL变量和日志">
+<meta property="og:url" content="http://acronymor.com/2018/11/29/MySQL/mysql-log/index.html">
+<meta property="og:site_name" content="Acronymor&#39;s Blog">
+<meta property="og:description" content="MySQL变量和日志">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="http://acronymor.com/2018/11/29/MySQL/mysql-log/mysql-variables.png">
+<meta property="og:image" content="http://acronymor.com/2018/11/29/MySQL/mysql-log/mysql-logs.png">
+<meta property="og:image" content="http://acronymor.com/2018/11/29/MySQL/mysql-log/mysql-redo-log-process.png">
+<meta property="article:published_time" content="2018-11-29T13:40:12.000Z">
+<meta property="article:modified_time" content="2018-11-29T13:40:12.000Z">
+<meta property="article:author" content="acronymor">
+<meta property="article:tag" content="MySQL">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://acronymor.com/2018/11/29/MySQL/mysql-log/mysql-variables.png">
+
+<link rel="canonical" href="http://acronymor.com/2018/11/29/MySQL/mysql-log/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true,
+    isPage: false,
+    isArchive: false
+  };
+</script>
+
+  <title>MySQL变量和日志 | Acronymor's Blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Acronymor's Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-movies">
+
+    <a href="/movies/" rel="section"><i class="fa fa-fw fa-film"></i>movies</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>About</a>
+
+  </li>
+  </ul>
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="en">
+    <link itemprop="mainEntityOfPage" href="http://acronymor.com/2018/11/29/MySQL/mysql-log/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="acronymor">
+      <meta itemprop="description" content="I am who i am, the unique fooid">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Acronymor's Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          MySQL变量和日志
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2018-11-29 21:40:12" itemprop="dateCreated datePublished" datetime="2018-11-29T21:40:12+08:00">2018-11-29</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/MySQL%E6%8A%80%E6%9C%AF%E5%86%85%E5%B9%95/" itemprop="url" rel="index">
+                    <span itemprop="name">MySQL技术内幕</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>MySQL变量和日志</p>
+<a id="more"></a>
+
+<h1 id="MySQL变量"><a href="#MySQL变量" class="headerlink" title="MySQL变量"></a>MySQL变量</h1><img src="/2018/11/29/MySQL/mysql-log/mysql-variables.png" class="" title="[MySQL Variables]">
+
+<p>MySQL变量可以分为两种，一种是动态变量(Dynamic Variables)，另一种是静态变量(Static Variables)。这两种变量均定义在系统变量(Server System Variables)和系统选项(Server Options)中。</p>
+<p>动态变量是可以被<code>SET</code>语句更改的变量，该变量可以直接被修改而且不用重启MySQL Server。<br>静态变量在MySQL Server运行期间不能被修改。</p>
+<h2 id="系统变量"><a href="#系统变量" class="headerlink" title="系统变量"></a>系统变量</h2><p>MySQL Server维护了一些系统级别的变量，每个系统变量都有默认值。系统变量可以在MySQL Server启动的时候使用命令行选项或者选项文件来改变。</p>
+<ul>
+<li>Global Variables: 影响MySQL Server的所有操作，这写默认值可以被特定的命令选项或者选项文件改变。</li>
+<li>Session Variables: MySQL Server会为每个连接的客户端维护一组会话变量。</li>
+</ul>
+<h2 id="系统选项"><a href="#系统选项" class="headerlink" title="系统选项"></a>系统选项</h2><p>当MySQL Server启动的时候，可以在选项文件或者命令行中指定。</p>
+<h1 id="MySQL日志"><a href="#MySQL日志" class="headerlink" title="MySQL日志"></a>MySQL日志</h1><img src="/2018/11/29/MySQL/mysql-log/mysql-logs.png" class="" title="[MySQL Logs]">
+
+<table>
+<thead>
+<tr>
+<th align="left">Log Type</th>
+<th align="left">Enable or Disable by default</th>
+<th align="left">Information Written to Log</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">Error log</td>
+<td align="left">ENABLED by default</td>
+<td align="left">Problems encountered starting, running, or stopping mysqld</td>
+</tr>
+<tr>
+<td align="left">General query log</td>
+<td align="left">DISABLED by default</td>
+<td align="left">Established client connections and statements received from clients</td>
+</tr>
+<tr>
+<td align="left">Binary log</td>
+<td align="left">ENABLED by default</td>
+<td align="left">Statements that change data (also used for replication)</td>
+</tr>
+<tr>
+<td align="left">Relay log</td>
+<td align="left"></td>
+<td align="left">Data changes received from a replication master server</td>
+</tr>
+<tr>
+<td align="left">Slow query log</td>
+<td align="left">DISABLED by default</td>
+<td align="left">Queries that took more than long_query_time seconds to execute</td>
+</tr>
+<tr>
+<td align="left">DDL log (metadata log)</td>
+<td align="left"></td>
+<td align="left">Metadata operations performed by DDL statements</td>
+</tr>
+</tbody></table>
+<h2 id="MySQL-Binlog的三种工作模式"><a href="#MySQL-Binlog的三种工作模式" class="headerlink" title="MySQL Binlog的三种工作模式"></a>MySQL Binlog的三种工作模式</h2><table>
+<thead>
+<tr>
+<th align="left">日志格式</th>
+<th align="left">效果</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">STATEMENT</td>
+<td align="left">记录的是每一条被修改数据的sql</td>
+</tr>
+<tr>
+<td align="left">ROW</td>
+<td align="left">记录的是每一行数据被修改的情况</td>
+</tr>
+<tr>
+<td align="left">MIXED</td>
+<td align="left">默认采用STATEMENT格式记录，但是在特殊情况下会使用ROW格式</td>
+</tr>
+</tbody></table>
+<p>MIXD格式下，从STATEMENT格式切换到ROW格式需要满足下述条件</p>
+<blockquote>
+<ol>
+<li>表的存储引擎为NDB，这时对表的DML操作都会以ROW格式记录</li>
+<li>使用了UUID(), USER(), CURRENT_USER()等不确定函数</li>
+<li>使用了INSERT DELAY语句</li>
+<li>使用了用户自定义函数(UDF)</li>
+<li>使用了临时表(temporary table)</li>
+</ol>
+</blockquote>
+<h1 id="Redo-Log-和-Undo-Log"><a href="#Redo-Log-和-Undo-Log" class="headerlink" title="Redo Log 和 Undo Log"></a>Redo Log 和 Undo Log</h1><h2 id="Redo-Log"><a href="#Redo-Log" class="headerlink" title="Redo Log"></a>Redo Log</h2><p>Redo Log，即WAL(Write Ahead Log)中的日志，在写数据先写入，存储在<code>innodb_log_group_home_dir</code>定义的目录下，一般名称为”ib_logfile0”和”ib_logfile1”。</p>
+<img src="/2018/11/29/MySQL/mysql-log/mysql-redo-log-process.png" class="" title="[MySQL Redo Log Process]">
+
+<p>每个InnoDB存储引擎至少有1个重做日志文件组(group)，每个文件组下至少有2个重做日志文件。Redo Log的大小对MySQL数据库有影响，如果设置的太大，在恢复时可能需要很长时间；如果设置的太小，可能导致一个事务的日志需要多次切换Redo Log。</p>
+<blockquote>
+<p>在InnoDB存储引擎中，Redo Log File都是以512字节进行存储的。也就是说Redo Log Buffer，Redo Log File都是以块(block)的方式进行保存，称为redo log block，大小：512字节。<br>如果一个页中产生的Redo Log大于512字节，就分割成多个Redo Log Block存储.<br>Redo Log Block的大小和磁盘扇区的大小一样，512字节，因此Redo Log的写入可以保证原子性，不需要doublewrite技术.</p>
+</blockquote>
+<h3 id="Redo-Log-Buffer刷新到Redo-Log-File"><a href="#Redo-Log-Buffer刷新到Redo-Log-File" class="headerlink" title="Redo Log Buffer刷新到Redo Log File"></a>Redo Log Buffer刷新到Redo Log File</h3><ul>
+<li>Master Thread 每一秒将Redo Log Buffer冲刷新到Redo Log File；</li>
+<li>每个事务提交时(由<code>innodb_flush_log_at_trx_commit</code>设置)会将Redo Log Buffer刷新到Redo Log File；</li>
+<li>当Redo Log Buffer Pool剩余空间小于1/2时，Redo Log Buffer刷新到Redo Log File。</li>
+</ul>
+<h3 id="Redo-Log和Binary-Log的区别"><a href="#Redo-Log和Binary-Log的区别" class="headerlink" title="Redo Log和Binary Log的区别"></a>Redo Log和Binary Log的区别</h3><table>
+<thead>
+<tr>
+<th align="left">区别</th>
+<th align="left">Binary Log</th>
+<th align="left">Redo Log</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">记录类别</td>
+<td align="left">记录与MySQL有关的日志记录，包括存储引擎的日志</td>
+<td align="left">记录有关其本身的事务日志</td>
+</tr>
+<tr>
+<td align="left">记录内容</td>
+<td align="left">记录一个事务的具体操作内容，是逻辑日志</td>
+<td align="left">记录每个页更改的物理情况</td>
+</tr>
+<tr>
+<td align="left">写入时间</td>
+<td align="left">在事务提交前记录，在提交完成后写入，无论事务量大小，只写入磁盘一次</td>
+<td align="left">在事务进行过程中不断记录并写入</td>
+</tr>
+</tbody></table>
+<h2 id="Undo-Log"><a href="#Undo-Log" class="headerlink" title="Undo Log"></a>Undo Log</h2><p>Undo Log，并不是存放在日志文件中，而是存储在数据库内部一个特殊的段(undo segment)中，而undo segment位于共享空间内。</p>
+<h3 id="Redo-Log和Undo-Log的区别"><a href="#Redo-Log和Undo-Log的区别" class="headerlink" title="Redo Log和Undo Log的区别"></a>Redo Log和Undo Log的区别</h3><table>
+<thead>
+<tr>
+<th align="left">区别</th>
+<th align="left">Redo Log</th>
+<th align="left">Undo Log</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">恢复操作</td>
+<td align="left">恢复提交事务修改的页操作</td>
+<td align="left">回滚行记录到某个特定版本</td>
+</tr>
+<tr>
+<td align="left">记录内容</td>
+<td align="left">物理日志，记录的是物理的修改操作</td>
+<td align="left">逻辑日志，根据每行记录进行记录</td>
+</tr>
+<tr>
+<td align="left">读取方式</td>
+<td align="left">在数据库运行时，不需要读取操作(注：数据库恢复时用)</td>
+<td align="left">在数据库运行时，需要随机读取(注：回滚时用)</td>
+</tr>
+</tbody></table>
+<h1 id="表结构定义文件和表空间文件"><a href="#表结构定义文件和表空间文件" class="headerlink" title="表结构定义文件和表空间文件"></a>表结构定义文件和表空间文件</h1><h2 id="表结构定义文件"><a href="#表结构定义文件" class="headerlink" title="表结构定义文件"></a>表结构定义文件</h2><p>因为MySQL插件式存储引擎的体系结构的关系，MySQL对于数据库的存储是按照表的，所以每个表都有与之对应的文件，无论采用何种存储引擎，MySQL都有一个以<code>.frm</code>为后缀名的文件，这个文件记录了该表的表结构定义，<code>.frm</code>文件还用来存放视图的定义。</p>
+<h2 id="表空间文件"><a href="#表空间文件" class="headerlink" title="表空间文件"></a>表空间文件</h2><p>InnoDB存储引擎在存储设计上模仿了Oracle，将存储的数据表空间进行存放，默认配置下，会有一个初始化大小为10M，名为ibdata1的文件。该文件就是默认的表空间文件(tablespace file)。可以通过<code>innodb_data_file_path</code>对其进行设置。当然也可以使用多个文件组成一个表空间，同时制定文件的属性。</p>
+<p>设置<code>innodb_data_file_path</code>后，之后所有基于InnoDB存储引擎的表的数据都会记录到该文件内，而通过设置<code>innodb_file_per_table</code>，可以将每个基于InnoDB存储引擎的表单独产生一个表空间，文件名为<code>表名.ibd</code>。这里需要注意的是，单独创建的表空间文件仅存储该表的数据、索引和插入缓冲等信息，其余的信息还是存放在默认的表空间中。</p>
+<h1 id="Reference"><a href="#Reference" class="headerlink" title="Reference"></a>Reference</h1><p><a href="https://dev.mysql.com/doc/refman/8.0/en/server-logs.html" target="_blank" rel="noopener">MySQL Server Logs</a><br><a href="http://howtolamp.com/lamp/mysql/5.6/log-files/" target="_blank" rel="noopener">MySQL Server log files</a><br><a href="https://www.cnblogs.com/cuisi/p/6525077.html" target="_blank" rel="noopener">MySQL-重做日志redo log-原理</a></p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/MySQL/" rel="tag"># MySQL</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-next post-nav-item">
+                <a href="/2018/11/10/ElasticSearch/basic-concept/" rel="next" title="Elasticsearch 基本概念">
+                  <i class="fa fa-chevron-left"></i> Elasticsearch 基本概念
+                </a>
+            </div>
+
+            <span class="post-nav-divider"></span>
+
+            <div class="post-nav-prev post-nav-item">
+                <a href="/2018/12/01/MySQL/mysql-innodb/" rel="prev" title="MySQL-InnoDB存储引擎">
+                  MySQL-InnoDB存储引擎 <i class="fa fa-chevron-right"></i>
+                </a>
+            </div>
+          </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#MySQL变量"><span class="nav-number">1.</span> <span class="nav-text">MySQL变量</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#系统变量"><span class="nav-number">1.1.</span> <span class="nav-text">系统变量</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#系统选项"><span class="nav-number">1.2.</span> <span class="nav-text">系统选项</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#MySQL日志"><span class="nav-number">2.</span> <span class="nav-text">MySQL日志</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#MySQL-Binlog的三种工作模式"><span class="nav-number">2.1.</span> <span class="nav-text">MySQL Binlog的三种工作模式</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Redo-Log-和-Undo-Log"><span class="nav-number">3.</span> <span class="nav-text">Redo Log 和 Undo Log</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Redo-Log"><span class="nav-number">3.1.</span> <span class="nav-text">Redo Log</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Redo-Log-Buffer刷新到Redo-Log-File"><span class="nav-number">3.1.1.</span> <span class="nav-text">Redo Log Buffer刷新到Redo Log File</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Redo-Log和Binary-Log的区别"><span class="nav-number">3.1.2.</span> <span class="nav-text">Redo Log和Binary Log的区别</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Undo-Log"><span class="nav-number">3.2.</span> <span class="nav-text">Undo Log</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Redo-Log和Undo-Log的区别"><span class="nav-number">3.2.1.</span> <span class="nav-text">Redo Log和Undo Log的区别</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#表结构定义文件和表空间文件"><span class="nav-number">4.</span> <span class="nav-text">表结构定义文件和表空间文件</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#表结构定义文件"><span class="nav-number">4.1.</span> <span class="nav-text">表结构定义文件</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#表空间文件"><span class="nav-number">4.2.</span> <span class="nav-text">表空间文件</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Reference"><span class="nav-number">5.</span> <span class="nav-text">Reference</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="acronymor"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">acronymor</p>
+  <div class="site-description" itemprop="description">I am who i am, the unique fooid</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives">
+          <span class="site-state-item-count">216</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+        <span class="site-state-item-count">27</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+        <span class="site-state-item-count">35</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="feed-link motion-element">
+    <a href="/atom.xml" rel="alternate">
+      <i class="fa fa-rss"></i>RSS
+    </a>
+  </div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/acronymor" title="GitHub &amp;rarr; https:&#x2F;&#x2F;github.com&#x2F;acronymor" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yourname@acronymor.com" title="E-Mail &amp;rarr; mailto:yourname@acronymor.com"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">acronymor</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> v4.2.0
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">Theme – <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> v7.5.0
+  </div>
+
+        
+
+
+
+
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

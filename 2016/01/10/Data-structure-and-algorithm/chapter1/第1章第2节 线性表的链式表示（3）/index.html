@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+  <link rel="alternate" href="/atom.xml" title="Acronymor's Blog" type="application/atom+xml">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Muse',
+    version: '7.5.0',
+    exturl: false,
+    sidebar: {"position":"right","display":"hide","offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: '',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    translation: {
+      copy_button: 'Copy',
+      copy_success: 'Copied',
+      copy_failure: 'Copy failed'
+    },
+    sidebarPadding: 40
+  };
+</script>
+
+  <meta name="description" content="一.循环链表当使用单链表进行遍历的时候，我们只能从头结点开始，尾结点结束，如果需要查看指针所指向结点的前面结点，我们又必须从头结点开始遍历。为了解决这个问题，我们便引入了双链表，使其能够双向遍历，但是它又引入了prior指针域，增加了额外的开销。为此，我们便又引入了循环链表。所谓循环链表简单来说就是表尾的指针域指向表头从而使整个链表形成了一个闭环。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="第1章第2节 线性表的链式表示（3）">
+<meta property="og:url" content="http://acronymor.com/2016/01/10/Data-structure-and-algorithm/chapter1/%E7%AC%AC1%E7%AB%A0%E7%AC%AC2%E8%8A%82%20%E7%BA%BF%E6%80%A7%E8%A1%A8%E7%9A%84%E9%93%BE%E5%BC%8F%E8%A1%A8%E7%A4%BA%EF%BC%883%EF%BC%89/index.html">
+<meta property="og:site_name" content="Acronymor&#39;s Blog">
+<meta property="og:description" content="一.循环链表当使用单链表进行遍历的时候，我们只能从头结点开始，尾结点结束，如果需要查看指针所指向结点的前面结点，我们又必须从头结点开始遍历。为了解决这个问题，我们便引入了双链表，使其能够双向遍历，但是它又引入了prior指针域，增加了额外的开销。为此，我们便又引入了循环链表。所谓循环链表简单来说就是表尾的指针域指向表头从而使整个链表形成了一个闭环。">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="http://img.blog.csdn.net/20160110142649613">
+<meta property="og:image" content="http://img.blog.csdn.net/20160110144043307">
+<meta property="og:image" content="http://img.blog.csdn.net/20160110155011127">
+<meta property="og:image" content="http://img.blog.csdn.net/20160110151635648">
+<meta property="article:published_time" content="2016-01-10T04:50:13.000Z">
+<meta property="article:modified_time" content="2016-01-10T04:50:13.000Z">
+<meta property="article:author" content="acronymor">
+<meta property="article:tag" content="数据结构">
+<meta property="article:tag" content="线性表">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://img.blog.csdn.net/20160110142649613">
+
+<link rel="canonical" href="http://acronymor.com/2016/01/10/Data-structure-and-algorithm/chapter1/%E7%AC%AC1%E7%AB%A0%E7%AC%AC2%E8%8A%82%20%E7%BA%BF%E6%80%A7%E8%A1%A8%E7%9A%84%E9%93%BE%E5%BC%8F%E8%A1%A8%E7%A4%BA%EF%BC%883%EF%BC%89/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true,
+    isPage: false,
+    isArchive: false
+  };
+</script>
+
+  <title>第1章第2节 线性表的链式表示（3） | Acronymor's Blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Acronymor's Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-movies">
+
+    <a href="/movies/" rel="section"><i class="fa fa-fw fa-film"></i>movies</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>About</a>
+
+  </li>
+  </ul>
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="en">
+    <link itemprop="mainEntityOfPage" href="http://acronymor.com/2016/01/10/Data-structure-and-algorithm/chapter1/%E7%AC%AC1%E7%AB%A0%E7%AC%AC2%E8%8A%82%20%E7%BA%BF%E6%80%A7%E8%A1%A8%E7%9A%84%E9%93%BE%E5%BC%8F%E8%A1%A8%E7%A4%BA%EF%BC%883%EF%BC%89/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="acronymor">
+      <meta itemprop="description" content="I am who i am, the unique fooid">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Acronymor's Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          第1章第2节 线性表的链式表示（3）
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2016-01-10 12:50:13" itemprop="dateCreated datePublished" datetime="2016-01-10T12:50:13+08:00">2016-01-10</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E4%B8%8E%E7%AE%97%E6%B3%95/" itemprop="url" rel="index">
+                    <span itemprop="name">数据结构与算法</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h1 id="一-循环链表"><a href="#一-循环链表" class="headerlink" title="一.循环链表"></a>一.循环链表</h1><p>当使用单链表进行遍历的时候，我们只能从头结点开始，尾结点结束，如果需要查看指针所指向结点的前面结点，我们又必须从头结点开始遍历。为了解决这个问题，我们便引入了双链表，使其能够双向遍历，但是它又引入了prior指针域，增加了额外的开销。为此，我们便又引入了循环链表。所谓循环链表简单来说就是表尾的指针域指向表头从而使整个链表形成了一个闭环。</p>
+<a id="more"></a>
+
+<h2 id="1-1循环单链表"><a href="#1-1循环单链表" class="headerlink" title="1.1循环单链表"></a>1.1循环单链表</h2><p>循环单链表和单链表的的区别在于，表中最后一个节点的指针域不是NULL，而是指向了头结点，从而使整个链表形成一个环，如图所示：</p>
+<p><img src="http://img.blog.csdn.net/20160110142649613" alt="循环单链表"></p>
+<p>在循环单链表中，表尾结点*r的next指针域指向头结点head，故表中没有指针域为NULL的结点。因此判断循环单链表是否为空的条件便是头结点的指针域是否指向自身。<br>循环单链表的插入，删除操作与单链表的基本操作一致，但是当在表尾结点处进行插入，删除操作时，必须注意不能使其断链。同时我们应注意到，一般情况下，我们对链表的操作大部分集中在表尾，如此，我们对循环单链表并不设置头指针，只设置一个尾指针，从而使得操作效率更高</p>
+<h2 id="1-2循环双链表"><a href="#1-2循环双链表" class="headerlink" title="1.2循环双链表"></a>1.2循环双链表</h2><p>由循环单链表的定义我们很容易的便可以得到循环双链表，但与循环单链表不同的是循环双链表的尾结点的指针域next在指向头结点的同时， 头结点的prior指针域还必须指向尾结点。如图所示：</p>
+<p><img src="http://img.blog.csdn.net/20160110144043307" alt="循环双链表"></p>
+<p>循环双链表中，链表为空的条件为头结点的prior指针域和next指针域均指向自身节点。</p>
+<h1 id="二-静态链表"><a href="#二-静态链表" class="headerlink" title="二.静态链表"></a>二.静态链表</h1><p>静态链表是借助数组来描述线性表的链式存储结构的，节点同样有数据域data和“指针域”next，但与前面所讲的指针不同的是，这里的“指针”是结点的相对地址（即数组下标），或称为游标。因此它与顺序表一样，使用时必须预先分配一块连续的内存空间。<br>静态链表和单链表的对应关系如下图所示：</p>
+<p><img src="http://img.blog.csdn.net/20160110155011127" alt="静态链表示例"><br><code>(a). 静态链表示例</code><br><img src="http://img.blog.csdn.net/20160110151635648" alt="静态链接对应的单链表"><br><code>(b). 静态链接对应的单链表</code></p>
+<p>其数据结构描述如下：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">define</span> MaxSize 50</span></span><br><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span>&#123;</span></span><br><span class="line">	ElemType data;</span><br><span class="line">	<span class="keyword">int</span> next;</span><br><span class="line">&#125;SLinkList[MaxSize];</span><br></pre></td></tr></table></figure>
+<p>静态链表以<code>next==-1</code>作为其结束的标识。静态链表的插入，删除操作与动态链表无异，只需修改“指针”便可。总的来说，静态链表没有单链表使用起来方便，但是在没有指针类型的高级程序设计语言（如Basic）中使用链表结构，却又不失为一种巧妙的设计方法。</p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/" rel="tag"># 数据结构</a>
+              <a href="/tags/%E7%BA%BF%E6%80%A7%E8%A1%A8/" rel="tag"># 线性表</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-next post-nav-item">
+                <a href="/2016/01/10/Data-structure-and-algorithm/chapter1/%E7%AC%AC1%E7%AB%A0%E7%AC%AC2%E8%8A%82%E7%BB%83%E4%B9%A0%E9%A2%982%20%E9%9D%9E%E9%80%92%E5%BD%92%E5%88%A0%E9%99%A4%E6%8C%87%E5%AE%9A%E7%BB%93%E7%82%B9/" rel="next" title="第1章第2节练习题2 非递归删除指定结点">
+                  <i class="fa fa-chevron-left"></i> 第1章第2节练习题2 非递归删除指定结点
+                </a>
+            </div>
+
+            <span class="post-nav-divider"></span>
+
+            <div class="post-nav-prev post-nav-item">
+                <a href="/2016/01/11/Data-structure-and-algorithm/chapter1/%E7%AC%AC1%E7%AB%A0%E7%AC%AC2%E8%8A%82%E7%BB%83%E4%B9%A0%E9%A2%983%20%E5%88%A0%E9%99%A4%E6%9C%80%E5%B0%8F%E5%80%BC%E7%BB%93%E7%82%B9/" rel="prev" title="第1章第2节练习题3 删除最小值结点">
+                  第1章第2节练习题3 删除最小值结点 <i class="fa fa-chevron-right"></i>
+                </a>
+            </div>
+          </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#一-循环链表"><span class="nav-number">1.</span> <span class="nav-text">一.循环链表</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#1-1循环单链表"><span class="nav-number">1.1.</span> <span class="nav-text">1.1循环单链表</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-2循环双链表"><span class="nav-number">1.2.</span> <span class="nav-text">1.2循环双链表</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#二-静态链表"><span class="nav-number">2.</span> <span class="nav-text">二.静态链表</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="acronymor"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">acronymor</p>
+  <div class="site-description" itemprop="description">I am who i am, the unique fooid</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives">
+          <span class="site-state-item-count">216</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+        <span class="site-state-item-count">27</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+        <span class="site-state-item-count">35</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="feed-link motion-element">
+    <a href="/atom.xml" rel="alternate">
+      <i class="fa fa-rss"></i>RSS
+    </a>
+  </div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/acronymor" title="GitHub &amp;rarr; https:&#x2F;&#x2F;github.com&#x2F;acronymor" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yourname@acronymor.com" title="E-Mail &amp;rarr; mailto:yourname@acronymor.com"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">acronymor</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> v4.2.0
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">Theme – <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> v7.5.0
+  </div>
+
+        
+
+
+
+
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

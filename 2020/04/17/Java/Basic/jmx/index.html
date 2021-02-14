@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+  <link rel="alternate" href="/atom.xml" title="Acronymor's Blog" type="application/atom+xml">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Muse',
+    version: '7.5.0',
+    exturl: false,
+    sidebar: {"position":"right","display":"hide","offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: '',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    translation: {
+      copy_button: 'Copy',
+      copy_success: 'Copied',
+      copy_failure: 'Copy failed'
+    },
+    sidebarPadding: 40
+  };
+</script>
+
+  <meta name="description" content="所谓JMX，是Java Management Extensions的缩写，是一个为应用程序植入管理功能的框架。用户可以在任何Java应用程序中使用这些代理和服务实现管理。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="什么是 JMX">
+<meta property="og:url" content="http://acronymor.com/2020/04/17/Java/Basic/jmx/index.html">
+<meta property="og:site_name" content="Acronymor&#39;s Blog">
+<meta property="og:description" content="所谓JMX，是Java Management Extensions的缩写，是一个为应用程序植入管理功能的框架。用户可以在任何Java应用程序中使用这些代理和服务实现管理。">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="http://acronymor.com/2020/04/17/Java/Basic/jmx/jmx-structure.png">
+<meta property="article:published_time" content="2020-04-16T16:09:21.000Z">
+<meta property="article:modified_time" content="2020-04-16T16:09:21.000Z">
+<meta property="article:author" content="acronymor">
+<meta property="article:tag" content="Java">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://acronymor.com/2020/04/17/Java/Basic/jmx/jmx-structure.png">
+
+<link rel="canonical" href="http://acronymor.com/2020/04/17/Java/Basic/jmx/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true,
+    isPage: false,
+    isArchive: false
+  };
+</script>
+
+  <title>什么是 JMX | Acronymor's Blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Acronymor's Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-movies">
+
+    <a href="/movies/" rel="section"><i class="fa fa-fw fa-film"></i>movies</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>About</a>
+
+  </li>
+  </ul>
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="en">
+    <link itemprop="mainEntityOfPage" href="http://acronymor.com/2020/04/17/Java/Basic/jmx/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="acronymor">
+      <meta itemprop="description" content="I am who i am, the unique fooid">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Acronymor's Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          什么是 JMX
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2020-04-17 00:09:21" itemprop="dateCreated datePublished" datetime="2020-04-17T00:09:21+08:00">2020-04-17</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Java%E5%9F%BA%E7%A1%80/" itemprop="url" rel="index">
+                    <span itemprop="name">Java基础</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>所谓JMX，是Java Management Extensions的缩写，是一个为应用程序植入管理功能的框架。用户可以在任何Java应用程序中使用这些代理和服务实现管理。</p>
+<a id="more"></a>
+
+<p>JMX 技术对资源（比如应用，设备，服务）提供了简单的，标准化的管理方式，因为JMX是一种动态的技术，因此可以来监控、管理创建，安装等资源。当然也可以用JMX 技术去监控和管理JVM。</p>
+<p>对于一个给定的资源，在JMX技术中，一般用 MBeans(Managed Beans) 这么个Java对象来管理。MBeans被一般会被注册到 MBean server上面。</p>
+<h1 id="JMX-架构"><a href="#JMX-架构" class="headerlink" title="JMX 架构"></a>JMX 架构</h1><p>从图中我们可以看到，JMX的结构一共分为三层：</p>
+<img src="/2020/04/17/Java/Basic/jmx/jmx-structure.png" class="" title="[JMX]">
+
+<h2 id="Remote-Management"><a href="#Remote-Management" class="headerlink" title="Remote Management"></a>Remote Management</h2><p>JMX实现的应用可以通过多种不同的方式来访问，比如SNMP(Simple Network Management Protoco)等。MBean Server依赖可以让管理程序从JVM外部访问应用的适配器和连接器。这里需要说明下Java RMI(Java Remote Method Invocation)是 JMX 定义的一种连接器的标准。</p>
+<h2 id="JMX-Agent"><a href="#JMX-Agent" class="headerlink" title="JMX Agent"></a>JMX Agent</h2><p>JMX agent是JMX标准定义的标准agent，它可以直接控制资源，并让它们可以被远程应用程序访问。因此JMX agent并不需要和它控制的资源放在同一台及其上面。</p>
+<p>JMX agent的核心组件是 MBean Server，它主要用来管理注册的 MBeans。JMX agent还包含一系列用于管理 MBeans 的服务，以及至少一个可以由相关应用程序访问的通信适配器。</p>
+<h2 id="Instrumentation"><a href="#Instrumentation" class="headerlink" title="Instrumentation"></a>Instrumentation</h2><p>为了能够使用JMX管理资源，因此首先必须使用Java程序将资源注册进来。简单来说，就是使用 MBeans 实现访问资源的指令。因此 MBeans 的实现，必须遵循 JMX 的标准和规定。除了标准的 MBean，JMX 标准中还定义了一种特殊的 MBean，即MXBean。MXBean 是一种预定义了一系列数据类型的 MBean。</p>
+<p>一旦资源被通过 MBeans 注册进来，那么它就可以被 JMX agent管理，JMX agent 并需要知道这些资源将会被怎么操纵。</p>
+<p>主要是 MBeans</p>
+<table>
+<thead>
+<tr>
+<th align="left">类型</th>
+<th align="left">描述</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">Standard MBeans</td>
+<td align="left">设计和实现是最简单的，这类MBean使用自己的方法名作为管理接口；</td>
+</tr>
+<tr>
+<td align="left">Dynamic MBeans</td>
+<td align="left">必须实现一个指定的接口，由于动态MBeans在运行期间暴露它们的管理接口，因此更为灵活；</td>
+</tr>
+<tr>
+<td align="left">Model MBeans</td>
+<td align="left">同样也是动态MBeans，这类MBeans是完全可配置的，在运行期间进行自我声明；它们为资源动态工具提供一个一般性的，有默认行为的MBeans类。</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p>Open MBeans 是一种 Dynamic MBeans，这类MBean依靠基础数据类型来实现通用管理，并为用户进行自我声明；<br>MXBean 是一种 MBean，MXBean 对象可以直接在 MBean Server 中注册，也可以用作在 MBean Server 中注册的 StandardMBean 和结果 MBean 的参数。更确切的说 MXBean 是一种 Open MBean，由 javax.management.openmbean 包定义。MXBean 限制了使用的数据类型，因此MXBean 实现的资源管理可以被任意的 client 访问，同时MXBean提供一种方便的方式将相关值打包在一起,不需要客户专门配置为处理包。</p>
+</blockquote>
+<h1 id="Notification"><a href="#Notification" class="headerlink" title="Notification"></a>Notification</h1><p>MBean之间的通信是必不可少的，Notification起到了在MBean之间沟通桥梁的作用。JMX 的通知由四部分组成：</p>
+<ul>
+<li>Notification这个相当于一个信息包，封装了需要传递的信息</li>
+<li>Notification broadcaster这个相当于一个广播器，把消息广播出</li>
+<li>Notification listener 这是一个监听器，用于监听广播出来的通知信息</li>
+<li>Notification filiter 这个一个过滤器，过滤掉不需要的通知</li>
+</ul>
+<hr>
+<p><a href="https://docs.oracle.com/javase/tutorial/jmx/overview/architecture.html" target="_blank" rel="noopener">JMX Technology</a></p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Java/" rel="tag"># Java</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-next post-nav-item">
+                <a href="/2020/04/15/ElasticSearch/es-debug/" rel="next" title="Elasticsearch 源码阅读环境搭建">
+                  <i class="fa fa-chevron-left"></i> Elasticsearch 源码阅读环境搭建
+                </a>
+            </div>
+
+            <span class="post-nav-divider"></span>
+
+            <div class="post-nav-prev post-nav-item">
+                <a href="/2020/04/25/ElasticSearch/lucene-debug/" rel="prev" title="Lucene 源码阅读环境搭建">
+                  Lucene 源码阅读环境搭建 <i class="fa fa-chevron-right"></i>
+                </a>
+            </div>
+          </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#JMX-架构"><span class="nav-number">1.</span> <span class="nav-text">JMX 架构</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Remote-Management"><span class="nav-number">1.1.</span> <span class="nav-text">Remote Management</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#JMX-Agent"><span class="nav-number">1.2.</span> <span class="nav-text">JMX Agent</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Instrumentation"><span class="nav-number">1.3.</span> <span class="nav-text">Instrumentation</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Notification"><span class="nav-number">2.</span> <span class="nav-text">Notification</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="acronymor"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">acronymor</p>
+  <div class="site-description" itemprop="description">I am who i am, the unique fooid</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives">
+          <span class="site-state-item-count">216</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+        <span class="site-state-item-count">27</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+        <span class="site-state-item-count">35</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="feed-link motion-element">
+    <a href="/atom.xml" rel="alternate">
+      <i class="fa fa-rss"></i>RSS
+    </a>
+  </div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/acronymor" title="GitHub &amp;rarr; https:&#x2F;&#x2F;github.com&#x2F;acronymor" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yourname@acronymor.com" title="E-Mail &amp;rarr; mailto:yourname@acronymor.com"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">acronymor</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> v4.2.0
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">Theme – <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> v7.5.0
+  </div>
+
+        
+
+
+
+
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

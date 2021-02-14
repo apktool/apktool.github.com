@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+  <link rel="alternate" href="/atom.xml" title="Acronymor's Blog" type="application/atom+xml">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Muse',
+    version: '7.5.0',
+    exturl: false,
+    sidebar: {"position":"right","display":"hide","offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: '',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    translation: {
+      copy_button: 'Copy',
+      copy_success: 'Copied',
+      copy_failure: 'Copy failed'
+    },
+    sidebarPadding: 40
+  };
+</script>
+
+  <meta name="description" content="前面和两节从理论上介绍了对象存活判断算法和垃圾收集算法，本节则主要介绍HotSpot对上述算法的实现规则。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="HotSpot 对算法的实现">
+<meta property="og:url" content="http://acronymor.com/2018/02/16/JVM/chapter3/hotspot-complement/index.html">
+<meta property="og:site_name" content="Acronymor&#39;s Blog">
+<meta property="og:description" content="前面和两节从理论上介绍了对象存活判断算法和垃圾收集算法，本节则主要介绍HotSpot对上述算法的实现规则。">
+<meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2018-02-16T14:42:10.000Z">
+<meta property="article:modified_time" content="2018-02-16T14:42:10.000Z">
+<meta property="article:author" content="acronymor">
+<meta property="article:tag" content="JVM">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://acronymor.com/2018/02/16/JVM/chapter3/hotspot-complement/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true,
+    isPage: false,
+    isArchive: false
+  };
+</script>
+
+  <title>HotSpot 对算法的实现 | Acronymor's Blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Acronymor's Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-movies">
+
+    <a href="/movies/" rel="section"><i class="fa fa-fw fa-film"></i>movies</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>About</a>
+
+  </li>
+  </ul>
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="en">
+    <link itemprop="mainEntityOfPage" href="http://acronymor.com/2018/02/16/JVM/chapter3/hotspot-complement/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="acronymor">
+      <meta itemprop="description" content="I am who i am, the unique fooid">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Acronymor's Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          HotSpot 对算法的实现
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2018-02-16 22:42:10" itemprop="dateCreated datePublished" datetime="2018-02-16T22:42:10+08:00">2018-02-16</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E6%B7%B1%E5%85%A5%E7%90%86%E8%A7%A3Java%E8%99%9A%E6%8B%9F%E6%9C%BA/" itemprop="url" rel="index">
+                    <span itemprop="name">深入理解Java虚拟机</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>前面和两节从理论上介绍了对象存活判断算法和垃圾收集算法，本节则主要介绍HotSpot对上述算法的实现规则。</p>
+<a id="more"></a>
+
+<h1 id="枚举根节点"><a href="#枚举根节点" class="headerlink" title="枚举根节点"></a>枚举根节点</h1><p>可达性算法中从GC Roots节点找到引用链这个操作可能会因为巨大的方法区而导致大量时间的消耗，而且可达性分析会因为GC停顿的原因而导致执行时间的敏感。</p>
+<blockquote>
+<p>垃圾收集必须在一个能确保一致性的快照中进行，所谓“一致”是指在整个分析期间整个执行系统看起来就像被冻结在一个时间点上，不可能出现分析过程中对象引用关系不断变化的情况，如果不能保持这种一致性就无法保证结果的准确性。<br>这是导致GC进行时必须停顿所有Java执行线程(Stop The World)的其中一个原因。即使是在号称几乎不会发生停顿的CMS收集器（一款垃圾收集器）中，枚举根节点时也是必须要停顿的。</p>
+</blockquote>
+<p>由于目前的主流Java虚拟机使用的都是准确式GC，所以当执行系统停顿下来之后，并不需要一个不漏的检查完所有执行上下文和全局的引用位置，因为虚拟机是有办法直接得知哪些地方存放着对象引用的。那么是怎么实现的呢？在HotSpot的实现中，是用一组称为OopMap的数据结构来达到这个目的的。在类加载完成的时候HotSpot就把对象内什么偏移量上是什么类型的数据计算出来，在JIT编译过程中也会在特定的位置记录下栈和寄存器中哪些位置是引用。这样，GC在扫描时就可以直接得知这些信息了。</p>
+<blockquote>
+<p>准确式GC：就是让JVM知道内存中某位置数据的类型什么。比如当前内存位置中的数据究竟是一个整型变量还是一个引用类型。这样JVM可以很快确定所有引用类型的位置，从而更有针对性的进行GC roots枚举。<br>保守式GC：就是JVM并不知道内存中某位置数据的类型是什么。</p>
+</blockquote>
+<h1 id="安全点"><a href="#安全点" class="headerlink" title="安全点"></a>安全点</h1><h2 id="选择安全点"><a href="#选择安全点" class="headerlink" title="选择安全点"></a>选择安全点</h2><p>在OopMap协助下，HotSpot可以准确地完成GC Roots的枚举。但一个很现实的问题随之而来：可能导致引用关系发生变化，或者说OopMap内容变化的指令非常多，如果为每一条指令都生成对应的Oomap，那将需要大量的额外空间，这样GC的空间成本会非常高。</p>
+<p>因此，HotSpot没有为每条指令都生成OopMap，只是在特定位置记录这些信息。这些位置称为<code>安全点</code>（Safepoint）。即程序执行时并非在所有位置都能停下来GC，只有到达安全点才可以暂停。安全点的选定不能太少以至于让GC等待时间太长，也不能过于频繁以至于过分增大运行时的负荷。</p>
+<p>所以安全点选定规则就变成了：<strong>是否具有让程序长时间执行的特征</strong></p>
+<p>因此具有较长运行时间的指令才能被选为安全点，如方法调用、循环跳转、异常跳转等。</p>
+<h2 id="停顿到安全点"><a href="#停顿到安全点" class="headerlink" title="停顿到安全点"></a>停顿到安全点</h2><p>接下来要考虑的便是，如何在GC时保证所有的线程都“跑”到安全点上停顿下来。</p>
+<p>这里有两种方案：<code>抢先式中断</code>（Preemptive Suspension）和<code>主动式中断</code>（Voluntary Suspension）。</p>
+<ul>
+<li>抢先式中断会把所有线程中断，如果某个线程不在安全点上，就恢复让它跑到安全点上。几乎没有虚拟机采用这种方式。</li>
+<li>主动式中断思想是设立一个GC标志，各个线程会轮询这个标志并在需要时自己中断挂起。这样，标志和安全点是重合的。</li>
+</ul>
+<h1 id="安全区域"><a href="#安全区域" class="headerlink" title="安全区域"></a>安全区域</h1><p>安全点机制可以保证某一程序在运行的时候，在不长的时间里就可以进入GC的安全点。但是如果程序没有分配CPU时间，例如处于Sleep状态或者Blocked状态，这时候线程无法响应JVM的中断请求。对于这种情况，只能用安全区域（Safe Region）来解决。</p>
+<p>安全区域是指在一段代码片段之中，引用关系不会发生变化。在这个区域中任意地方开始都是安全的。</p>
+<ul>
+<li>在线程执行到安全区域中的代码时，就标记自己已经进入了安全区域，这样JVM在发起GC时就跳过这些线程。</li>
+<li>在线程要离开安全区域时，它要检查系统是否已经完成了枚举（或GC过程），如果完成了线程就继续执行，否则就等待。</li>
+</ul>
+<hr>
+<h1 id="参考文献"><a href="#参考文献" class="headerlink" title="参考文献"></a>参考文献</h1><p><a href="http://dsxwjhf.iteye.com/blog/2201685" target="_blank" rel="noopener">JVM 之 OopMap 和 RememberedSet</a><br><a href="https://www.cnblogs.com/suolu/p/6659838.html" target="_blank" rel="noopener">《垃圾回收的算法与实现》—— 保守式GC</a></p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/JVM/" rel="tag"># JVM</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-next post-nav-item">
+                <a href="/2018/02/16/JVM/chapter3/gc-algorithm/" rel="next" title="垃圾收集算法">
+                  <i class="fa fa-chevron-left"></i> 垃圾收集算法
+                </a>
+            </div>
+
+            <span class="post-nav-divider"></span>
+
+            <div class="post-nav-prev post-nav-item">
+                <a href="/2018/02/17/JVM/chapter3/gc-toal/" rel="prev" title="7种垃圾收集器">
+                  7种垃圾收集器 <i class="fa fa-chevron-right"></i>
+                </a>
+            </div>
+          </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#枚举根节点"><span class="nav-number">1.</span> <span class="nav-text">枚举根节点</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#安全点"><span class="nav-number">2.</span> <span class="nav-text">安全点</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#选择安全点"><span class="nav-number">2.1.</span> <span class="nav-text">选择安全点</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#停顿到安全点"><span class="nav-number">2.2.</span> <span class="nav-text">停顿到安全点</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#安全区域"><span class="nav-number">3.</span> <span class="nav-text">安全区域</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#参考文献"><span class="nav-number">4.</span> <span class="nav-text">参考文献</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="acronymor"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">acronymor</p>
+  <div class="site-description" itemprop="description">I am who i am, the unique fooid</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives">
+          <span class="site-state-item-count">216</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+        <span class="site-state-item-count">27</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+        <span class="site-state-item-count">35</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="feed-link motion-element">
+    <a href="/atom.xml" rel="alternate">
+      <i class="fa fa-rss"></i>RSS
+    </a>
+  </div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/acronymor" title="GitHub &amp;rarr; https:&#x2F;&#x2F;github.com&#x2F;acronymor" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yourname@acronymor.com" title="E-Mail &amp;rarr; mailto:yourname@acronymor.com"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">acronymor</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> v4.2.0
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">Theme – <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> v7.5.0
+  </div>
+
+        
+
+
+
+
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

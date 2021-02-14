@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+  <link rel="alternate" href="/atom.xml" title="Acronymor's Blog" type="application/atom+xml">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Muse',
+    version: '7.5.0',
+    exturl: false,
+    sidebar: {"position":"right","display":"hide","offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: '',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    translation: {
+      copy_button: 'Copy',
+      copy_success: 'Copied',
+      copy_failure: 'Copy failed'
+    },
+    sidebarPadding: 40
+  };
+</script>
+
+  <meta name="description" content="TCP&#x2F;IP中有两个具有代表性的传输层协议，它们分别是TCP和UDP。TCP提供可靠的通信传输，而UDP则常被用于让广播和细节控制交给应用的通信传输。总之，根据通信的具体特征，选择合适的传输层协议是非常重要的。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="传输层">
+<meta property="og:url" content="http://acronymor.com/2018/04/30/Compute-Base-Knowledge/transport-layer/index.html">
+<meta property="og:site_name" content="Acronymor&#39;s Blog">
+<meta property="og:description" content="TCP&#x2F;IP中有两个具有代表性的传输层协议，它们分别是TCP和UDP。TCP提供可靠的通信传输，而UDP则常被用于让广播和细节控制交给应用的通信传输。总之，根据通信的具体特征，选择合适的传输层协议是非常重要的。">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="http://acronymor.com/2018/04/30/Compute-Base-Knowledge/transport-layer/simple-tcp-process.png">
+<meta property="og:image" content="http://acronymor.com/2018/04/30/Compute-Base-Knowledge/transport-layer/send-data.png">
+<meta property="og:image" content="http://acronymor.com/2018/04/30/Compute-Base-Knowledge/transport-layer/resend-data.png">
+<meta property="og:image" content="http://acronymor.com/2018/04/30/Compute-Base-Knowledge/transport-layer/consult-mss.png">
+<meta property="og:image" content="http://acronymor.com/2018/04/30/Compute-Base-Knowledge/transport-layer/congestion-control.png">
+<meta property="article:published_time" content="2018-04-30T02:09:04.000Z">
+<meta property="article:modified_time" content="2018-04-30T02:09:04.000Z">
+<meta property="article:author" content="acronymor">
+<meta property="article:tag" content="OSI">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://acronymor.com/2018/04/30/Compute-Base-Knowledge/transport-layer/simple-tcp-process.png">
+
+<link rel="canonical" href="http://acronymor.com/2018/04/30/Compute-Base-Knowledge/transport-layer/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true,
+    isPage: false,
+    isArchive: false
+  };
+</script>
+
+  <title>传输层 | Acronymor's Blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Acronymor's Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-movies">
+
+    <a href="/movies/" rel="section"><i class="fa fa-fw fa-film"></i>movies</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>About</a>
+
+  </li>
+  </ul>
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="en">
+    <link itemprop="mainEntityOfPage" href="http://acronymor.com/2018/04/30/Compute-Base-Knowledge/transport-layer/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="acronymor">
+      <meta itemprop="description" content="I am who i am, the unique fooid">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Acronymor's Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          传输层
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2018-04-30 10:09:04" itemprop="dateCreated datePublished" datetime="2018-04-30T10:09:04+08:00">2018-04-30</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E7%BD%91%E7%BB%9C%E5%9F%BA%E7%A1%80/" itemprop="url" rel="index">
+                    <span itemprop="name">网络基础</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>TCP/IP中有两个具有代表性的传输层协议，它们分别是TCP和UDP。TCP提供可靠的通信传输，而UDP则常被用于让广播和细节控制交给应用的通信传输。总之，根据通信的具体特征，选择合适的传输层协议是非常重要的。</p>
+<a id="more"></a>
+
+<p>TCP/IP的众多应用协议大多以客户端/服务端的形式运行。客户端类似于客户的意思，是请求的发起端，而服务端则表示提供服务的意思，是请求的处理端。另外，作为服务端的程序有必要提前启动，准备接收客户端的请求。否则，即使有客户端请求发过来，也无法做到相应的处理。这些服务端程序在UNIX系统中叫做守护进程。例如HTTP的服务端程序是httpd(HTTP 守护进程)。确认一个请求究竟发给哪个服务端（守护进程），可以通过所收到数据包大目标端口号轻松识别。例如目标端口号是80，则转给httpd，然后这些守护进程会继续对连接上的通信传输进行处理。</p>
+<p>TCP用于在传输层有必要实现可靠传输的情况。有于它是面向有连接并具备顺序控制、重发控制等机制的，所以它可以为应用提供可靠的传输。同时它还提供可靠性传输，实行“顺序控制”或“重发控制”机制。此外，还具备“流控制（流量控制）”，“拥塞控制”，提高网络利用率等众多功能。</p>
+<p>UDP是不具有可靠性的数据报协议，细微的处理会交给上层应用去完成。UDP虽然可以确保发送消息的大小，却不能保证消息一定会到达。</p>
+<p>其数据链路层的通信处理过程可以如下图所示：</p>
+<img src="/2018/04/30/Compute-Base-Knowledge/transport-layer/simple-tcp-process.png" class="" title="[simple tcp process]">
+
+<h1 id="UDP-User-Datagram-Protocol"><a href="#UDP-User-Datagram-Protocol" class="headerlink" title="UDP(User Datagram Protocol)"></a>UDP(User Datagram Protocol)</h1><p>UDP不提供复杂的控制机制，了利用IP提供面向无连接的通信服务，并且它是将程序发来的数据在收到的那一刻，立即按照原样发送到网络的一种机制。</p>
+<p>即使在出现网络拥堵的情况下，UDP也无法进行流量控制等避免网络拥塞的行为。此外，传输途中即使出现丢包，UDP也不需要负责重发。甚至当出现包的到达顺序乱掉时也没有纠正的功能。如果需要这些细节控制，那么不得不采交由采用UDP的应用程序去处理。</p>
+<h1 id="TCP-Transmission-Control-Protocol"><a href="#TCP-Transmission-Control-Protocol" class="headerlink" title="TCP(Transmission Control Protocol)"></a>TCP(Transmission Control Protocol)</h1><p>为了通过IP数据报实现可靠性传输，需要考虑很多事情。例如数据的破坏，丢包，重复以及分片顺序等问题，如不能解决这些问题，也就无从谈起可靠传输。TCP通过校验和，序列号，确认应答，重发控制，连接管理以及窗口控制等机制实现可靠性传输。</p>
+<h2 id="通过序列号与确认应答提高可靠性"><a href="#通过序列号与确认应答提高可靠性" class="headerlink" title="通过序列号与确认应答提高可靠性"></a>通过序列号与确认应答提高可靠性</h2><p>在TCP中，当发送端的数据到达接收主机时，接收端的主机会返回一个已收到消息的通知，这个消息叫做确认应答（ACK）。</p>
+<p>TCP通过肯定的确认应答(ACK)实现可靠的数据传输。当发送端将数据发出之后会等待对端的确认应答。如果有确认应答，说明数据已经到达对端。反之，则数据丢失的可能性很大。</p>
+<p>但是发送端在一定的时间内没有等到确认应答，并不意味着接收端没有收到消息，可能时返回的确认应答在途中丢失。这种情况也会导致发送端因没有收到确认应答，而认为数据没有到达目的地，从而进行重新发送。这种情况下，源发送主机只要按照机制重发数据即可，但是对于目标主机来说，会反复收到相同的数据。而为了对上提供可靠的的传输，必须放弃重复的数据包。为此就必须引入一种机制， 它能够识别是否已经接收数据，又判断是否需要接收。</p>
+<p>上述这些确认应答处理，重发控制以及重复控制等功能都可以通过序列号实现。序列号时按顺序给发送数据的的每一个字节（8位字节）都标上号吗的编号。接收端查询接收数据TCP首部中的序列号的数据的长度，将自己下一步应该接收的需要作为确认应答返送回去，就这样，通过序列号和确认应答号，TCP可以实现可靠传输。</p>
+<img src="/2018/04/30/Compute-Base-Knowledge/transport-layer/send-data.png" class="" title="[send data]">
+
+<h2 id="重发超时如何确定"><a href="#重发超时如何确定" class="headerlink" title="重发超时如何确定"></a>重发超时如何确定</h2><p>重发超时是指在重发数据之前，等待确认应答到来的哪个特定时间间隔。如果超过了这个时间仍为收到确认应答，发送端将进行数据重发。那么这个重发超时的具体时间长度又是如何确定的呢？</p>
+<p>因为在数据包途径的网络环境千差万别，因此不能保证确认应答一定会在某个具体的时间段内返回。TCP要求无论在何种网络环境下都要提供高性能通信，并且无论网路拥堵情况发生何种变化，都必须保持这一特性。为此，它在每次发包时都会计算往返时间及其偏差，这个往返时间和偏差相加重发超时的时间，就是比这个总和要稍大一点的值。之所以需要考虑到偏差，主要是因为网络环境的不同，数据包的分段经过不同线路到达所花费的时间亦不相同，往返时间可能会产生大幅度的摇摆。TCP/IP的目的是即使在这种环境下也要进行控制，尽量不要浪费网路流量。</p>
+<img src="/2018/04/30/Compute-Base-Knowledge/transport-layer/resend-data.png" class="" title="[resend data]">
+
+
+<h2 id="TCP以段为单位发送数据"><a href="#TCP以段为单位发送数据" class="headerlink" title="TCP以段为单位发送数据"></a>TCP以段为单位发送数据</h2><p>在建立TCP连接的同时，也可以确定发送数据包的单位，我们称其为“最大消息长度”（MSS: Maximum Segment Size）。最理想的情况是，最大消息长度正好是IP中不会被分片处理的最大数据长度。</p>
+<p>TCP在传送大量数据时，是以MSS的大小将数据进行分割发送，进行重发时也是以MSS为单位。<strong>MSS是在三次握手的时候，在两端主机之间被计算得出</strong>。两端的主机在发出建立连接的请求时，会在TCP首部种写入MSS选项，告诉对方自己的接口能够适应的MSS的大小，然后会在两者之间选择一个较小的值投入使用。</p>
+<img src="/2018/04/30/Compute-Base-Knowledge/transport-layer/consult-mss.png" class="" title="[consult mss]">
+
+<p>TCP以1个段为单位，每发一个段进行一次确认应答的处理，这样的传输方式有一个缺点，那就是，包的往返时间越长，通信性能就越低。为了解决这个问题，TCP引入了窗口这个概念，即使在往返时间较长的情况下，它也能控制网络性能的下降。</p>
+<p>窗口大小就是指无需等待确认应答而可以继续发送数据的最大值。</p>
+<h1 id="TCP和UDP的区别"><a href="#TCP和UDP的区别" class="headerlink" title="TCP和UDP的区别"></a>TCP和UDP的区别</h1><ul>
+<li>TCP是面向连接的、可靠的、有序的、速度慢的协议；UDP是无连接的、不可靠的、无序的、速度快的协议。</li>
+<li>TCP开销比UDP大，TCP头部需要20字节，UDP头部只要8个字节。</li>
+<li>TCP无界有拥塞控制，UDP有界无拥塞控制。</li>
+</ul>
+<p>补充:</p>
+<p>基于TCP的协议有：HTTP/HTTPS，Telnet，FTP，SMTP。<br>基于UDP的协议有：DHCP，DNS，SNMP，TFTP，BOOTP。</p>
+<p>面向有连接是指在数据通信开始之前先做好两端之间的准备工作。<br>面向无连接是指不检查对端是否可以通信，直接将UDP包发送出去。</p>
+<img src="/2018/04/30/Compute-Base-Knowledge/transport-layer/congestion-control.png" class="" title="[congestion control]">
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/OSI/" rel="tag"># OSI</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-next post-nav-item">
+                <a href="/2018/04/29/Compute-Base-Knowledge/ip-protocol-releated/" rel="next" title="IP相关协议">
+                  <i class="fa fa-chevron-left"></i> IP相关协议
+                </a>
+            </div>
+
+            <span class="post-nav-divider"></span>
+
+            <div class="post-nav-prev post-nav-item">
+                <a href="/2018/05/15/Compute-Base-Knowledge/distributed-consistency/" rel="prev" title="分布式一致性">
+                  分布式一致性 <i class="fa fa-chevron-right"></i>
+                </a>
+            </div>
+          </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#UDP-User-Datagram-Protocol"><span class="nav-number">1.</span> <span class="nav-text">UDP(User Datagram Protocol)</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#TCP-Transmission-Control-Protocol"><span class="nav-number">2.</span> <span class="nav-text">TCP(Transmission Control Protocol)</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#通过序列号与确认应答提高可靠性"><span class="nav-number">2.1.</span> <span class="nav-text">通过序列号与确认应答提高可靠性</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#重发超时如何确定"><span class="nav-number">2.2.</span> <span class="nav-text">重发超时如何确定</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#TCP以段为单位发送数据"><span class="nav-number">2.3.</span> <span class="nav-text">TCP以段为单位发送数据</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#TCP和UDP的区别"><span class="nav-number">3.</span> <span class="nav-text">TCP和UDP的区别</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="acronymor"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">acronymor</p>
+  <div class="site-description" itemprop="description">I am who i am, the unique fooid</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives">
+          <span class="site-state-item-count">216</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+        <span class="site-state-item-count">27</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+        <span class="site-state-item-count">35</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="feed-link motion-element">
+    <a href="/atom.xml" rel="alternate">
+      <i class="fa fa-rss"></i>RSS
+    </a>
+  </div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/acronymor" title="GitHub &amp;rarr; https:&#x2F;&#x2F;github.com&#x2F;acronymor" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yourname@acronymor.com" title="E-Mail &amp;rarr; mailto:yourname@acronymor.com"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">acronymor</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> v4.2.0
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">Theme – <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> v7.5.0
+  </div>
+
+        
+
+
+
+
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

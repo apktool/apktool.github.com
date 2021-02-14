@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+  <link rel="alternate" href="/atom.xml" title="Acronymor's Blog" type="application/atom+xml">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Muse',
+    version: '7.5.0',
+    exturl: false,
+    sidebar: {"position":"right","display":"hide","offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: '',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    translation: {
+      copy_button: 'Copy',
+      copy_success: 'Copied',
+      copy_failure: 'Copy failed'
+    },
+    sidebarPadding: 40
+  };
+</script>
+
+  <meta name="description" content="视图（view）是一种虚拟存在的表，是一个逻辑表，本身并不包含数据。是作为一个select语句保存在数据字典中的。通过视图，可以展现基表(用来创建视图的表叫做基表base table)的部分数据。同真实的表一样，视图包含一系列带有名称的行和列数据。行和列数据来自由定义视图查询所引用的表，并且在引用视图时动态生成。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="MySQL视图">
+<meta property="og:url" content="http://acronymor.com/2018/12/07/MySQL/mysql-view/index.html">
+<meta property="og:site_name" content="Acronymor&#39;s Blog">
+<meta property="og:description" content="视图（view）是一种虚拟存在的表，是一个逻辑表，本身并不包含数据。是作为一个select语句保存在数据字典中的。通过视图，可以展现基表(用来创建视图的表叫做基表base table)的部分数据。同真实的表一样，视图包含一系列带有名称的行和列数据。行和列数据来自由定义视图查询所引用的表，并且在引用视图时动态生成。">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="http://acronymor.com/2018/12/07/MySQL/mysql-view/mysql-view-algorithm.png">
+<meta property="article:published_time" content="2018-12-07T00:38:00.000Z">
+<meta property="article:modified_time" content="2018-12-07T00:38:00.000Z">
+<meta property="article:author" content="acronymor">
+<meta property="article:tag" content="MySQL">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://acronymor.com/2018/12/07/MySQL/mysql-view/mysql-view-algorithm.png">
+
+<link rel="canonical" href="http://acronymor.com/2018/12/07/MySQL/mysql-view/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true,
+    isPage: false,
+    isArchive: false
+  };
+</script>
+
+  <title>MySQL视图 | Acronymor's Blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Acronymor's Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-movies">
+
+    <a href="/movies/" rel="section"><i class="fa fa-fw fa-film"></i>movies</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>About</a>
+
+  </li>
+  </ul>
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="en">
+    <link itemprop="mainEntityOfPage" href="http://acronymor.com/2018/12/07/MySQL/mysql-view/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="acronymor">
+      <meta itemprop="description" content="I am who i am, the unique fooid">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Acronymor's Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          MySQL视图
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2018-12-07 08:38:00" itemprop="dateCreated datePublished" datetime="2018-12-07T08:38:00+08:00">2018-12-07</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E9%AB%98%E6%80%A7%E8%83%BDMySQL/" itemprop="url" rel="index">
+                    <span itemprop="name">高性能MySQL</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>视图（view）是一种虚拟存在的表，是一个逻辑表，本身并不包含数据。是作为一个select语句保存在数据字典中的。通过视图，可以展现基表(用来创建视图的表叫做基表base table)的部分数据。<br>同真实的表一样，视图包含一系列带有名称的行和列数据。行和列数据来自由定义视图查询所引用的表，并且在引用视图时动态生成。</p>
+<a id="more"></a>
+
+<h1 id="创建视图"><a href="#创建视图" class="headerlink" title="创建视图"></a>创建视图</h1><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">CREATE</span></span><br><span class="line">    [<span class="keyword">OR</span> <span class="keyword">REPLACE</span>]</span><br><span class="line">    [ALGORITHM = &#123;UNDEFINED | <span class="keyword">MERGE</span> | TEMPTABLE&#125;]</span><br><span class="line">    [DEFINER = &#123; <span class="keyword">user</span> | <span class="keyword">CURRENT_USER</span> &#125;]</span><br><span class="line">    [<span class="keyword">SQL</span> <span class="keyword">SECURITY</span> &#123; DEFINER | INVOKER &#125;]</span><br><span class="line">    <span class="keyword">VIEW</span> view_name [(column_list)]</span><br><span class="line">    <span class="keyword">AS</span> select_statement</span><br><span class="line">    [<span class="keyword">WITH</span> [<span class="keyword">CASCADED</span> | <span class="keyword">LOCAL</span>] <span class="keyword">CHECK</span> <span class="keyword">OPTION</span>]</span><br></pre></td></tr></table></figure>
+
+<p>OR REPLACE：表示替换已有视图<br>ALGORITHM：表示视图选择算法，默认算法是UNDEFINED<br>select_statement：表示select语句<br>[WITH [CASCADED | LOCAL] CHECK OPTION]：表示视图在更新时保证在视图的权限范围之内<br>    - CASCADE 是默认值，表示更新视图的时候，要满足视图和表的相关条件<br>    - LOCAL 表示更新视图的时候，要满足该视图定义的一个条件即可</p>
+<h1 id="视图的特点"><a href="#视图的特点" class="headerlink" title="视图的特点"></a>视图的特点</h1><p>因为视图的诸多优点，如下</p>
+<ol>
+<li>简单：使用视图的用户完全不需要关心后面对应的表的结构、关联条件和筛选条件，对用户来说已经是过滤好的复合条件的结果集。</li>
+<li>安全：使用视图的用户只能访问他们被允许查询的结果集，对表的权限管理并不能限制到某个行某个列，但是通过视图就可以简单的实现。</li>
+<li>数据独立：一旦视图的结构确定了，可以屏蔽表结构变化对用户的影响，源表增加列对视图没有影响；源表修改列名，则可以通过修改视图来解决，不会造成对访问者的影响。</li>
+</ol>
+<h1 id="视图的实现"><a href="#视图的实现" class="headerlink" title="视图的实现"></a>视图的实现</h1><p>MySQL有三种视图执行策略, 分别是MERGE, TEMPTABLE, UNDEFINED.</p>
+<h2 id="MERGE"><a href="#MERGE" class="headerlink" title="MERGE"></a>MERGE</h2><p>使用MERGE策略，MySQL会先将输入的查询语句和视图的声明语句进行合并，然后执行合并后的语句并返回。但是如果输入的查询语句中不允许包含一些聚合函数如: MIN, MAX, SUM, COUNT, AVG, etc., or DISTINCT, GROUP BY, HAVING, LIMIT, UNION, UNION ALL, subquery。同样如果视图声明没有指向任何数据表，也是不允许的。如果出现以上任意情况, MySQL默认会使用UNDEFINED策略。</p>
+<h2 id="TEMPTABLE"><a href="#TEMPTABLE" class="headerlink" title="TEMPTABLE"></a>TEMPTABLE</h2><p>使用TEMPTABLE策略，MySQL先基于视图的声明创建一张temporary table，当输入查询语句时会直接查询这张temporary table。由于需要创建temporary table来存储视图的结果集, TEMPTABLE的效率要比MERGE策略低，另外使用temporary table策略的视图是无法更新的。</p>
+<h2 id="UNDEFINED"><a href="#UNDEFINED" class="headerlink" title="UNDEFINED"></a>UNDEFINED</h2><p>使用UNDEFINED策略，如果创建视图的时候不指定策略，MySQL默认使用此策略。UNDEFINED策略会自动选择使用上述两种策略中的一个，优先选择MERGE策略，无法使用则转为TEMPTABLE策略。</p>
+<p>如果可能，会尽可能使用合并算法。下图是这两种算法实现的细节。</p>
+<img src="/2018/12/07/MySQL/mysql-view/mysql-view-algorithm.png" class="" title="[MySQL View Algorithm]">
+
+<h1 id="视图的性能"><a href="#视图的性能" class="headerlink" title="视图的性能"></a>视图的性能</h1><p>使用临时表算法实现的视图，在某些时候性能会很糟糕（可能比直接使用等效查询语句要好一点）。MySQL会以递归的方式执行这些视图，先会执行外层查询，即使外层查询优化器将其优化的很好，但是，内外结合的优化却无法做到非常好。如果打算使用视图来提升性能，需要做比较详细的测试。即便是合并算法实现的视图也会有额外的开销，而且使徒的性能很难预测。</p>
+<h1 id="视图的限制"><a href="#视图的限制" class="headerlink" title="视图的限制"></a>视图的限制</h1><p>视图有很多限制，比如，MySQL不支持物化视图（将视图结果数据存放在一个可以查看的表中，并定期填充原始表中刷新数据到这个表中）。也不支持在视图中创建索引。当然，可以通过构建缓存表或者汇总表的办法来模拟。</p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/MySQL/" rel="tag"># MySQL</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-next post-nav-item">
+                <a href="/2018/12/04/MySQL/mysql-lifecycle/" rel="next" title="MySQL生命周期">
+                  <i class="fa fa-chevron-left"></i> MySQL生命周期
+                </a>
+            </div>
+
+            <span class="post-nav-divider"></span>
+
+            <div class="post-nav-prev post-nav-item">
+                <a href="/2018/12/07/Java/IO/NET-IO/" rel="prev" title="网络IO">
+                  网络IO <i class="fa fa-chevron-right"></i>
+                </a>
+            </div>
+          </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#创建视图"><span class="nav-number">1.</span> <span class="nav-text">创建视图</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#视图的特点"><span class="nav-number">2.</span> <span class="nav-text">视图的特点</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#视图的实现"><span class="nav-number">3.</span> <span class="nav-text">视图的实现</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#MERGE"><span class="nav-number">3.1.</span> <span class="nav-text">MERGE</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#TEMPTABLE"><span class="nav-number">3.2.</span> <span class="nav-text">TEMPTABLE</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#UNDEFINED"><span class="nav-number">3.3.</span> <span class="nav-text">UNDEFINED</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#视图的性能"><span class="nav-number">4.</span> <span class="nav-text">视图的性能</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#视图的限制"><span class="nav-number">5.</span> <span class="nav-text">视图的限制</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="acronymor"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">acronymor</p>
+  <div class="site-description" itemprop="description">I am who i am, the unique fooid</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives">
+          <span class="site-state-item-count">216</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+        <span class="site-state-item-count">27</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+        <span class="site-state-item-count">35</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="feed-link motion-element">
+    <a href="/atom.xml" rel="alternate">
+      <i class="fa fa-rss"></i>RSS
+    </a>
+  </div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/acronymor" title="GitHub &amp;rarr; https:&#x2F;&#x2F;github.com&#x2F;acronymor" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yourname@acronymor.com" title="E-Mail &amp;rarr; mailto:yourname@acronymor.com"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">acronymor</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> v4.2.0
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">Theme – <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> v7.5.0
+  </div>
+
+        
+
+
+
+
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

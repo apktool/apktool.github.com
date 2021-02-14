@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+  <link rel="alternate" href="/atom.xml" title="Acronymor's Blog" type="application/atom+xml">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Muse',
+    version: '7.5.0',
+    exturl: false,
+    sidebar: {"position":"right","display":"hide","offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: '',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    translation: {
+      copy_button: 'Copy',
+      copy_success: 'Copied',
+      copy_failure: 'Copy failed'
+    },
+    sidebarPadding: 40
+  };
+</script>
+
+  <meta name="description" content="垃圾收集器(Garbage Collection, GC)的历史可以追溯到1960年MIT的第一门真正使用内存动态分配和垃圾收集技术的语言——Lisp。人们当时就在思考GC需要完成的3件事：  哪些内存需要回收？什么时候回收？如何回收？">
+<meta property="og:type" content="article">
+<meta property="og:title" content="垃圾收集器概要">
+<meta property="og:url" content="http://acronymor.com/2018/02/16/JVM/chapter3/gc-conception/index.html">
+<meta property="og:site_name" content="Acronymor&#39;s Blog">
+<meta property="og:description" content="垃圾收集器(Garbage Collection, GC)的历史可以追溯到1960年MIT的第一门真正使用内存动态分配和垃圾收集技术的语言——Lisp。人们当时就在思考GC需要完成的3件事：  哪些内存需要回收？什么时候回收？如何回收？">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="http://acronymor.com/2018/02/16/JVM/chapter3/gc-conception/live-or-dead.png">
+<meta property="og:image" content="http://acronymor.com/2018/02/16/JVM/chapter3/gc-conception/gc-generation.jpg">
+<meta property="article:published_time" content="2018-02-16T11:41:10.000Z">
+<meta property="article:modified_time" content="2018-02-16T11:41:10.000Z">
+<meta property="article:author" content="acronymor">
+<meta property="article:tag" content="JVM">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://acronymor.com/2018/02/16/JVM/chapter3/gc-conception/live-or-dead.png">
+
+<link rel="canonical" href="http://acronymor.com/2018/02/16/JVM/chapter3/gc-conception/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true,
+    isPage: false,
+    isArchive: false
+  };
+</script>
+
+  <title>垃圾收集器概要 | Acronymor's Blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Acronymor's Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-movies">
+
+    <a href="/movies/" rel="section"><i class="fa fa-fw fa-film"></i>movies</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>About</a>
+
+  </li>
+  </ul>
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="en">
+    <link itemprop="mainEntityOfPage" href="http://acronymor.com/2018/02/16/JVM/chapter3/gc-conception/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="acronymor">
+      <meta itemprop="description" content="I am who i am, the unique fooid">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Acronymor's Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          垃圾收集器概要
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2018-02-16 19:41:10" itemprop="dateCreated datePublished" datetime="2018-02-16T19:41:10+08:00">2018-02-16</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E6%B7%B1%E5%85%A5%E7%90%86%E8%A7%A3Java%E8%99%9A%E6%8B%9F%E6%9C%BA/" itemprop="url" rel="index">
+                    <span itemprop="name">深入理解Java虚拟机</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>垃圾收集器(Garbage Collection, GC)的历史可以追溯到1960年MIT的第一门真正使用内存动态分配和垃圾收集技术的语言——Lisp。人们当时就在思考GC需要完成的3件事：</p>
+<blockquote>
+<p>哪些内存需要回收？<br>什么时候回收？<br>如何回收？</p>
+</blockquote>
+<a id="more"></a>
+
+<p>经过半个世纪的发展，目前内存的动态分配与内存回收技术已经相当成熟。在Java这门语言中，</p>
+<blockquote>
+<p>程序计数器、虚拟机栈、本地方法栈三个区域的内存随线程的创建而创建，随线程的销毁而销毁；<br>堆和方法区中，内存的分配和回收都是动态的。</p>
+</blockquote>
+<p>栈中的栈帧随着方法的进入和退出而有条不紊的执行着出栈和入栈操作，每一个栈帧中分配多少内存基本上是在类结构确定下来的时候就已知的（尽管在运行时期会由JIT编译器进行一些优化，但基本还是可以认为编译期可知）。因此这几个区域的内存分配和回收都具有确定性，因此不需要过多的考虑内存回收问题。</p>
+<p>在堆和方法区中，因为接口中多个实现类需要的内存可能不一样，而一个方法中的多个分支需要的内存也可能不一样，只有当程序处于运行期的时候，才能确定需要分配多大的内存。因此垃圾收集器所关注的便是这部分内存。</p>
+<h1 id="判断对象已死"><a href="#判断对象已死" class="headerlink" title="判断对象已死"></a>判断对象已死</h1><h2 id="引用计数法"><a href="#引用计数法" class="headerlink" title="引用计数法"></a>引用计数法</h2><p>在传统方法中获取对象引用次数的方法为<code>引用计数法</code>(Reference Count)，其基本的算法如下：</p>
+<blockquote>
+<p>给对象添加一个引用计数器，每当有一个对象引用它时，计数器值加1；当引用实效时，计数器值减1；</p>
+</blockquote>
+<p>任何时刻计数器值为0的对象便是不可能被用的对象，此时可以判断对象“已死”。</p>
+<p>但是在主流的Java虚拟机中都没有引用<code>引用计数法</code>来管理内存，主要原因是该算法很难解决对象之间相互引用导致的相互循环引用问题。比如对象objA和objB都有字段instance，那么令：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">objA.instance &#x3D; objB</span><br><span class="line">objB.instance &#x3D; objA</span><br></pre></td></tr></table></figure>
+
+<p>很显然，两个对象相互引用，导致引用计数不能为0，于是引用计数器无法通知GC收集器回收它们。</p>
+<h2 id="可达性分析算法"><a href="#可达性分析算法" class="headerlink" title="可达性分析算法"></a>可达性分析算法</h2><p>Java， C#等主流程序语言中，均使用<code>可达性分析</code>(Reachability Analysis)算法来判定对象是否存活的。该算法的基本思想如下：</p>
+<blockquote>
+<p>将”GC Roots”的对象作为起始点，从这些节点开始向下搜索，搜索所走过的路称为<code>引用链</code>(Reference Chain)`；<br>当一个对象到GC Roots没有任何引用的链相连时（图论中称为对象不可达），则证明此对象“已死”。</p>
+</blockquote>
+<p>在Java语言中，可作为GC Roots的对象包括下述几种：</p>
+<ul>
+<li>虚拟机栈（栈帧中的本地变量表）中引用的对象；</li>
+<li>方法区中类静态属性和常量引用的对象；</li>
+<li>本地方法栈中JNI(Native Method)引用的方法；</li>
+</ul>
+<h1 id="再谈引用"><a href="#再谈引用" class="headerlink" title="再谈引用"></a>再谈引用</h1><p>无论是通过<code>引用计数法</code>判断对象的引用数量，还是通过<code>可达性分析</code>算法判断对象的引用链是否可达，判定对象是否“存活”都与<strong>引用</strong>相关。</p>
+<p>JDK1.2之前，一个对象的只存在两种状态，即<strong>引用</strong>和<strong>被引用</strong>。<br>JDK1.2之后对引用的概念进行了扩充，将引用分为<strong>强引用</strong>(Strong Reference)、<strong>软引用</strong>(Soft Reference)、<strong>弱引用</strong>(Weak Reference)、<strong>虚引用</strong>(Phantom Reference)四种，这四种引用强度依次逐渐减弱。</p>
+<h2 id="强引用"><a href="#强引用" class="headerlink" title="强引用"></a>强引用</h2><p>强引用就是代码中普遍存在的，类似于</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">Object object =  <span class="keyword">new</span> Object()</span><br></pre></td></tr></table></figure>
+<p>这类的引用，只要强引用还存在，垃圾收集器永远不会回收掉被引用的对象。</p>
+<h2 id="软引用"><a href="#软引用" class="headerlink" title="软引用"></a>软引用</h2><p>软引用是用来描述一些还有用，但并非必需的对象。<br>如果一个对象只具有软引用，则内存空间足够，垃圾回收器就不会回收它；如果内存空间不足了，就会回收这些对象的内存。只要垃圾回收器没有回收它，该对象就可以被程序使用。<br>软引用可用来实现内存敏感的高速缓存。</p>
+<p>Java1.2之后，提供了<code>SoftReference</code>类来实现软引用。</p>
+<h2 id="弱引用"><a href="#弱引用" class="headerlink" title="弱引用"></a>弱引用</h2><p>弱引用也是用来描述非必须对象的，但是它的强度比软引用更弱一些。<br>被软引用关联的对象只能生存到下一次垃圾收集之前。当垃圾收集器工作时，无论当前内存是否足够，都会回收掉只被弱引用关联的对象。</p>
+<p>Java1.2之后，提供了<code>WeakReference</code>类来实现弱引用。</p>
+<h2 id="虚引用"><a href="#虚引用" class="headerlink" title="虚引用"></a>虚引用</h2><p>虚引用也称为幽灵引用或幻影引用，是最弱的一种引用关系。</p>
+<p>虚引用并不会决定对象的生命周期，当然也无法通过一个虚引用来取得一个对象实例。如果一个对象仅持有虚引用，那么它就和没有任何引用一样，在任何时候都可能被垃圾收集器回收。为一个对象设置虚引用的唯一目的就是在这个对象被收集器回收时可以得到一个系统通知。</p>
+<p>Java1.2之后，提供了<code>PhantomRefernce</code>类来实现虚引用。</p>
+<h1 id="生存还是死亡"><a href="#生存还是死亡" class="headerlink" title="生存还是死亡"></a>生存还是死亡</h1><p>在Java垃圾收集器中，对象并不会直接被标记为“死亡”，宣告一个对象真正死亡需要经历两次标记过程：</p>
+<blockquote>
+<p>可达性分析之后发现并没有与GC Roots相连接的引用链，那么它将被第一次标记；<br>对F-Queue中的对象第二次分析后，仍然没有发现与GC Roots相连接的引用链，则标记对象“死亡”；</p>
+</blockquote>
+<p>其完整过程如下图所示：</p>
+<img src="/2018/02/16/JVM/chapter3/gc-conception/live-or-dead.png" class="" title="[gc will live or dead]">
+
+<h2 id="注意："><a href="#注意：" class="headerlink" title="注意："></a>注意：</h2><p>finalize()方法是在Java刚诞生的时候，为了方便C/C++而作出的一个妥协，其运行代价高昂，不确定性大，无法保证各个对象的调用顺序。因此不建议在Java中使用finalize()这个方法</p>
+<h1 id="方法区的回收"><a href="#方法区的回收" class="headerlink" title="方法区的回收"></a>方法区的回收</h1><p>方法区（即HotSpot中的永久代）中垃圾收集器是可有可无的。方法区中的垃圾回收主要回收两部分内容：<strong>废弃常量</strong>和<strong>无用的类</strong>。</p>
+<h2 id="判定废弃常量可被回收"><a href="#判定废弃常量可被回收" class="headerlink" title="判定废弃常量可被回收"></a>判定废弃常量可被回收</h2><p>如果系统中某常量在其他地方未被引用，则该常量被系统清理出常量池；否则不清理。</p>
+<h2 id="判定类可被回收"><a href="#判定类可被回收" class="headerlink" title="判定类可被回收"></a>判定类可被回收</h2><ul>
+<li>该类所有的实例都已被回收，即Java堆中不存在任何类的引用；</li>
+<li>加载该类的<code>ClassLoader</code>已经被回收；</li>
+<li>该类对应的<code>java.lang.Class</code>对象没有在任何地方被引用，无法在任何地方通过反射机制访问该类的方法；</li>
+</ul>
+<p>虚拟机<strong>可以</strong>对满足上述三个条件的类进行回收，但并不一定会回收。</p>
+<p>而且虚拟机也针对这些无用类提供了部分参数来进行控制，比如</p>
+<p>查看类加载和卸载信息： <code>-verbose:class</code>、<code>-XX:+TraceClasLoading</code>、<code>-XX:+TraceClassUnLoading</code></p>
+<p>其中<code>-verbose:class</code>和<code>-XX:+TraceClasLoading</code>可以在Product版的虚拟机中使用，<code>-XX:+TraceClassUnLoading</code>则需要FastDebug版的虚拟机支持。</p>
+<hr>
+<h1 id="引用总结"><a href="#引用总结" class="headerlink" title="引用总结"></a>引用总结</h1><table>
+<thead>
+<tr>
+<th align="center">引用类型</th>
+<th align="center">垃圾回收时间</th>
+<th align="center">用途</th>
+<th align="center">生存时间</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">强引用</td>
+<td align="center">从来不会</td>
+<td align="center">对象的一般状态</td>
+<td align="center">JVM停止运行时终止</td>
+</tr>
+<tr>
+<td align="center">软引用</td>
+<td align="center">在内存不足时</td>
+<td align="center">对象缓存</td>
+<td align="center">内存不足时终止</td>
+</tr>
+<tr>
+<td align="center">弱引用</td>
+<td align="center">在垃圾回收时</td>
+<td align="center">对象缓存</td>
+<td align="center">gc运行后终止</td>
+</tr>
+<tr>
+<td align="center">虚引用</td>
+<td align="center">Unknown</td>
+<td align="center">Unknown</td>
+<td align="center">Unknown</td>
+</tr>
+</tbody></table>
+<h1 id="Minor-GC、Major-GC和Full-GC之间的区别"><a href="#Minor-GC、Major-GC和Full-GC之间的区别" class="headerlink" title="Minor GC、Major GC和Full GC之间的区别"></a>Minor GC、Major GC和Full GC之间的区别</h1><img src="/2018/02/16/JVM/chapter3/gc-conception/gc-generation.jpg" class="" title="[gc generation]">
+
+<h2 id="Minor-GC"><a href="#Minor-GC" class="headerlink" title="Minor GC"></a>Minor GC</h2><p>堆内存划分为 Eden、Survivor 和 Tenured/Old 空间。</p>
+<p>从年轻代空间（包括 Eden 和 Survivor 区域）回收内存被称为 Minor GC。这一定义既清晰又易于理解。</p>
+<p>但是，当发生Minor GC事件的时候，有一些有趣的地方需要注意到：</p>
+<ul>
+<li>当 JVM 无法为一个新的对象分配空间时会触发 Minor GC，比如当 Eden 区满了。所以分配率越高，越频繁执行 Minor GC。</li>
+<li>内存池被填满的时候，其中的内容全部会被复制，指针会从0开始跟踪空闲内存。Eden 和 Survivor 区进行了标记和复制操作，取代了经典的标记、扫描、压缩、清理操作。所以 Eden 和 Survivor 区不存在内存碎片。写指针总是停留在所使用内存池的顶部。</li>
+<li>执行 Minor GC 操作时，不会影响到永久代。从永久代到年轻代的引用被当成 GC roots，从年轻代到永久代的引用在标记阶段被直接忽略掉。</li>
+<li>质疑常规的认知，所有的 Minor GC 都会触发“全世界的暂停（stop-the-world）”，停止应用程序的线程。对于大部分应用程序，停顿导致的延迟都是可以忽略不计的。其中的真相就 是，大部分 Eden 区中的对象都能被认为是垃圾，永远也不会被复制到 Survivor 区或者老年代空间。如果正好相反，Eden 区大部分新生对象不符合 GC 条件，Minor GC 执行时暂停的时间将会长很多。</li>
+</ul>
+<p>所以 Minor GC 的情况就相当清楚了——每次 Minor GC 会清理年轻代的内存。</p>
+<h2 id="Major-GC-vs-Full-GC"><a href="#Major-GC-vs-Full-GC" class="headerlink" title="Major GC vs Full GC"></a>Major GC vs Full GC</h2><p>目前，这些术语无论是在 JVM 规范还是在垃圾收集研究论文中都没有正式的定义。但是我们一看就知道这些在我们已经知道的基础之上做出的定义是正确的，Minor GC 清理年轻代内存应该被设计得简单：</p>
+<ul>
+<li>Minor GC 是清理年轻代。</li>
+<li>Major GC 是清理老年代。</li>
+<li>Full GC 是清理整个堆空间—包括年轻代和老年代。</li>
+</ul>
+<p>首先，许多 Major GC 是由 Minor GC 触发的，所以很多情况下将这两种 GC 分离是不太可能的。<br>另一方面，许多现代垃圾收集机制会清理部分永久代空间，所以使用“cleaning”一词只是部分正确。</p>
+<p>这使得我们不用去关心到底是叫 Major GC 还是 Full GC，大家应该关注当前的 GC 是否停止了所有应用程序的线程，还是能够并发的处理而不用停掉应用程序的线程。这种混乱甚至内置到 JVM 标准工具。</p>
+<h1 id="结束语"><a href="#结束语" class="headerlink" title="结束语"></a>结束语</h1><p>到这里已经尝试着回答了开始的时候提到的三个问题中的两个：</p>
+<ul>
+<li>哪些内存需要回收？<br>堆和方法区</li>
+<li>如何回收？<br>可达性分析+引用类型</li>
+</ul>
+<p>对于最后一个问题</p>
+<blockquote>
+<p>什么时候回收？<br>在新生代的Eden区中没有足够空间进行分配对象时，虚拟机将会发起一次<strong>Minor GC</strong>；<br>如果从新生代晋升到老年代的对象所需空间大于老年代的剩余空间，虚拟机会发起一次<strong>Full GC</strong>；</p>
+</blockquote>
+<p>这里先说个概要，至于具体细节会在中说明。</p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/JVM/" rel="tag"># JVM</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-next post-nav-item">
+                <a href="/2018/02/14/JVM/chapter2/generation/" rel="next" title="虚拟机中内存的分代">
+                  <i class="fa fa-chevron-left"></i> 虚拟机中内存的分代
+                </a>
+            </div>
+
+            <span class="post-nav-divider"></span>
+
+            <div class="post-nav-prev post-nav-item">
+                <a href="/2018/02/16/JVM/chapter3/gc-algorithm/" rel="prev" title="垃圾收集算法">
+                  垃圾收集算法 <i class="fa fa-chevron-right"></i>
+                </a>
+            </div>
+          </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#判断对象已死"><span class="nav-number">1.</span> <span class="nav-text">判断对象已死</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#引用计数法"><span class="nav-number">1.1.</span> <span class="nav-text">引用计数法</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#可达性分析算法"><span class="nav-number">1.2.</span> <span class="nav-text">可达性分析算法</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#再谈引用"><span class="nav-number">2.</span> <span class="nav-text">再谈引用</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#强引用"><span class="nav-number">2.1.</span> <span class="nav-text">强引用</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#软引用"><span class="nav-number">2.2.</span> <span class="nav-text">软引用</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#弱引用"><span class="nav-number">2.3.</span> <span class="nav-text">弱引用</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#虚引用"><span class="nav-number">2.4.</span> <span class="nav-text">虚引用</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#生存还是死亡"><span class="nav-number">3.</span> <span class="nav-text">生存还是死亡</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#注意："><span class="nav-number">3.1.</span> <span class="nav-text">注意：</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#方法区的回收"><span class="nav-number">4.</span> <span class="nav-text">方法区的回收</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#判定废弃常量可被回收"><span class="nav-number">4.1.</span> <span class="nav-text">判定废弃常量可被回收</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#判定类可被回收"><span class="nav-number">4.2.</span> <span class="nav-text">判定类可被回收</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#引用总结"><span class="nav-number">5.</span> <span class="nav-text">引用总结</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Minor-GC、Major-GC和Full-GC之间的区别"><span class="nav-number">6.</span> <span class="nav-text">Minor GC、Major GC和Full GC之间的区别</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Minor-GC"><span class="nav-number">6.1.</span> <span class="nav-text">Minor GC</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Major-GC-vs-Full-GC"><span class="nav-number">6.2.</span> <span class="nav-text">Major GC vs Full GC</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#结束语"><span class="nav-number">7.</span> <span class="nav-text">结束语</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="acronymor"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">acronymor</p>
+  <div class="site-description" itemprop="description">I am who i am, the unique fooid</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives">
+          <span class="site-state-item-count">216</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+        <span class="site-state-item-count">27</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+        <span class="site-state-item-count">35</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="feed-link motion-element">
+    <a href="/atom.xml" rel="alternate">
+      <i class="fa fa-rss"></i>RSS
+    </a>
+  </div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/acronymor" title="GitHub &amp;rarr; https:&#x2F;&#x2F;github.com&#x2F;acronymor" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yourname@acronymor.com" title="E-Mail &amp;rarr; mailto:yourname@acronymor.com"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">acronymor</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> v4.2.0
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">Theme – <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> v7.5.0
+  </div>
+
+        
+
+
+
+
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

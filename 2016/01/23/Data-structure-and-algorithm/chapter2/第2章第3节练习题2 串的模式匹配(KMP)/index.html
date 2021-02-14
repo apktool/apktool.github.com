@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+  <link rel="alternate" href="/atom.xml" title="Acronymor's Blog" type="application/atom+xml">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Muse',
+    version: '7.5.0',
+    exturl: false,
+    sidebar: {"position":"right","display":"hide","offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: '',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    translation: {
+      copy_button: 'Copy',
+      copy_success: 'Copied',
+      copy_failure: 'Copy failed'
+    },
+    sidebarPadding: 40
+  };
+</script>
+
+  <meta name="description" content="问题描述 设有主串S和子串T，子串T的定位就是要在主串S中找到一个与子串T相等的子串。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="第2章第3节练习题2 串的模式匹配(KMP)">
+<meta property="og:url" content="http://acronymor.com/2016/01/23/Data-structure-and-algorithm/chapter2/%E7%AC%AC2%E7%AB%A0%E7%AC%AC3%E8%8A%82%E7%BB%83%E4%B9%A0%E9%A2%982%20%E4%B8%B2%E7%9A%84%E6%A8%A1%E5%BC%8F%E5%8C%B9%E9%85%8D(KMP)/index.html">
+<meta property="og:site_name" content="Acronymor&#39;s Blog">
+<meta property="og:description" content="问题描述 设有主串S和子串T，子串T的定位就是要在主串S中找到一个与子串T相等的子串。">
+<meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2016-01-23T02:49:54.000Z">
+<meta property="article:modified_time" content="2016-01-23T02:49:54.000Z">
+<meta property="article:author" content="acronymor">
+<meta property="article:tag" content="数据结构">
+<meta property="article:tag" content="串">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://acronymor.com/2016/01/23/Data-structure-and-algorithm/chapter2/%E7%AC%AC2%E7%AB%A0%E7%AC%AC3%E8%8A%82%E7%BB%83%E4%B9%A0%E9%A2%982%20%E4%B8%B2%E7%9A%84%E6%A8%A1%E5%BC%8F%E5%8C%B9%E9%85%8D(KMP)/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true,
+    isPage: false,
+    isArchive: false
+  };
+</script>
+
+  <title>第2章第3节练习题2 串的模式匹配(KMP) | Acronymor's Blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Acronymor's Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-movies">
+
+    <a href="/movies/" rel="section"><i class="fa fa-fw fa-film"></i>movies</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>About</a>
+
+  </li>
+  </ul>
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="en">
+    <link itemprop="mainEntityOfPage" href="http://acronymor.com/2016/01/23/Data-structure-and-algorithm/chapter2/%E7%AC%AC2%E7%AB%A0%E7%AC%AC3%E8%8A%82%E7%BB%83%E4%B9%A0%E9%A2%982%20%E4%B8%B2%E7%9A%84%E6%A8%A1%E5%BC%8F%E5%8C%B9%E9%85%8D(KMP)/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="acronymor">
+      <meta itemprop="description" content="I am who i am, the unique fooid">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Acronymor's Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          第2章第3节练习题2 串的模式匹配(KMP)
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2016-01-23 10:49:54" itemprop="dateCreated datePublished" datetime="2016-01-23T10:49:54+08:00">2016-01-23</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E4%B8%8E%E7%AE%97%E6%B3%95/" itemprop="url" rel="index">
+                    <span itemprop="name">数据结构与算法</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h1 id="问题描述"><a href="#问题描述" class="headerlink" title="问题描述"></a>问题描述</h1><blockquote>
+<p>设有主串S和子串T，子串T的定位就是要在主串S中找到一个与子串T相等的子串。</p>
+</blockquote>
+<a id="more"></a>
+
+<h1 id="算法简述"><a href="#算法简述" class="headerlink" title="算法简述"></a>算法简述</h1><blockquote>
+<p>在<a href="http://blog.csdn.net/u013595419/article/details/50533721" target="_blank" rel="noopener">第2章第3节练习题1 串的模式匹配(Naive)</a>中的算法是最简单的模式匹配算法，但是该种算法每当匹配失败时，对主串已经匹配过的字符又需要重新匹配一次，时间复杂度为$O(n^2)$。因此这里引入了KMP算法。KMP算法与<a href="http://blog.csdn.net/u013595419/article/details/50533721" target="_blank" rel="noopener">第2章第3节练习题1 串的模式匹配(Naive) </a>中算法最大的不同便是重新创建了一张跳转表，而且使得主串仅可以访问一次，子串可以一次跨过多个元素进行比较。为了从总体上来说明该算法，这里举个例子：</p>
+</blockquote>
+<blockquote>
+<p>主串S：babcbabcabcaabcabcabcacabc<br>子串T：abcabcacab</p>
+</blockquote>
+<p>在有些书中将子串T也称为模式串，但这都不重要，本讲解称其为子串。首先给出经过优化后的跳转表（next），从整体上简单的梳理下执行过程。</p>
+<ul>
+<li><strong>跳转表（next）</strong></li>
+</ul>
+<table>
+<thead>
+<tr>
+<th align="center">j</th>
+<th align="center">1</th>
+<th align="center">2</th>
+<th align="center">3</th>
+<th align="center">4</th>
+<th align="center">5</th>
+<th align="center">6</th>
+<th align="center">7</th>
+<th align="center">8</th>
+<th align="center">9</th>
+<th align="center">10</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center"><strong>next[j]</strong></td>
+<td align="center">0</td>
+<td align="center">1</td>
+<td align="center">1</td>
+<td align="center">0</td>
+<td align="center">1</td>
+<td align="center">1</td>
+<td align="center">0</td>
+<td align="center">5</td>
+<td align="center">0</td>
+<td align="center">1</td>
+</tr>
+<tr>
+<td align="center"><strong>T[j]</strong></td>
+<td align="center">a</td>
+<td align="center">b</td>
+<td align="center">c</td>
+<td align="center">a</td>
+<td align="center">b</td>
+<td align="center">c</td>
+<td align="center">a</td>
+<td align="center">c</td>
+<td align="center">a</td>
+<td align="center">b</td>
+</tr>
+<tr>
+<td align="center"><br/></td>
+<td align="center"></td>
+<td align="center"></td>
+<td align="center"></td>
+<td align="center"></td>
+<td align="center"></td>
+<td align="center"></td>
+<td align="center"></td>
+<td align="center"></td>
+<td align="center"></td>
+<td align="center"></td>
+</tr>
+<tr>
+<td align="center">跳转表最大的特色就是决定了子串一次性可以跳过多少个元素与主串进行比较，跳转表的作用是前<em><code>next[j]-1</code></em>个元素组成的字符串和第j号元素之前(不包括第j号元素)的<em><code>next[j]-1</code></em>个字符串相等，这么听起来比较抽象，举个简单的例子说明下，比如以 $j=8$为例。</td>
+<td align="center"></td>
+<td align="center"></td>
+<td align="center"></td>
+<td align="center"></td>
+<td align="center"></td>
+<td align="center"></td>
+<td align="center"></td>
+<td align="center"></td>
+<td align="center"></td>
+<td align="center"></td>
+</tr>
+</tbody></table>
+<blockquote>
+<p>当$j=8$时，查得next[8]=5，则可以推出前4个元素和第8号(不包括第8号元素)元素前面的4个元素相等。<br>即：T[1]T[2]T[3]T[4]组成的字符串“abca”与T[4]T[5]T[6]T[7]组成的字符串“abcd”相等。<br>这里简写为T$<em>{1,2,3,4}$=T$</em>{4,5,6,7}$<br>不失一般性，进行一次推广，得到广义的公式。这里令k=next[j]，即</p>
+<blockquote>
+<p>T$<em>{1,2,…,k-1}$==T$</em>{j-(k-1),j-(k-2),…,j-1}$</p>
+</blockquote>
+</blockquote>
+<ul>
+<li><strong>执行过程</strong></li>
+</ul>
+<p>| i | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 |  17 | 18 | 19 | 20 | 21 | 22 | 22| 23 | 24 |<br>| :–: | :–:|:–:| :–:| :–:|:–:| :–:| :–:|:–:| :–:| :–:|:–:| :–:| :–:|:–:| :–:| :–:||:–:| :–:| :–:|:–:| :–:| :–:| :–:| :–:|<br>| <strong>S[i]</strong>| b  | a | b | c | b | a | b | c | a | b | c  | a | a | b | c | a |b  | c | a | b | c | a | c | a | b | c |<br>| <strong>T</strong>| a |<br>| <strong>T</strong>| |a | b | c | a |<br>| <strong>T</strong>| | | | | | a | b | c | a | b | c | a | c |<br>| <strong>T</strong>| | | | | | | | | a | b | c | a | b |<br>| <strong>T</strong>| | | | | | | | | | | | | a | b | c | a | b | c | a | c |<br>| <strong>T</strong>| | | | | | | | | | | | | | | | a | b | c | a | b | c | a | c | a | b |</p>
+<br/>
+这里应该特别注意的是主串和子串的下标标号方式不同，**主串下标从0开始，子串下标从1开始**。
+
+<blockquote>
+<ul>
+<li>第一轮比较中，T[1]!=S[0]，查找跳转表得<code>next[1]=0</code>此时便可以得出子串的第一个元素与此时主串的元素不匹配，对主串的下一个元素进行比较；</li>
+<li>进入第二轮比较，当比较到T[4]时，发现T[4]!=S[4]，查找跳转表得<code>next[4]=0</code>，原因同上，对主串的下一个元素进行比较；</li>
+<li>进入第三轮比较，当比较到T[8]时，发现T[8]!=S[12]，查找跳转表得<code>next[8]=5</code>，进入下一轮比较；</li>
+<li>进入第四轮比较，由上轮比较中得到<code>next[8]=5</code>，比较T[5]与S[12]，结果发现T[5]!=S[12]，查找跳转表得<code>next[5]=1</code>，进入下轮比较；</li>
+<li>进入第五轮比较，由上轮比较中得到<code>next[5]=1</code>，比较T[1]与S[12]，然后发现T[1]=S[12]，开始挨个比较，比较到T[8]时，发现T[8]!=S[19]，查找跳转表得<code>next[8]=5</code>，进入下轮比较；</li>
+<li>进入第六轮比较，由上轮比较中查找过程得到<code>next[8]=5</code>，比较T[5]与S[19]，结果发现T[5]=S[19]，开始逐个比较；</li>
+<li>最后子串T与主串S全部比较完成，返回结果。</li>
+</ul>
+</blockquote>
+<p>这里便可以推出KMP算法的核心执行步骤为：</p>
+<blockquote>
+<ul>
+<li>如果j==0，则表明子串的第一个元素不满足，则将主串的下一个元素与子串的第一个元素相比；</li>
+<li>如果S[i]==T[j]则开始比较下一个元素，即S[i+1]与T[j+1]；</li>
+<li>如果不相等，则比较S[i]与T[next[j]]；</li>
+</ul>
+</blockquote>
+<h1 id="算法详解"><a href="#算法详解" class="headerlink" title="算法详解"></a>算法详解</h1><p>在<code>算法简述</code>中，简单的梳理了下执行流程，也推出了KMP算法的核心步骤，与<a href="http://blog.csdn.net/u013595419/article/details/50533721" target="_blank" rel="noopener">第2章第3节练习题1 串的模式匹配(Naive) </a>并无太大差异，只是如果不相等的时候，并不需要对主串S的下标重置，而是对子串T进行移位便可。而真正的难点便是建立跳转表（next），因为满足跳转表（next）的元素有一个非常重要的特性便是：</p>
+<blockquote>
+<p>T$<em>{1,2,…,k-1}$==T$</em>{j-(k-1),j-(k-2),…,j-1}$</p>
+</blockquote>
+<p>而且由上面的特性很容易发现，当第j号元素与主串相应的元素“失配”时，才需要在子串中重新置位与主串再次相比，这里便引出跳转表（next）的定义：</p>
+<p>$$<br>next[j] =<br>\begin{cases}<br>0,  &amp; \text{$j=1$ } \[2ex]<br>\max{k|1 \lt k \lt j},  &amp; \text{T$<em>{1,2,…,k-1}$==T$</em>{j-(k-1),j-(k-2),…,j-1}$} \[2ex]<br>1,  &amp; \text{Other} \[2ex]<br>\end{cases}<br>$$</p>
+<h2 id="思想1"><a href="#思想1" class="headerlink" title="思想1"></a>思想1</h2><p>那么根据上述定义，对子串T，进行分析，很容易发现定义中涉及到了子串自身的比较，即子串在求解跳转表时既作主串又作子串，而且比较的正是T$<em>{1,2,…,k-1}$?=T$</em>{j-(k-1),j-(k-2),…,j-1}$。既然这样继续以本文前面列出的子串T为例。<br>| j | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 |<br>| :–: | :–:|:–:| :–:| :–:|:–:| :–:| :–:|:–:| :–:| :–:|<br>| <strong>T[j]</strong>| a | b | c | a | b | c | a | c | a | b |<br>根据定义对子串T进行展开，可以得到下表：<br>| j | k | $=$ or $\neq$ | next[j] |<br>| :– | :–:|:–:| –:|<br>|若 j=1|k=0| |next[1]=0|<br>|若 j=2|k=1| |next[2]=1|<br>|若 j=3|k=2| a$\neq$b |next[3]=1|<br>|若 j=4|k=2| a$\neq$c | |<br>| |k=3| ab$\neq$bc |next[4]=1|<br>|若 j=5|k=2| a$=$a |next[5]=2|<br>| |k=3| ab$\neq$ca | |<br>| |k=4| abc$\neq$bca | |<br>|若 j=6|k=2|a$\neq$b| |<br>| |k=3|ab$=$ab|next[6]=3|<br>| |k=4|abc$\neq$cab| |<br>| |k=5|abca$\neq$bcab| |<br>|若 j=7|k=2|a$\neq$c| |<br>| |k=3|ab$\neq$bc||<br>| |k=4|abc$=$abc|next[7]=4|<br>| |k=5|abca$\neq$cabc| |<br>| |k=6|abcab$\neq$bcabc| |<br>|若 j=8|k=2|a$=$a| |<br>| |k=3|ab$\neq$ca| |<br>| |k=4|abc$\neq$bca| |<br>| |k=5|abca$=$abca|next[7]=5|<br>| |k=6|abcab$\neq$cabca| |<br>| |k=7|abcabc$\neq$bcabca| |<br>|若 j=9|k=2|a$\neq$c|next[9]=1|<br>| |k=3|ab$\neq$ac||<br>| |k=4|abc$\neq$cac| |<br>| |k=5|abca$\neq$bcac| |<br>| |k=6|abcab$\neq$abcac |<br>| |k=7|abcabc$\neq$cabcac| |<br>| |k=8|abcabca$\neq$bcabcac| |<br>|若 j=10|k=2|a$=$a|next[10]=2|<br>| |k=3|ab$\neq$ca||<br>| |k=4|abc$\neq$aca| |<br>| |k=5|abca$\neq$caca| |<br>| |k=6|abcab$\neq$bcaca| |<br>| |k=7|abcabc$\neq$abcaca| |<br>| |k=8|abcabca$\neq$cabcaca| |<br>| |k=9|abcabcac$\neq$bcabcaca| |</p>
+<p>整理下可得跳转表（next）<br>| j | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 |<br>| :–: | :–:|:–:| :–:| :–:|:–:| :–:| :–:|:–:| :–:| :–:|<br>| <strong>next[j]</strong>| 0 | 1 | 1 | 1 | 2 | 3 | 4 | 5 | 1 | 2 |</p>
+<p>根据定义和上述求解过程，很容易想到用暴力方法强解此题。算法描述如下：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">BuildNext</span><span class="params">(<span class="keyword">String</span>* T, <span class="keyword">int</span> next[])</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	<span class="keyword">int</span> temp[MaxSize]=&#123;<span class="number">0</span>&#125;;</span><br><span class="line">	<span class="keyword">int</span> k,i,<span class="built_in">max</span>;</span><br><span class="line"></span><br><span class="line">	<span class="keyword">for</span>(<span class="keyword">int</span> j=<span class="number">1</span>;j&lt;=T-&gt;length;j++)&#123;</span><br><span class="line"></span><br><span class="line">		<span class="keyword">for</span>(k=<span class="number">1</span>;k&lt;j;k++)&#123;</span><br><span class="line"></span><br><span class="line">			i=<span class="number">0</span>;</span><br><span class="line">			<span class="keyword">while</span>(T-&gt;data[i]==T-&gt;data[j-k+i]&amp;&amp;i&lt;k<span class="number">-1</span>)&#123;</span><br><span class="line">				++i;</span><br><span class="line">			&#125;</span><br><span class="line">			<span class="keyword">if</span>(i==k<span class="number">-1</span>)&#123;</span><br><span class="line">				temp[k]=k;</span><br><span class="line">			&#125;<span class="keyword">else</span>&#123;</span><br><span class="line">				temp[k]=<span class="number">1</span>;</span><br><span class="line">			&#125;</span><br><span class="line"></span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">		<span class="built_in">max</span>=temp[<span class="number">1</span>];</span><br><span class="line">		<span class="keyword">for</span>(<span class="keyword">int</span> cnt=<span class="number">1</span>;cnt&lt;k;cnt++)&#123;</span><br><span class="line">			<span class="keyword">if</span>(<span class="built_in">max</span>&lt;temp[cnt])&#123;</span><br><span class="line">				<span class="built_in">max</span>=temp[cnt];</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">		next[j]=<span class="built_in">max</span>;</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这种解法的缺点也非常明显，时间复杂度达到了惊人的$O(n^2)$，这样的算法计算跳转表的效率明显比较低下。</p>
+<h2 id="思想2"><a href="#思想2" class="headerlink" title="思想2"></a>思想2</h2><p>跳转表的存在的意义就是运用字符串本身的特点对下标进行置位，而满足跳转表条件的若干（k-1）个连续字符T$<em>{1,2,…,k-1}$必然等于T$</em>{j-(k-1),j-(k-2),…,j-1}$，这样实际上就变成了将串T既看做主串又看做子串T然后进行一次比较的过程，过程描述如下：</p>
+<blockquote>
+<ul>
+<li>主串T[2]与子串T[1]相比较，结果不相等，将next[3]置为1；</li>
+<li>主串T[3]与子串T[1]相比较，结果不相等，将next[4]置为1；</li>
+<li>主串T[4]与子串T[1]相比较，结果相等，将next[5]置为2；</li>
+<li>以此类推，得到next[8]=5，此时T[8]与子串T[5]，此时不相等，则不能得到next[9]；</li>
+<li>然后取出next[8]，使子串T[next[8]]与主串T[8]相比，结果依旧不相等；然后再取出next[5]，让子串T[next[5]]与主串T[8]相比，结果依旧不相等；接着取出next[2]，让子串T[next[2]]（即子串T[1]）与主串T[8]相比，结果依旧不相等；此时将next[9]置1；</li>
+<li>最后主串T[9]与子串T[1]相比，结果相等，则将next[10]置为2。</li>
+</ul>
+</blockquote>
+<p>为了更为形象的说明上面的描述，再次具体化以上过程 ，如下所示：</p>
+<table>
+<thead>
+<tr>
+<th align="center">i</th>
+<th align="center">1</th>
+<th align="center">2</th>
+<th align="center">3</th>
+<th align="center">4</th>
+<th align="center">5</th>
+<th align="center">6</th>
+<th align="center">7</th>
+<th align="center">8</th>
+<th align="center">9</th>
+<th align="center">10</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center"><strong>T</strong></td>
+<td align="center">a</td>
+<td align="center">b</td>
+<td align="center">c</td>
+<td align="center">a</td>
+<td align="center">b</td>
+<td align="center">c</td>
+<td align="center">a</td>
+<td align="center">c</td>
+<td align="center">a</td>
+<td align="center">b</td>
+</tr>
+<tr>
+<td align="center"><strong>T</strong></td>
+<td align="center"></td>
+<td align="center">a</td>
+<td align="center"></td>
+<td align="center"></td>
+<td align="center"></td>
+<td align="center"></td>
+<td align="center"></td>
+<td align="center"></td>
+<td align="center"></td>
+<td align="center"></td>
+</tr>
+<tr>
+<td align="center"><strong>T</strong></td>
+<td align="center"></td>
+<td align="center"></td>
+<td align="center">a</td>
+<td align="center"></td>
+<td align="center"></td>
+<td align="center"></td>
+<td align="center"></td>
+<td align="center"></td>
+<td align="center"></td>
+<td align="center"></td>
+</tr>
+<tr>
+<td align="center"><strong>T</strong></td>
+<td align="center"></td>
+<td align="center"></td>
+<td align="center"></td>
+<td align="center">a</td>
+<td align="center">b</td>
+<td align="center">c</td>
+<td align="center">a</td>
+<td align="center">b</td>
+<td align="center"></td>
+<td align="center"></td>
+</tr>
+<tr>
+<td align="center"><strong>T</strong></td>
+<td align="center"></td>
+<td align="center"></td>
+<td align="center"></td>
+<td align="center"></td>
+<td align="center"></td>
+<td align="center"></td>
+<td align="center">a</td>
+<td align="center">b</td>
+<td align="center"></td>
+<td align="center"></td>
+</tr>
+<tr>
+<td align="center"><strong>T</strong></td>
+<td align="center"></td>
+<td align="center"></td>
+<td align="center"></td>
+<td align="center"></td>
+<td align="center"></td>
+<td align="center"></td>
+<td align="center"></td>
+<td align="center">a</td>
+<td align="center"></td>
+<td align="center"></td>
+</tr>
+<tr>
+<td align="center"><strong>T</strong></td>
+<td align="center"></td>
+<td align="center"></td>
+<td align="center"></td>
+<td align="center"></td>
+<td align="center"></td>
+<td align="center"></td>
+<td align="center"></td>
+<td align="center"></td>
+<td align="center">a</td>
+<td align="center">b</td>
+</tr>
+</tbody></table>
+<p>扼要的总结下思想：</p>
+<blockquote>
+<p>令k=next[j]<br>若T[k]==T[j]，则有T$<em>{1,2,…,k}$==T$</em>{j-(k-1),j-(k-2),…,j}$；也就是说next[j+1]=next[j]+1<br>若T[k]！=T[j]时，便是一个回溯的过程，是求跳转表的难点，可以参考上面的过程理解。</p>
+</blockquote>
+<p>这样 便通过将串T既看做子串又看做主串的方式进行比较，从而得到了跳转表，如下所示：</p>
+<table>
+<thead>
+<tr>
+<th align="center">j</th>
+<th align="center">1</th>
+<th align="center">2</th>
+<th align="center">3</th>
+<th align="center">4</th>
+<th align="center">5</th>
+<th align="center">6</th>
+<th align="center">7</th>
+<th align="center">8</th>
+<th align="center">9</th>
+<th align="center">10</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center"><strong>next[j]</strong></td>
+<td align="center">0</td>
+<td align="center">1</td>
+<td align="center">1</td>
+<td align="center">1</td>
+<td align="center">2</td>
+<td align="center">3</td>
+<td align="center">4</td>
+<td align="center">5</td>
+<td align="center">1</td>
+<td align="center">2</td>
+</tr>
+<tr>
+<td align="center"><strong>T[j]</strong></td>
+<td align="center">a</td>
+<td align="center">b</td>
+<td align="center">c</td>
+<td align="center">a</td>
+<td align="center">b</td>
+<td align="center">c</td>
+<td align="center">a</td>
+<td align="center">c</td>
+<td align="center">a</td>
+<td align="center">b</td>
+</tr>
+<tr>
+<td align="center"><br/></td>
+<td align="center"></td>
+<td align="center"></td>
+<td align="center"></td>
+<td align="center"></td>
+<td align="center"></td>
+<td align="center"></td>
+<td align="center"></td>
+<td align="center"></td>
+<td align="center"></td>
+<td align="center"></td>
+</tr>
+</tbody></table>
+<p>根据上面的过程，可以写出该算法的扼要过程，如下所示：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">BuildNext</span><span class="params">(<span class="keyword">String</span>* T, <span class="keyword">int</span> next[])</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">int</span> i, j;</span><br><span class="line"></span><br><span class="line">    i=<span class="number">1</span>;</span><br><span class="line">    j=<span class="number">0</span>;</span><br><span class="line">    next[<span class="number">1</span>]=<span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">while</span>(i&lt;T-&gt;length)&#123;</span><br><span class="line">		<span class="keyword">if</span>(T-&gt;data[i]==T-&gt;data[j]||j==<span class="number">0</span>)&#123;</span><br><span class="line">			++i;</span><br><span class="line">			++j;</span><br><span class="line">			next[i]=j;</span><br><span class="line">		&#125;<span class="keyword">else</span>&#123;</span><br><span class="line">			j=next[j];</span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>最后再将主串S和子串T从头比较一次，熟悉下整个流程，过程如下：</p>
+<p>| i | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 |  17 | 18 | 19 | 20 | 21 | 22 | 22| 23 | 24 |<br>| :–: | :–: |:–:|:–:| :–:|:–:| :–:| :–:|:–:| :–:| :–:|:–:| :–:| :–:|:–:| :–:| :–:|:–:| :–:| :–:|:–:| :–:| :–:| :–:| :–:|<br>| <strong>S[i]</strong>| b  | a | b | c | b | a | b | c | a | b | c  | a | a | b | c | a |b  | c | a | b | c | a | c | a | b | c |<br>| <strong>T</strong>| a |<br>| <strong>T</strong>| |a | b | c | a |<br>| <strong>T</strong>| | | | | a |<br>| <strong>T</strong>| | | | | | a | b | c | a | b | c | a | c |<br>| <strong>T</strong>| | | | | | | | | a | b | c | a | b |<br>| <strong>T</strong>| | | | | | | | | | | | a | b |<br>| <strong>T</strong>| | | | | | | | | | | | | a | b | c | a | b | c | a | c |<br>| <strong>T</strong>| | | | | | | | | | | | | | | | a | b | c | a | b | c | a | c | a | b |</p>
+<h2 id="思想3"><a href="#思想3" class="headerlink" title="思想3"></a>思想3</h2><p>上面虽然已经完成了建立跳转表，使用KMP算法完成了子串的查找，但是通过分析就可以发现，建立跳转表完全可以再优化一次，即一步到位。</p>
+<blockquote>
+<ul>
+<li>主串S[4]与子串T[4]完全可以不需要，因为T[4]==T[1]，已经判断出T[4]!=S[4]，也就无需在额外的判断T[1]!=S[4]了；</li>
+<li>主串S[12]与子串T[2]亦完全可以不要 ，原因同上，已知T[5]==T[2] ，也就无需判断T[2] !=S[12]了；</li>
+</ul>
+</blockquote>
+<p>先对跳转表完成优化，如下所示：</p>
+<ul>
+<li><strong>跳转表（next）</strong></li>
+</ul>
+<table>
+<thead>
+<tr>
+<th align="center">j</th>
+<th align="center">1</th>
+<th align="center">2</th>
+<th align="center">3</th>
+<th align="center">4</th>
+<th align="center">5</th>
+<th align="center">6</th>
+<th align="center">7</th>
+<th align="center">8</th>
+<th align="center">9</th>
+<th align="center">10</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center"><strong>next[j]</strong></td>
+<td align="center">0</td>
+<td align="center">1</td>
+<td align="center">1</td>
+<td align="center">0</td>
+<td align="center">1</td>
+<td align="center">1</td>
+<td align="center">0</td>
+<td align="center">5</td>
+<td align="center">0</td>
+<td align="center">1</td>
+</tr>
+<tr>
+<td align="center"><strong>T[j]</strong></td>
+<td align="center">a</td>
+<td align="center">b</td>
+<td align="center">c</td>
+<td align="center">a</td>
+<td align="center">b</td>
+<td align="center">c</td>
+<td align="center">a</td>
+<td align="center">c</td>
+<td align="center">a</td>
+<td align="center">b</td>
+</tr>
+<tr>
+<td align="center"><br/></td>
+<td align="center"></td>
+<td align="center"></td>
+<td align="center"></td>
+<td align="center"></td>
+<td align="center"></td>
+<td align="center"></td>
+<td align="center"></td>
+<td align="center"></td>
+<td align="center"></td>
+<td align="center"></td>
+</tr>
+</tbody></table>
+<ul>
+<li><strong>执行过程</strong></li>
+</ul>
+<p>| i | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 |  17 | 18 | 19 | 20 | 21 | 22 | 22| 23 | 24 |<br>| :–: | :–:|:–:| :–:| :–:|:–:| :–:| :–:|:–:| :–:| :–:|:–:| :–:| :–:|:–:| :–:| :–:||:–:| :–:| :–:|:–:| :–:| :–:| :–:| :–:|<br>| <strong>S[i]</strong>| b  | a | b | c | b | a | b | c | a | b | c  | a | a | b | c | a |b  | c | a | b | c | a | c | a | b | c |<br>| <strong>T</strong>| a |<br>| <strong>T</strong>| |a | b | c | a |<br>| <strong>T</strong>| | | | | | a | b | c | a | b | c | a | c |<br>| <strong>T</strong>| | | | | | | | | a | b | c | a | b |<br>| <strong>T</strong>| | | | | | | | | | | | | a | b | c | a | b | c | a | c |<br>| <strong>T</strong>| | | | | | | | | | | | | | | | a | b | c | a | b | c | a | c | a | b |<br><br/></p>
+<p>对上述过程进行总结，完成对算法的优化，描述如下：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">BuildNext</span><span class="params">(<span class="keyword">String</span>* T, <span class="keyword">int</span> next[])</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">int</span> i, j;</span><br><span class="line"></span><br><span class="line">    i=<span class="number">1</span>;</span><br><span class="line">    j=<span class="number">0</span>;</span><br><span class="line">    next[<span class="number">1</span>]=<span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">while</span>(i&lt;T-&gt;length)&#123;</span><br><span class="line">		<span class="keyword">if</span>(T-&gt;data[i]==T-&gt;data[j]||j==<span class="number">0</span>)&#123;</span><br><span class="line">			++i;</span><br><span class="line">			++j;</span><br><span class="line">			<span class="keyword">if</span>(T-&gt;data[i]!=T-&gt;data[j])&#123;</span><br><span class="line">				next[i]=j;</span><br><span class="line">			&#125;<span class="keyword">else</span>&#123;</span><br><span class="line">				next[i]=next[j];</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;<span class="keyword">else</span>&#123;</span><br><span class="line">			j=next[j];</span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+<p>至此，KMP算法的讲解算是完成了，那么这里顺便简单的分析下时间复杂度，求解跳转表（next）时仅仅对子串T进行了一次遍历；在KMP算法中，仅对主串S进行了一次遍历；假设主串长为n，子串长为m，则时间复杂度明显为$O(m+n)$。<br>具体代码见附件。</p>
+<hr>
+<h1 id="附件"><a href="#附件" class="headerlink" title="附件"></a>附件</h1><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;stdio.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;stdlib.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> MaxSize 100</span></span><br><span class="line"><span class="keyword">typedef</span> <span class="keyword">char</span> ElemType;</span><br><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span>&#123;</span></span><br><span class="line">	ElemType data[MaxSize];</span><br><span class="line">	<span class="keyword">int</span> length;</span><br><span class="line">&#125;<span class="keyword">String</span>;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">StrCreatS</span><span class="params">(<span class="keyword">String</span>*)</span></span>;</span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">StrCreatT</span><span class="params">(<span class="keyword">String</span>*)</span></span>;</span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">Print</span><span class="params">(<span class="keyword">String</span>*)</span></span>;</span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">BuildNext</span><span class="params">(<span class="keyword">String</span>*,<span class="keyword">int</span>*)</span></span>;</span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">KMP</span><span class="params">(<span class="keyword">String</span>*,<span class="keyword">String</span>*,<span class="keyword">int</span>*)</span></span>;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">(<span class="keyword">int</span> argc,<span class="keyword">char</span>* argv[])</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	<span class="keyword">String</span> *s;</span><br><span class="line">	s=(<span class="keyword">String</span>*)<span class="built_in">malloc</span>(<span class="keyword">sizeof</span>(<span class="keyword">String</span>));</span><br><span class="line">	StrCreatS(s);</span><br><span class="line"></span><br><span class="line">	<span class="keyword">String</span> *t;</span><br><span class="line">	t=(<span class="keyword">String</span>*)<span class="built_in">malloc</span>(<span class="keyword">sizeof</span>(<span class="keyword">String</span>));</span><br><span class="line">	StrCreatT(t);</span><br><span class="line"></span><br><span class="line">	<span class="keyword">int</span> next[MaxSize]=&#123;<span class="number">0</span>&#125;;</span><br><span class="line">	BuildNext(t,next);</span><br><span class="line"></span><br><span class="line">	<span class="keyword">int</span> flag=KMP(s,t,next);</span><br><span class="line">	<span class="keyword">if</span>(flag!=<span class="number">-1</span>)&#123;</span><br><span class="line">		<span class="built_in">printf</span>(<span class="string">"Position is %d.\n"</span>,flag+<span class="number">1</span>);</span><br><span class="line">	&#125;<span class="keyword">else</span>&#123;</span><br><span class="line">		<span class="built_in">printf</span>(<span class="string">"Illege Find!\n"</span>);</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">//创建主串</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">StrCreatS</span><span class="params">(<span class="keyword">String</span>* S)</span></span>&#123;</span><br><span class="line">	<span class="keyword">char</span> x;</span><br><span class="line">	S-&gt;length=<span class="number">0</span>;</span><br><span class="line">	<span class="built_in">printf</span>(<span class="string">"Input String_S(End of '#'!):\n"</span>);</span><br><span class="line">	<span class="built_in">scanf</span>(<span class="string">"%c"</span>,&amp;x);</span><br><span class="line">	<span class="keyword">while</span>(x!=<span class="string">'#'</span>)&#123;</span><br><span class="line">		S-&gt;data[S-&gt;length++]=x;</span><br><span class="line">		<span class="built_in">scanf</span>(<span class="string">"%c"</span>,&amp;x);</span><br><span class="line">	&#125;</span><br><span class="line">	getchar();</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">//创建子串</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">StrCreatT</span><span class="params">(<span class="keyword">String</span>* S)</span></span>&#123;</span><br><span class="line">	<span class="keyword">char</span> x;</span><br><span class="line">	S-&gt;length=<span class="number">0</span>;</span><br><span class="line">	<span class="built_in">printf</span>(<span class="string">"Input String_T(End of '#'!):\n"</span>);</span><br><span class="line">	<span class="built_in">scanf</span>(<span class="string">"%c"</span>,&amp;x);</span><br><span class="line">	<span class="keyword">while</span>(x!=<span class="string">'#'</span>)&#123;</span><br><span class="line">		S-&gt;data[++S-&gt;length]=x;</span><br><span class="line">		<span class="built_in">scanf</span>(<span class="string">"%c"</span>,&amp;x);</span><br><span class="line">	&#125;</span><br><span class="line">	getchar();</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">//打印字符串</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">Print</span><span class="params">(<span class="keyword">String</span> *S)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	<span class="keyword">for</span>(<span class="keyword">int</span> i=<span class="number">0</span>;i&lt;S-&gt;length;i++)&#123;</span><br><span class="line">		<span class="built_in">printf</span>(<span class="string">"%c"</span>,S-&gt;data[i]);</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="built_in">printf</span>(<span class="string">"\n"</span>);</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">//建立跳转表</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">BuildNext</span><span class="params">(<span class="keyword">String</span>* T, <span class="keyword">int</span> next[])</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">int</span> i, j;</span><br><span class="line"></span><br><span class="line">    i=<span class="number">1</span>;</span><br><span class="line">    j=<span class="number">0</span>;</span><br><span class="line">    next[<span class="number">1</span>]=<span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">while</span>(i&lt;T-&gt;length)&#123;</span><br><span class="line">		<span class="keyword">if</span>(T-&gt;data[i]==T-&gt;data[j]||j==<span class="number">0</span>)&#123;</span><br><span class="line">			++i;</span><br><span class="line">			++j;</span><br><span class="line">			<span class="keyword">if</span>(T-&gt;data[i]!=T-&gt;data[j])&#123;</span><br><span class="line">				next[i]=j;</span><br><span class="line">			&#125;<span class="keyword">else</span>&#123;</span><br><span class="line">				next[i]=next[j];</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;<span class="keyword">else</span>&#123;</span><br><span class="line">			j=next[j];</span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">//KMP算法的核心</span></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">KMP</span><span class="params">(<span class="keyword">String</span>* S, <span class="keyword">String</span>* T,<span class="keyword">int</span> next[])</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">int</span> i=<span class="number">0</span>, j=<span class="number">1</span>;</span><br><span class="line"></span><br><span class="line">	<span class="keyword">while</span>(i&lt;S-&gt;length&amp;&amp;j&lt;T-&gt;length)&#123;</span><br><span class="line">        <span class="keyword">if</span>(S-&gt;data[i]==T-&gt;data[j]||j==<span class="number">0</span>)&#123;</span><br><span class="line">            ++i;</span><br><span class="line">            ++j;</span><br><span class="line">        &#125;<span class="keyword">else</span>&#123;</span><br><span class="line">            j = next[j];</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">	<span class="keyword">if</span>(j==T-&gt;length)&#123;</span><br><span class="line">		<span class="keyword">return</span> i+<span class="number">1</span>-T-&gt;length;</span><br><span class="line">	&#125;<span class="keyword">else</span>&#123;</span><br><span class="line">		<span class="keyword">return</span> <span class="number">-1</span>;</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<hr>
+<p>参考文献<br>Knuth D E, Morris J H, Pratt V R. Fast Pattern Matching in Strings.[J]. Siam Journal on Computing, 1977, 6(2):323-350.<br>参考Blog<br><a href="http://blog.csdn.net/joylnwang/article/details/6778316" target="_blank" rel="noopener">http://blog.csdn.net/joylnwang/article/details/6778316</a><br><a href="http://www.ruanyifeng.com/blog/2013/05/Knuth%E2%80%93Morris%E2%80%93Pratt_algorithm.html" target="_blank" rel="noopener">http://www.ruanyifeng.com/blog/2013/05/Knuth%E2%80%93Morris%E2%80%93Pratt_algorithm.html</a></p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/" rel="tag"># 数据结构</a>
+              <a href="/tags/%E4%B8%B2/" rel="tag"># 串</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-next post-nav-item">
+                <a href="/2016/01/17/Data-structure-and-algorithm/chapter2/%E7%AC%AC2%E7%AB%A0%E7%AC%AC3%E8%8A%82%E7%BB%83%E4%B9%A0%E9%A2%981%20%E4%B8%B2%E7%9A%84%E6%A8%A1%E5%BC%8F%E5%8C%B9%E9%85%8D(Naive)/" rel="next" title="第2章第3节练习题1 串的模式匹配(Naive)">
+                  <i class="fa fa-chevron-left"></i> 第2章第3节练习题1 串的模式匹配(Naive)
+                </a>
+            </div>
+
+            <span class="post-nav-divider"></span>
+
+            <div class="post-nav-prev post-nav-item">
+                <a href="/2016/02/29/Data-structure-and-algorithm/chapter2/%E7%AC%AC2%E7%AB%A0%E7%AC%AC3%E8%8A%82%E7%BB%83%E4%B9%A0%E9%A2%983%20%E4%B8%B2%E7%9A%84%E6%A8%A1%E5%BC%8F%E5%8C%B9%E9%85%8D(BM)/" rel="prev" title="第2章第3节练习题3 串的模式匹配(BM)">
+                  第2章第3节练习题3 串的模式匹配(BM) <i class="fa fa-chevron-right"></i>
+                </a>
+            </div>
+          </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#问题描述"><span class="nav-number">1.</span> <span class="nav-text">问题描述</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#算法简述"><span class="nav-number">2.</span> <span class="nav-text">算法简述</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#算法详解"><span class="nav-number">3.</span> <span class="nav-text">算法详解</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#思想1"><span class="nav-number">3.1.</span> <span class="nav-text">思想1</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#思想2"><span class="nav-number">3.2.</span> <span class="nav-text">思想2</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#思想3"><span class="nav-number">3.3.</span> <span class="nav-text">思想3</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#附件"><span class="nav-number">4.</span> <span class="nav-text">附件</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="acronymor"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">acronymor</p>
+  <div class="site-description" itemprop="description">I am who i am, the unique fooid</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives">
+          <span class="site-state-item-count">216</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+        <span class="site-state-item-count">27</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+        <span class="site-state-item-count">35</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="feed-link motion-element">
+    <a href="/atom.xml" rel="alternate">
+      <i class="fa fa-rss"></i>RSS
+    </a>
+  </div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/acronymor" title="GitHub &amp;rarr; https:&#x2F;&#x2F;github.com&#x2F;acronymor" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yourname@acronymor.com" title="E-Mail &amp;rarr; mailto:yourname@acronymor.com"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">acronymor</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> v4.2.0
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">Theme – <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> v7.5.0
+  </div>
+
+        
+
+
+
+
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

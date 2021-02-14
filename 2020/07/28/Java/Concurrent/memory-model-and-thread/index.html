@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+  <link rel="alternate" href="/atom.xml" title="Acronymor's Blog" type="application/atom+xml">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Muse',
+    version: '7.5.0',
+    exturl: false,
+    sidebar: {"position":"right","display":"hide","offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: '',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    translation: {
+      copy_button: 'Copy',
+      copy_success: 'Copied',
+      copy_failure: 'Copy failed'
+    },
+    sidebarPadding: 40
+  };
+</script>
+
+  <meta name="description" content="让计算机去同时处理几件事情可以充分利用计算机处理器，从另一个场景来看，一个服务器同时对多个客户端提供服务也是一个并发应用场景。衡量一个服务性能的高低好坏，每秒事务处理数(Transactions Per Second, TPS)是最重要的指标之一，它代表着一秒内服务器端平均能响应的请求总数，而TPS值与程序的并发能力又有非常密切的关系。对于计算量相同的任务，程序线程并发协调得有条不紊，效率自然就会">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Java内存模型与线程">
+<meta property="og:url" content="http://acronymor.com/2020/07/28/Java/Concurrent/memory-model-and-thread/index.html">
+<meta property="og:site_name" content="Acronymor&#39;s Blog">
+<meta property="og:description" content="让计算机去同时处理几件事情可以充分利用计算机处理器，从另一个场景来看，一个服务器同时对多个客户端提供服务也是一个并发应用场景。衡量一个服务性能的高低好坏，每秒事务处理数(Transactions Per Second, TPS)是最重要的指标之一，它代表着一秒内服务器端平均能响应的请求总数，而TPS值与程序的并发能力又有非常密切的关系。对于计算量相同的任务，程序线程并发协调得有条不紊，效率自然就会">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="http://acronymor.com/2020/07/28/Java/Concurrent/memory-model-and-thread/process-cache-memory.png">
+<meta property="og:image" content="http://acronymor.com/2020/07/28/Java/Concurrent/memory-model-and-thread/thread-memory.png">
+<meta property="og:image" content="http://acronymor.com/2020/07/28/Java/Concurrent/memory-model-and-thread/lwp-klt.jpeg">
+<meta property="og:image" content="http://acronymor.com/2020/07/28/Java/Concurrent/memory-model-and-thread/process-ut.jpeg">
+<meta property="og:image" content="http://acronymor.com/2020/07/28/Java/Concurrent/memory-model-and-thread/ut-lwp-klt.png">
+<meta property="og:image" content="http://acronymor.com/2020/07/28/Java/Concurrent/memory-model-and-thread/thread-status.jpeg">
+<meta property="article:published_time" content="2020-07-27T16:15:08.000Z">
+<meta property="article:modified_time" content="2020-07-27T16:16:18.000Z">
+<meta property="article:author" content="acronymor">
+<meta property="article:tag" content="Java">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://acronymor.com/2020/07/28/Java/Concurrent/memory-model-and-thread/process-cache-memory.png">
+
+<link rel="canonical" href="http://acronymor.com/2020/07/28/Java/Concurrent/memory-model-and-thread/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true,
+    isPage: false,
+    isArchive: false
+  };
+</script>
+
+  <title>Java内存模型与线程 | Acronymor's Blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Acronymor's Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-movies">
+
+    <a href="/movies/" rel="section"><i class="fa fa-fw fa-film"></i>movies</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>About</a>
+
+  </li>
+  </ul>
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="en">
+    <link itemprop="mainEntityOfPage" href="http://acronymor.com/2020/07/28/Java/Concurrent/memory-model-and-thread/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="acronymor">
+      <meta itemprop="description" content="I am who i am, the unique fooid">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Acronymor's Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Java内存模型与线程
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+              
+
+              <time title="Created: 2020-07-28 00:15:08 / Modified: 00:16:18" itemprop="dateCreated datePublished" datetime="2020-07-28T00:15:08+08:00">2020-07-28</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Java%E5%B9%B6%E5%8F%91%E7%BC%96%E7%A8%8B/" itemprop="url" rel="index">
+                    <span itemprop="name">Java并发编程</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>让计算机去同时处理几件事情可以充分利用计算机处理器，从另一个场景来看，一个服务器同时对多个客户端提供服务也是一个并发应用场景。衡量一个服务性能的高低好坏，每秒事务处理数(Transactions Per Second, TPS)是最重要的指标之一，它代表着一秒内服务器端平均能响应的请求总数，而TPS值与程序的并发能力又有非常密切的关系。<br>对于计算量相同的任务，程序线程并发协调得有条不紊，效率自然就会越高；反之，线程间频繁阻塞甚至死锁，将会大大降低程序的并发能力。</p>
+<a id="more"></a>
+
+<h1 id="硬件的效率与一致性"><a href="#硬件的效率与一致性" class="headerlink" title="硬件的效率与一致性"></a>硬件的效率与一致性</h1><p>由于计算机的存储设备与处理器的运算速度之间存在着数量级的差距，所以现代操作系统都不得不加入告诉缓存(Cache)来作为内存与处理器之间的缓冲：</p>
+<blockquote>
+<p>将运算需要使用到的数据复制到缓存中，让运算能够快速进行，当运算结束后，再从缓存同步回内存中</p>
+</blockquote>
+<p>基于高速缓存的存储交互很好的解决了处理器与内存的矛盾，但是也为计算机系统带来更高的复杂度。因为处理器既可以读写缓存，也可以读写内存，而内存和缓存中的数据可能指的是同一份数据，这样处理器就可以对“同一份”数据进行不同操作，便出现了<code>缓存一致性</code>(Cache Coherence)问题。为了解决这个问题，就处理器访问缓存时遵循某种流程（或称为协议）来操作，这类协议有<code>MSI</code>、<code>MESI</code>、<code>MOSI</code>、<code>Synapse</code>、<code>Firefly</code>, <code>Dragon Protocol</code>等。他们之间的关系如图所示。</p>
+<img src="/2020/07/28/Java/Concurrent/memory-model-and-thread/process-cache-memory.png" class="" title="[processor-cache-memory]">
+
+<h1 id="Java内存模型"><a href="#Java内存模型" class="headerlink" title="Java内存模型"></a>Java内存模型</h1><p>Java虚拟机规范中尝试着定义一种Java内存模型(Java Memory Model, JMM)来屏蔽掉各种硬件和操作系统的内存访问差异，以实现让Java程序在各种平台下都能达到一致性内存访问效果。</p>
+<p>Java内存模型的主要目标是定义程序中各个变量的访问规则，即在虚拟机中将变量存储到内存和从内存中取出变量这样的底层细节。</p>
+<blockquote>
+<p>Java内存模型中规定了所有变量都存储在主内存(Main Memory)中；<br>每个线程有自己的工作内存，线程的工作内存中保存了被该线程使用到的变量的主内存副本拷贝，线程对变量的所有操作都必须再工作内存中进行，而不能直接读写主内存中的变量；<br>不同线程之间也无法直接访问对方内存中的变量，线程间变量值的传递均需要通过主内存来完成，线程，主内存，工作内存。</p>
+</blockquote>
+<p>这里应该注意到，主内存，工作内存，均是逻辑概念，虽然与计算机体系中的“内存”名字颇为相似，但实际上并没有关系。</p>
+<h2 id="主内存和工作内存"><a href="#主内存和工作内存" class="headerlink" title="主内存和工作内存"></a>主内存和工作内存</h2><p>一个变量如何从主内存拷贝到工作内存，如何从工作内存同步回主内存之类的实现细节，Java内存模型中定义了以下8种操作来完成。这8种操作都是原子性的、不可再分的（对double和Long类型除外）。</p>
+<ul>
+<li>lock(锁定)：作用于主内存变量，它把一个变量标识为一条线程独占的状态。</li>
+<li>unlock(解锁)：作用于主内存变量，它把一个处理锁定的状态的变量释放出来,释放后的变量才可以被其它线程锁定，unlock之前必须将变量值同步回主内存。</li>
+<li>read(读取)：作用于主内存变量，它把一个变量的值从主内存传输到线程的工作内存中，以便随后的load动作使用。</li>
+<li>load(载入)：作用于工作内存变量，它把read操作从主内存中得到的值放入工作内存的变量副本中。</li>
+<li>use(使用)：作用于工作内存中的变量，它把工作内存中一个变量的值传递给执行引擎，每当虚拟机遇到一个需要使用到变量的字节码指令时将会执行这个操作。</li>
+<li>assign(赋值)：作用于工作内存变量，它把一个从执行引擎接到的值赋值给工作内存的变量，每当虚拟机遇到一个给变量赋值的字节码指令时执行这个操作。</li>
+<li>store(存储)：作用于工作内存的变量，它把工作内存中一个变量的值传送到主内存中，以便随后的write操作使用。</li>
+<li>write(写入)：作用于主内存的变量，它把store操作从工作内存中得到的值放入主内存的变量中。</li>
+</ul>
+<p>整个流程如下图所示：</p>
+<img src="/2020/07/28/Java/Concurrent/memory-model-and-thread/thread-memory.png" class="" title="[thread-memory-workflow]">
+
+<h1 id="原子性、可见性与有序性"><a href="#原子性、可见性与有序性" class="headerlink" title="原子性、可见性与有序性"></a>原子性、可见性与有序性</h1><table>
+<thead>
+<tr>
+<th align="center">特性</th>
+<th align="center">volatile关键字</th>
+<th align="center">synchronized关键字</th>
+<th align="center">Lock接口</th>
+<th align="left">Atomic变量</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">原子性</td>
+<td align="center">无法保障</td>
+<td align="center">可以保障</td>
+<td align="center">可以保障</td>
+<td align="left">可以保障</td>
+</tr>
+<tr>
+<td align="center">可见性</td>
+<td align="center">可以保障</td>
+<td align="center">可以保障</td>
+<td align="center">可以保障</td>
+<td align="left">可以保障</td>
+</tr>
+<tr>
+<td align="center">有序性</td>
+<td align="center">一定程度保障</td>
+<td align="center">可以保障</td>
+<td align="center">可以保障</td>
+<td align="left">无法保障</td>
+</tr>
+</tbody></table>
+<h2 id="原子性-Atomicity"><a href="#原子性-Atomicity" class="headerlink" title="原子性(Atomicity)"></a>原子性(Atomicity)</h2><p>由Java内存模型来直接保证的原子性变量操作包括<code>read</code>、<code>load</code>、<code>use</code>、<code>assign</code>、<code>store</code>和<code>write</code>六个，大致可以认为基础数据类型的访问和读写是具备原子性的。<br>如果应用场景需要一个更大范围的原子性保证，Java内存模型还提供了lock和unlock操作来满足这种需求，尽管虚拟机未把<code>lock</code>与<code>unlock</code>操作直接开放给用户使用，但是却提供了更高层次的字节码指令<code>monitorenter</code>和<code>monitorexit</code>来隐匿地使用这两个操作，这两个字节码指令反映到Java代码中就是同步块—synchronized关键字，因此在synchronized块之间的操作也具备原子性。</p>
+<h2 id="可见性-Visibility"><a href="#可见性-Visibility" class="headerlink" title="可见性(Visibility)"></a>可见性(Visibility)</h2><p>可见性就是指当一个线程修改了线程共享变量的值，其它线程能够立即得知这个修改。<br>Java内存模型是通过在变量修改后将新值同步回主内存，在变量读取前从主内存刷新变量值这种依赖主内存作为传递媒介的方法来实现可见性的，无论是普通变量还是volatile变量都是如此，普通变量与volatile变量的区别是volatile的特殊规则保证了新值能立即同步到主内存，以及每使用前立即从内存刷新。因为我们可以说volatile保证了线程操作时变量的可见性，而普通变量则不能保证这一点。<br>除了volatile之外，Java还有两个关键字能实现可见性，即<code>synchronized</code>和<code>final</code>。</p>
+<blockquote>
+<p>同步块的可见性是由“对一个变量执行unlock操作之前，必须先把此变量同步回主内存中(执行store和write操作)”这条规则获得的。<br>final关键字的可见性是指：被final修饰的字段是构造器一旦初始化完成，并且构造器没有把“this”引用传递出去，那么在其它线程中就能看见final字段的值。</p>
+</blockquote>
+<h2 id="有序性-Ordering"><a href="#有序性-Ordering" class="headerlink" title="有序性(Ordering)"></a>有序性(Ordering)</h2><p>Java内存模型中的程序天然有序性可以总结为一句话：</p>
+<blockquote>
+<p>如果在本线程内观察，所有操作都是有序的；<br>如果在一个线程中观察另一个线程，所有操作都是无序的。</p>
+</blockquote>
+<p>前半句是指“线程内表现为串行语义”，后半句是指“指令重排序”现象和“工作内存主主内存同步延迟”现象。</p>
+<p>Java语言提供了volatile和synchronized两个关键字来保证线程之间操作的有序性，volatile关键字本身就包含了禁止指令重排序的语义，而synchronized则是由“一个变量在同一时刻只允许一条线程对其进行lock操作”这条规则来获得的，这个规则决定了持有同一个锁的两个同步块只能串行地进入。</p>
+<h1 id="先行发生原则"><a href="#先行发生原则" class="headerlink" title="先行发生原则"></a>先行发生原则</h1><p>如果Java内存模型中所有的有序性都只靠volatile和synchronized来完成，那么有一些操作将会变得很啰嗦，但是我们在编写Java并发代码的时候并没有感觉到这一点，这是因为Java语言中有一个“先行发生”(Happen-Before)的原则。这个原则非常重要，它是判断数据是否存在竞争，线程是否安全的主要依赖。</p>
+<p>下面是Java内存模型下一些”天然的“先行发生关系，这些先行发生关系无须任何同步器协助就已经存在，可以在编码中直接使用。如果两个操作之间的关系不在此列，并且无法从下列规则推导出来的话，它们就没有顺序性保障，虚拟机可以对它们进行随意地重排序。</p>
+<ul>
+<li>程序次序规则(Pragram Order Rule)：在一个线程内，按照程序代码顺序，书写在前面的操作先行发生于书写在后面的操作。准确地说应该是控制流顺序而不是程序代码顺序，因为要考虑分支、循环结构。</li>
+<li>管程锁定规则(Monitor Lock Rule)：一个unlock操作先行发生于后面对同一个锁的lock操作。这里必须强调的是同一个锁，而”后面“是指时间上的先后顺序。</li>
+<li>volatile变量规则(Volatile Variable Rule)：对一个volatile变量的写操作先行发生于后面对这个变量的读取操作，这里的”后面“同样指时间上的先后顺序。</li>
+<li>线程启动规则(Thread Start Rule)：Thread对象的start()方法先行发生于此线程的每一个动作。</li>
+<li>线程终止规则(Thread Termination Rule)：线程中的所有操作都先行发生于对此线程的终止检测，我们可以通过Thread.join()方法结束，Thread.isAlive()的返回值等作段检测到线程已经终止执行。</li>
+<li>线程中断规则(Thread Interruption Rule)：对线程interrupt()方法的调用先行发生于被中断线程的代码检测到中断事件的发生，可以通过Thread.interrupted()方法检测是否有中断发生。</li>
+<li>对象终结规则(Finalizer Rule)：一个对象初始化完成(构造方法执行完成)先行发生于它的finalize()方法的开始。</li>
+<li>传递性(Transitivity)：如果操作A先行发生于操作B，操作B先行发生于操作C，那就可以得出操作A先行发生于操作C的结论。</li>
+</ul>
+<p>一个操作”时间上的先发生“不代表这个操作会是”先行发生“，那如果一个操作”先行发生“是否就能推导出这个操作必定是”时间上的先发生“呢？也是不成立的，一个典型的例子就是指令重排序。所以时间上的先后顺序与先生发生原则之间基本没有什么关系，所以衡量并发安全问题一切必须以先行发生原则为准。</p>
+<h1 id="Java与线程"><a href="#Java与线程" class="headerlink" title="Java与线程"></a>Java与线程</h1><p>实现线程主要有3种方式：<strong>使用内核线程实现</strong>、<strong>使用用户线程实现</strong>和<strong>使用用户线程加轻量级进程</strong>混合实现。</p>
+<h2 id="使用内核线程实现"><a href="#使用内核线程实现" class="headerlink" title="使用内核线程实现"></a>使用内核线程实现</h2><p>内核线程(Kernel-Level Thread, KLT)就是直接由操作系统内核支持的线程，这种线程由内核来完成线程切换，内核通过操纵调度器(Scheduler)对线程进行调度，并负责将线程的任务映射到各个处理器上。</p>
+<p>每个内核线程可以视为内核的一个分身，这样操作系统就有能力同时处理多件事情，支持多线程的内核就叫做多线程内核(Multi-Thread Kernel)。</p>
+<p>程序一般不会直接去使用内核线程，而是去使用内核线程的高级接口——轻量级进程(Light Weight Process, LWP)。轻量级进程就是我们通常意义上所讲的线程，由于每个轻量级进程都有一个内核线程支持，因此只有先支持内核线程，才能由轻量级进程。这种轻量级进程与内核线程之间1:1的关系称为一对一线程模型。</p>
+<img src="/2020/07/28/Java/Concurrent/memory-model-and-thread/lwp-klt.jpeg" class="" title="[lwp-klt]">
+
+<p>由于内核线程的支持，每个轻量级进程都成为一个独立的调度单元，即使有一个轻量级进程在系统调用中阻塞了，也不会影响整个进程继续工作，但是轻量级进程具有它的局限性：</p>
+<p>首先，由于是基于内核线程实现的，所以各种线程操作，如创建、析构及同步，都需要进行系统调用。而系统调用的代价相对较高，需要在用户态（User Mode）和内核态（Kernel Mode）中来回切换。<br>其次，每个轻量级进程都需要有一个内核线程的支持，因此轻量级进程要消耗一定的内核资源（如内核线程的栈空间），因此一个系统支持轻量级进程的数量是有限的。</p>
+<h2 id="使用用户线程实现"><a href="#使用用户线程实现" class="headerlink" title="使用用户线程实现"></a>使用用户线程实现</h2><p>从广义上来讲，一个线程只要不是内核线程，就可以认为是用户线程(User Thread,UT)，因此，从这个定义上来讲，轻量级进程也属于用户线程，但轻量级进程的实现始终是建立在内核之上的，许多操作都要进行系统调用，效率会受到限制。</p>
+<p>而狭义上的用户线程指的是完全建立在用户空间的线程库上，系统内核不能感知线程存在的实现。用户线程的建立、同步、销毁和调度完全在用户态中完成，不需要内核的帮助。如果程序实现得当，这种线程不需要切换到内核态，因此操作可以是非常快速且低消耗的，也可以支持规模更大的线程数量，部分高性能数据库中的多线程就是由用户线程实现的。这种进程与用户线程之间1：N的关系称为一对多的线程模型。</p>
+<img src="/2020/07/28/Java/Concurrent/memory-model-and-thread/process-ut.jpeg" class="" title="[ut-process]">
+
+<p>使用用户线程的优势在于不需要系统内核支援，劣势也在于没有系统内核的支援，所有的线程操作都需要用户程序自己处理。线程的创建、切换和调度都是需要考虑的问题，而且由于操作系统只把处理器资源分配到进程，那诸如“阻塞如何处理”、“多处理器系统中如何将线程映射到其他处理器上”这类问题解决起来将会异常困难，甚至不可能完成。因而使用用户线程实现的程序一般都比较复杂  ，除了以前在不支持多线程的操作系统中（如DOS）的多线程程序与少数有特殊需求的程序外，现在使用用户线程的程序越来越少了，Java、Ruby等语言都曾经使用过用户线程，最终又都放弃使用它。</p>
+<h2 id="使用用户线程加轻量级进程混合实现"><a href="#使用用户线程加轻量级进程混合实现" class="headerlink" title="使用用户线程加轻量级进程混合实现"></a>使用用户线程加轻量级进程混合实现</h2><p>线程除了依赖内核线程实现和完全由用户程序自己实现之外，还有一种将内核线程与用户线程一起使用的实现方式。</p>
+<p>在这种混合实现下，既存在用户线程，也存在轻量级进程。用户线程还是完全建立在用户空间中，因此用户线程的创建、切换、析构等操作依然廉价，并且可以支持大规模的用户线程并发。而操作系统提供支持的轻量级进程则作为用户线程和内核线程之间的桥梁，这样可以使用内核提供的线程调度功能及处理器映射，并且用户线程的系统调用要通过轻量级线程来完成，大大降低了整个进程被完全阻塞的风险。在这种混合模式中，用户线程与轻量级进程的数量比是不定的，即为N：M的关系，如图所示，这种就是多对多的线程模型。</p>
+<img src="/2020/07/28/Java/Concurrent/memory-model-and-thread/ut-lwp-klt.png" class="" title="[ut-lwp-klt]">
+
+<p>许多UNIX系列的操作系统，如Solaris、HP-UX等都提供了N：M的线程模型实现。</p>
+<h1 id="Java线程转换"><a href="#Java线程转换" class="headerlink" title="Java线程转换"></a>Java线程转换</h1><p>Java语言定义了5种线程状态，在任意一个时间点，一个线程只能有且只有其中的一种状态，这5种状态分别如下。</p>
+<ul>
+<li>新建（New）：创建后尚未启动的线程处于这种状态。</li>
+<li>运行（Runable）：Runable包括了操作系统线程状态中的Running和Ready，也就是处于此状态的线程有可能正在执行，也有可能正在等待着CPU为它分配执行时间。</li>
+<li>等待(Waiting)<ul>
+<li>无限期等待（Waiting）：处于这种状态的线程不会被分配CPU执行时间，它们要等待被其他线程显式地唤醒。以下方法会让线程陷入无限期的等待状态：<ul>
+<li>没有设置Timeout参数的Object.wait（）方法。</li>
+<li>没有设置Timeout参数的Thread.join（）方法。</li>
+<li>LockSupport.park（）方法。</li>
+</ul>
+</li>
+<li>限期等待（Timed Waiting）：处于这种状态的线程也不会被分配CPU执行时间，不过无须等待被其他线程显式地唤醒，在一定时间之后它们会由系统自动唤醒。以下方法会让线程进入限期等待状态：<ul>
+<li>Thread.sleep（）方法。</li>
+<li>设置了Timeout参数的Object.wait（）方法。</li>
+<li>设置了Timeout参数的Thread.join（）方法。</li>
+<li>LockSupport.parkNanos（）方法。</li>
+<li>LockSupport.parkUntil（）方法。</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>阻塞（Blocked）：线程被阻塞了。<br>“阻塞状态”与“等待状态”的区别是：“阻塞状态”在等待着获取到一个排他锁，这个事件将在另外一个线程放弃这个锁的时候发生；而“等待状态”则是在等待一段时间，或者唤醒动作的发生。在程序等待进入同步区域的时候，线程将进入这种状态。</li>
+<li>结束（Terminated）：已终止线程的线程状态，线程已经结束执行。</li>
+</ul>
+<p>其上述5种状态的转换关系如下图所示：</p>
+<img src="/2020/07/28/Java/Concurrent/memory-model-and-thread/thread-status.jpeg" class="" title="[thread-status]">
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Java/" rel="tag"># Java</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-next post-nav-item">
+                <a href="/2020/07/28/Java/Concurrent/memory-model-hardware/" rel="next" title="计算机内存模型">
+                  <i class="fa fa-chevron-left"></i> 计算机内存模型
+                </a>
+            </div>
+
+            <span class="post-nav-divider"></span>
+
+            <div class="post-nav-prev post-nav-item">
+                <a href="/2020/07/29/Java/Concurrent/volatile/" rel="prev" title="Volatile原理和使用场景解析">
+                  Volatile原理和使用场景解析 <i class="fa fa-chevron-right"></i>
+                </a>
+            </div>
+          </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#硬件的效率与一致性"><span class="nav-number">1.</span> <span class="nav-text">硬件的效率与一致性</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Java内存模型"><span class="nav-number">2.</span> <span class="nav-text">Java内存模型</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#主内存和工作内存"><span class="nav-number">2.1.</span> <span class="nav-text">主内存和工作内存</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#原子性、可见性与有序性"><span class="nav-number">3.</span> <span class="nav-text">原子性、可见性与有序性</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#原子性-Atomicity"><span class="nav-number">3.1.</span> <span class="nav-text">原子性(Atomicity)</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#可见性-Visibility"><span class="nav-number">3.2.</span> <span class="nav-text">可见性(Visibility)</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#有序性-Ordering"><span class="nav-number">3.3.</span> <span class="nav-text">有序性(Ordering)</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#先行发生原则"><span class="nav-number">4.</span> <span class="nav-text">先行发生原则</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Java与线程"><span class="nav-number">5.</span> <span class="nav-text">Java与线程</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#使用内核线程实现"><span class="nav-number">5.1.</span> <span class="nav-text">使用内核线程实现</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#使用用户线程实现"><span class="nav-number">5.2.</span> <span class="nav-text">使用用户线程实现</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#使用用户线程加轻量级进程混合实现"><span class="nav-number">5.3.</span> <span class="nav-text">使用用户线程加轻量级进程混合实现</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Java线程转换"><span class="nav-number">6.</span> <span class="nav-text">Java线程转换</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="acronymor"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">acronymor</p>
+  <div class="site-description" itemprop="description">I am who i am, the unique fooid</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives">
+          <span class="site-state-item-count">216</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+        <span class="site-state-item-count">27</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+        <span class="site-state-item-count">35</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="feed-link motion-element">
+    <a href="/atom.xml" rel="alternate">
+      <i class="fa fa-rss"></i>RSS
+    </a>
+  </div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/acronymor" title="GitHub &amp;rarr; https:&#x2F;&#x2F;github.com&#x2F;acronymor" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yourname@acronymor.com" title="E-Mail &amp;rarr; mailto:yourname@acronymor.com"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">acronymor</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> v4.2.0
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">Theme – <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> v7.5.0
+  </div>
+
+        
+
+
+
+
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

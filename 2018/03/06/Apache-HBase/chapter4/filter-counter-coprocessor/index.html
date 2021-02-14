@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+  <link rel="alternate" href="/atom.xml" title="Acronymor's Blog" type="application/atom+xml">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Muse',
+    version: '7.5.0',
+    exturl: false,
+    sidebar: {"position":"right","display":"hide","offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: '',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    translation: {
+      copy_button: 'Copy',
+      copy_success: 'Copied',
+      copy_failure: 'Copy failed'
+    },
+    sidebarPadding: 40
+  };
+</script>
+
+  <meta name="description" content="HBase除过基本的API之外，还提供了一些高级API。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="HBase过滤器，计数器和协处理器">
+<meta property="og:url" content="http://acronymor.com/2018/03/06/Apache-HBase/chapter4/filter-counter-coprocessor/index.html">
+<meta property="og:site_name" content="Acronymor&#39;s Blog">
+<meta property="og:description" content="HBase除过基本的API之外，还提供了一些高级API。">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="http://acronymor.com/2018/03/06/Apache-HBase/chapter4/filter-counter-coprocessor/filter-process.png">
+<meta property="og:image" content="http://acronymor.com/2018/03/06/Apache-HBase/chapter4/filter-counter-coprocessor/filter-row-process.png">
+<meta property="article:published_time" content="2018-03-06T13:21:16.000Z">
+<meta property="article:modified_time" content="2018-03-06T13:21:16.000Z">
+<meta property="article:author" content="acronymor">
+<meta property="article:tag" content="HBase">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://acronymor.com/2018/03/06/Apache-HBase/chapter4/filter-counter-coprocessor/filter-process.png">
+
+<link rel="canonical" href="http://acronymor.com/2018/03/06/Apache-HBase/chapter4/filter-counter-coprocessor/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true,
+    isPage: false,
+    isArchive: false
+  };
+</script>
+
+  <title>HBase过滤器，计数器和协处理器 | Acronymor's Blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Acronymor's Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-movies">
+
+    <a href="/movies/" rel="section"><i class="fa fa-fw fa-film"></i>movies</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>About</a>
+
+  </li>
+  </ul>
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="en">
+    <link itemprop="mainEntityOfPage" href="http://acronymor.com/2018/03/06/Apache-HBase/chapter4/filter-counter-coprocessor/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="acronymor">
+      <meta itemprop="description" content="I am who i am, the unique fooid">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Acronymor's Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          HBase过滤器，计数器和协处理器
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2018-03-06 21:21:16" itemprop="dateCreated datePublished" datetime="2018-03-06T21:21:16+08:00">2018-03-06</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/HBase%E6%9D%83%E5%A8%81%E6%8C%87%E5%8D%97/" itemprop="url" rel="index">
+                    <span itemprop="name">HBase权威指南</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>HBase除过基本的API之外，还提供了一些高级API。</p>
+<a id="more"></a>
+
+<h1 id="过滤器"><a href="#过滤器" class="headerlink" title="过滤器"></a>过滤器</h1><p>HBase过滤器(filter)提供了非常强大的特性来帮助用户提高其处理表中数据的效率。用户不仅可以使用HBase中预定义好的过滤器，而且可以实现自定义的过滤器。</p>
+<p>HBase中两种主要的数据读取函数是get()和scan()，它们都支持直接访问数据和通过指定的起始行健访问数据的功能。也可以添加额外的限制条件（比如列族、列、时间戳和版本号）来过滤数据。同时用户还可以通过继承Filter类来实现自己的需求。所有的过滤器都在服务端生效，叫做谓词下推(predicate push down)。这样可以保证被过滤的数据不会被传送到客户端。用户可以在客户端代码中实现过滤的功能，但是因为这么做会导致服务器端传输更多的数据到客户端，因此应该尽量避免这种情况。</p>
+<img src="/2018/03/06/Apache-HBase/chapter4/filter-counter-coprocessor/filter-process.png" class="" title="[filter process]">
+
+<p>过滤器最底层是Filter接口和FilterBase抽象类，用户可以通过集成FilterBase这个抽象类来实现过滤器。</p>
+<p>常见的过滤器有：</p>
+<h2 id="比较过滤器-comparison-filter"><a href="#比较过滤器-comparison-filter" class="headerlink" title="比较过滤器(comparison filter)"></a>比较过滤器(comparison filter)</h2><p>直接继承自CompareFilter类。</p>
+<ul>
+<li>行过滤器(RowFilter)</li>
+<li>列族过滤器(FamilyFilter)</li>
+<li>列名过滤器(QualifierFilter)</li>
+<li>值过滤器(ValueFilter)</li>
+<li>参考过滤器(DependentColumnFilter)</li>
+</ul>
+<h2 id="专用过滤器"><a href="#专用过滤器" class="headerlink" title="专用过滤器"></a>专用过滤器</h2><p>直接继承自FilterBase类，同时更以用于特定的使用场景。</p>
+<ul>
+<li>单列值过滤器(SingleColumnValueFilter)</li>
+<li>单列排除过滤器(SingleColumnValueExcludeFilter)</li>
+<li>前缀过滤器(PrefixFilter)</li>
+<li>分页过滤器(PageFilter)</li>
+<li>行键过滤器(KeyOnlyFilter)</li>
+<li>首次行健过滤器(FirstKeyOnlyFilter)</li>
+<li>包含结束的过滤器(InclusiveStopFilter)</li>
+<li>时间戳过滤器(TimestampsFilter)</li>
+<li>列分页过滤器(ColumnPaginationFilter)</li>
+<li>列前缀过滤器(ColumnPrefixFilter)</li>
+<li>随即行过滤器(RandomRowFilter)</li>
+</ul>
+<h2 id="附加过滤器"><a href="#附加过滤器" class="headerlink" title="附加过滤器"></a>附加过滤器</h2><p>不依赖过滤器本身，但却可以应用于其他过滤器上面。</p>
+<ul>
+<li>跳转过滤器(SkipFilter)</li>
+<li>全匹配过滤器(WhileMatchFilter)</li>
+</ul>
+<h2 id="FilterList"><a href="#FilterList" class="headerlink" title="FilterList"></a>FilterList</h2><p>使用多个过滤器共同限制返回到客户端的结果。</p>
+<h2 id="自定义过滤器"><a href="#自定义过滤器" class="headerlink" title="自定义过滤器"></a>自定义过滤器</h2><p>当过滤器处理一行数据时，过滤器中各方法的逻辑流程。</p>
+<img src="/2018/03/06/Apache-HBase/chapter4/filter-counter-coprocessor/filter-row-process.png" class="" title="[filter row process]">
+
+<h1 id="计数器-Counter"><a href="#计数器-Counter" class="headerlink" title="计数器(Counter)"></a>计数器(Counter)</h1><p>用户不用初始化计数器，当用户第一次使用计数器时，计数器将被自动设为0，也就是说当用户创建一个新列时，计数器的值是0。第一次增加操作会返回1，或增加设定的值。</p>
+<ul>
+<li>单计数器</li>
+<li>多计数器</li>
+</ul>
+<h1 id="协处理器-Coprocessor"><a href="#协处理器-Coprocessor" class="headerlink" title="协处理器(Coprocessor)"></a>协处理器(Coprocessor)</h1><p>协处理器允许用户在region上运行自己的代码，更准确的说是允许用户执行region级的操作，并且可以使用与RDBMS中触发器(trigger)类似的功能。在客户端，用户不用关心操作具体在哪里执行，HBase的份分布式框架会把这些工作变得透明。这里用户可以监听一些隐式的事件，并利用其来完成一些辅助任务，如果这些还不够，用户还可以扩展现有的RPC协议来引入自己的调用，这些调用由客户端触发，并在服务器端执行。</p>
+<h2 id="Observer"><a href="#Observer" class="headerlink" title="Observer"></a>Observer</h2><p>与触发器类似;</p>
+<p>regionobserver处理数据修改事件，表region联系紧密;</p>
+<p>MasterObserver集群级事件操作，管理或DDL类型操作;</p>
+<p>WALObserver控制WAL。</p>
+<h2 id="Endpoint"><a href="#Endpoint" class="headerlink" title="Endpoint"></a>Endpoint</h2><p>用户自定义操作添加到服务端添加一些远程过程调用动态拓展RPC协议；与RDBMS存储类似；</p>
+<h1 id="HTablePool"><a href="#HTablePool" class="headerlink" title="HTablePool"></a>HTablePool</h1><p>创建HTable实例是一项非常耗时的操作，通常需要数秒才能完成。因此与其为客户端的每个请求创建一个HTable实例，然后不断复用这个实例。</p>
+<h1 id="连接管理"><a href="#连接管理" class="headerlink" title="连接管理"></a>连接管理</h1><p>每个HTable实例都需要建立和远程主机的连接。这些连接在内部使用HConnection类表示，更重要的是，其被HConnectionManager类管理并共享。用户没有必要同时和这两个类打交道，只需要创建一个Configuration实例，然后利用客户端API使用这些类。</p>
+<p>HBase内部使用键值映射来存储连接，使用Configuration实例作为键值映射的键。换句话说，当你创建很多HTable时，如果你提供了相同的Configuration内容，那么它们都共享一个底层的HConnection实例。有关细节如下所示。</p>
+<h2 id="共享ZooKeeper连接"><a href="#共享ZooKeeper连接" class="headerlink" title="共享ZooKeeper连接"></a>共享ZooKeeper连接</h2><p>因为每个客户端最终都需要ZooKeeper连接来完成表的region地址初始寻址。连接一旦建立后，共享就变得很有意义，这使得之后的客户端实例可以共用。</p>
+<h2 id="缓存通用资源"><a href="#缓存通用资源" class="headerlink" title="缓存通用资源"></a>缓存通用资源</h2><p>通过ZooKeeper查询到<code>-ROOT-</code>和<code>.META.</code>的地址，以及region的地址定位都需要网络传输开销。这些地址将被缓存在客户端来减少网络的调用次数，因此达到加速寻址的目的。</p>
+<p>对于每个连接到远程集群的本地客户端来说，它们的地址表都是相同的，因此运行相同的客户端共享连接非常有用，这是通过共享HConncetion实例来实现的，因此运行相同进程的客户端共享连接非常有用，这是通过共享HConnection实例来实现的。另外，当寻址失败时（如region拆分时），连接有内置的重试机制来刷新缓存，对于其他所有共享相同连接的客户端来说，这项更改立即生效，因此这更加减少了客户端初始化连续的连接开销。</p>
+<p>另一个受益的类是HTable，所有连接池中的HTable实例都是自动共用一个提供的Configuration实例，因此它们也共享连接。因为当用户想创建多个HTable时，最好先创建一个共用的Configuration实例。</p>
+<p>共享连接的缺点在于释放，如果用户不显式的关闭连接，那么它将一直存在，直到客户端退出。这样可能导致很多ZooKeeper连接都保持打开状态，尤其是在大型分布式环境下，如果执行MapReduce作业的HBase程序，可能会产生一些问题。最坏的情况是耗尽所有的连接句柄或内存，导致I/O异常。用户可以通过显式关闭连接的方法来避免这种情况。</p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/HBase/" rel="tag"># HBase</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-next post-nav-item">
+                <a href="/2018/03/05/Apache-HBase/chapter3/lock-and-scanner/" rel="next" title="HBase行锁和扫描">
+                  <i class="fa fa-chevron-left"></i> HBase行锁和扫描
+                </a>
+            </div>
+
+            <span class="post-nav-divider"></span>
+
+            <div class="post-nav-prev post-nav-item">
+                <a href="/2018/03/07/Apache-HBase/chapter5/column-family/" rel="prev" title="HBase 列族">
+                  HBase 列族 <i class="fa fa-chevron-right"></i>
+                </a>
+            </div>
+          </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#过滤器"><span class="nav-number">1.</span> <span class="nav-text">过滤器</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#比较过滤器-comparison-filter"><span class="nav-number">1.1.</span> <span class="nav-text">比较过滤器(comparison filter)</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#专用过滤器"><span class="nav-number">1.2.</span> <span class="nav-text">专用过滤器</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#附加过滤器"><span class="nav-number">1.3.</span> <span class="nav-text">附加过滤器</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#FilterList"><span class="nav-number">1.4.</span> <span class="nav-text">FilterList</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#自定义过滤器"><span class="nav-number">1.5.</span> <span class="nav-text">自定义过滤器</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#计数器-Counter"><span class="nav-number">2.</span> <span class="nav-text">计数器(Counter)</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#协处理器-Coprocessor"><span class="nav-number">3.</span> <span class="nav-text">协处理器(Coprocessor)</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Observer"><span class="nav-number">3.1.</span> <span class="nav-text">Observer</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Endpoint"><span class="nav-number">3.2.</span> <span class="nav-text">Endpoint</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#HTablePool"><span class="nav-number">4.</span> <span class="nav-text">HTablePool</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#连接管理"><span class="nav-number">5.</span> <span class="nav-text">连接管理</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#共享ZooKeeper连接"><span class="nav-number">5.1.</span> <span class="nav-text">共享ZooKeeper连接</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#缓存通用资源"><span class="nav-number">5.2.</span> <span class="nav-text">缓存通用资源</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="acronymor"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">acronymor</p>
+  <div class="site-description" itemprop="description">I am who i am, the unique fooid</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives">
+          <span class="site-state-item-count">216</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+        <span class="site-state-item-count">27</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+        <span class="site-state-item-count">35</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="feed-link motion-element">
+    <a href="/atom.xml" rel="alternate">
+      <i class="fa fa-rss"></i>RSS
+    </a>
+  </div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/acronymor" title="GitHub &amp;rarr; https:&#x2F;&#x2F;github.com&#x2F;acronymor" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yourname@acronymor.com" title="E-Mail &amp;rarr; mailto:yourname@acronymor.com"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">acronymor</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> v4.2.0
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">Theme – <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> v7.5.0
+  </div>
+
+        
+
+
+
+
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

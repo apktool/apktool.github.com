@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+  <link rel="alternate" href="/atom.xml" title="Acronymor's Blog" type="application/atom+xml">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Muse',
+    version: '7.5.0',
+    exturl: false,
+    sidebar: {"position":"right","display":"hide","offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: '',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    translation: {
+      copy_button: 'Copy',
+      copy_success: 'Copied',
+      copy_failure: 'Copy failed'
+    },
+    sidebarPadding: 40
+  };
+</script>
+
+  <meta name="description" content="Elasticsearch 源码阅读环境搭建">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Elasticsearch 源码阅读环境搭建">
+<meta property="og:url" content="http://acronymor.com/2020/04/15/ElasticSearch/es-debug/index.html">
+<meta property="og:site_name" content="Acronymor&#39;s Blog">
+<meta property="og:description" content="Elasticsearch 源码阅读环境搭建">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="http://acronymor.com/2020/04/15/ElasticSearch/es-debug/vm-option.png">
+<meta property="og:image" content="http://acronymor.com/2020/04/15/ElasticSearch/es-debug/dependencies-scope.png">
+<meta property="og:image" content="http://acronymor.com/2020/04/15/ElasticSearch/es-debug/jdk-version-01.png">
+<meta property="og:image" content="http://acronymor.com/2020/04/15/ElasticSearch/es-debug/jdk-version-02.png">
+<meta property="og:image" content="http://acronymor.com/2020/04/15/ElasticSearch/es-debug/main-class.png">
+<meta property="og:image" content="http://acronymor.com/2020/04/15/ElasticSearch/es-debug/idea.png">
+<meta property="og:image" content="http://acronymor.com/2020/04/15/ElasticSearch/es-debug/helloword.png">
+<meta property="article:published_time" content="2020-04-15T15:49:00.000Z">
+<meta property="article:modified_time" content="2020-04-15T15:55:00.000Z">
+<meta property="article:author" content="acronymor">
+<meta property="article:tag" content="elasticsearch">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://acronymor.com/2020/04/15/ElasticSearch/es-debug/vm-option.png">
+
+<link rel="canonical" href="http://acronymor.com/2020/04/15/ElasticSearch/es-debug/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true,
+    isPage: false,
+    isArchive: false
+  };
+</script>
+
+  <title>Elasticsearch 源码阅读环境搭建 | Acronymor's Blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Acronymor's Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-movies">
+
+    <a href="/movies/" rel="section"><i class="fa fa-fw fa-film"></i>movies</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>About</a>
+
+  </li>
+  </ul>
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="en">
+    <link itemprop="mainEntityOfPage" href="http://acronymor.com/2020/04/15/ElasticSearch/es-debug/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="acronymor">
+      <meta itemprop="description" content="I am who i am, the unique fooid">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Acronymor's Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Elasticsearch 源码阅读环境搭建
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+              
+
+              <time title="Created: 2020-04-15 23:49:00 / Modified: 23:55:00" itemprop="dateCreated datePublished" datetime="2020-04-15T23:49:00+08:00">2020-04-15</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Elasticsearch/" itemprop="url" rel="index">
+                    <span itemprop="name">Elasticsearch</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>Elasticsearch 源码阅读环境搭建</p>
+<a id="more"></a>
+
+<h1 id="JDK-下载"><a href="#JDK-下载" class="headerlink" title="JDK 下载"></a>JDK 下载</h1><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">https://download.java.net/java/GA/jdk12.0.2/e482c34c86bd4bf8b56c0b35558996b9/10/GPL/openjdk-12.0.2_linux-x64_bin.tar.gz</span><br></pre></td></tr></table></figure>
+
+<h1 id="Elasticsearch-下载"><a href="#Elasticsearch-下载" class="headerlink" title="Elasticsearch 下载"></a>Elasticsearch 下载</h1><h2 id="源码下载"><a href="#源码下载" class="headerlink" title="源码下载"></a>源码下载</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">git <span class="built_in">clone</span> https://github.com/elastic/elasticsearch.git</span><br><span class="line">git checkout -b v7.1.1 v7.1.1</span><br></pre></td></tr></table></figure>
+
+<h2 id="安装包下载"><a href="#安装包下载" class="headerlink" title="安装包下载"></a>安装包下载</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">curl -O https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-7.1.1-linux-x86_64.tar.gz</span><br></pre></td></tr></table></figure>
+
+<h1 id="Kibana-下载"><a href="#Kibana-下载" class="headerlink" title="Kibana 下载"></a>Kibana 下载</h1><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">curl -O https://artifacts.elastic.co/downloads/kibana/kibana-7.1.1-linux-x86_64.tar.gz</span><br></pre></td></tr></table></figure>
+
+<h1 id="配置-gradle"><a href="#配置-gradle" class="headerlink" title="配置 gradle"></a>配置 gradle</h1><p>在用户根目录创建目录 <code>.gradle</code>，并在其中创建 <code>init.gradle</code> 文件，然后填写下述内容</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line">allprojects &#123;</span><br><span class="line">    repositories &#123;</span><br><span class="line">        def ALIYUN_REPOSITORY_URL &#x3D; &#39;https:&#x2F;&#x2F;maven.aliyun.com&#x2F;repository&#x2F;public&#39;</span><br><span class="line">        def ALIYUN_JCENTER_URL &#x3D; &#39;https:&#x2F;&#x2F;maven.aliyun.com&#x2F;repository&#x2F;jcenter&#39;</span><br><span class="line">        all &#123;</span><br><span class="line">            ArtifactRepository repo -&gt;</span><br><span class="line">                if (repo instanceof MavenArtifactRepository) &#123;                                                                                                                                                     </span><br><span class="line">                    def url &#x3D; repo.url.toString()</span><br><span class="line">                    if (url.startsWith(&#39;https:&#x2F;&#x2F;repo1.maven.org&#x2F;maven2&#39;)) &#123;</span><br><span class="line">                        project.logger.lifecycle &quot;Repository $&#123;repo.url&#125; replaced by $ALIYUN_REPOSITORY_URL.&quot;</span><br><span class="line">                        remove repo</span><br><span class="line">                    &#125;   </span><br><span class="line">                    if (url.startsWith(&#39;https:&#x2F;&#x2F;jcenter.bintray.com&#x2F;&#39;)) &#123;</span><br><span class="line">                        project.logger.lifecycle &quot;Repository $&#123;repo.url&#125; replaced by $ALIYUN_JCENTER_URL.&quot;</span><br><span class="line">                        remove repo</span><br><span class="line">                    &#125;   </span><br><span class="line">                &#125;   </span><br><span class="line">        &#125;   </span><br><span class="line">        maven &#123;</span><br><span class="line">            url ALIYUN_REPOSITORY_URL</span><br><span class="line">            url ALIYUN_JCENTER_URL</span><br><span class="line">        &#125;   </span><br><span class="line">    &#125;   </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h1 id="IDEA配置说明"><a href="#IDEA配置说明" class="headerlink" title="IDEA配置说明"></a>IDEA配置说明</h1><p>这里，所有将 elasticsearch 的代码放置在 <code>/home/li/WorkSpace/elasticsearch</code></p>
+<h2 id="创建-es-home-目录"><a href="#创建-es-home-目录" class="headerlink" title="创建 es-home 目录"></a>创建 es-home 目录</h2><p>名称不一定是 <code>es-home</code>，但是需要与下文保持一致</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mkdir -p /home/li/WorkSpace/elasticsearch/es-home</span><br></pre></td></tr></table></figure>
+
+<p>将<code>elasticsearch-7.1.1-linux-x86_64.tar.gz</code>解压出来的 <code>config</code> 和 <code>modules</code> 两个目录拷贝到 <code>es-home</code>下面。</p>
+<h2 id="创建-elasticsearch-policy-文件"><a href="#创建-elasticsearch-policy-文件" class="headerlink" title="创建 elasticsearch.policy 文件"></a>创建 elasticsearch.policy 文件</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">touch /home/li/WorkSpace/elasticsearch/es-home/config/elasticsearch.policy</span><br></pre></td></tr></table></figure>
+
+<p>并写入以下内容</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">grant&#123;</span><br><span class="line">    permission java.lang.RuntimePermission &quot;createClassLoader&quot;;</span><br><span class="line">    permission java.lang.RuntimePermission &quot;getClassLoader&quot;;</span><br><span class="line">    permission java.lang.RuntimePermission &quot;accessDeclaredMembers&quot;;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<h2 id="配置-VM-options"><a href="#配置-VM-options" class="headerlink" title="配置 VM options"></a>配置 VM options</h2><img src="/2020/04/15/ElasticSearch/es-debug/vm-option.png" class="" title="[IDEA VM Option]">
+
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">-Des.path.conf&#x3D;&#x2F;home&#x2F;li&#x2F;WorkSpace&#x2F;elasticsearch&#x2F;es-home&#x2F;config</span><br><span class="line">-Des.path.home&#x3D;&#x2F;home&#x2F;li&#x2F;WorkSpace&#x2F;elasticsearch&#x2F;es-home</span><br><span class="line">-Djava.security.policy&#x3D;&#x2F;home&#x2F;li&#x2F;WorkSpace&#x2F;elasticsearch&#x2F;es-home&#x2F;config&#x2F;elasticsearch.policy</span><br><span class="line">-Dlog4j2.disable.jmx&#x3D;true</span><br></pre></td></tr></table></figure>
+
+<h2 id="勾选-Include-dependencies-with-“Provided”-scope"><a href="#勾选-Include-dependencies-with-“Provided”-scope" class="headerlink" title="勾选 Include dependencies with “Provided” scope"></a>勾选 Include dependencies with “Provided” scope</h2><img src="/2020/04/15/ElasticSearch/es-debug/dependencies-scope.png" class="" title="[IDEA Dependencies Scope]">
+
+<h2 id="选择-JDK-版本"><a href="#选择-JDK-版本" class="headerlink" title="选择 JDK 版本"></a>选择 JDK 版本</h2><p>elasticsearch-7.1.1 需要和 JDK12 一起使用才行，因此需要配置 JDK 版本为<strong>12</strong>才行</p>
+<img src="/2020/04/15/ElasticSearch/es-debug/jdk-version-01.png" class="" title="[JRE]">
+
+<img src="/2020/04/15/ElasticSearch/es-debug/jdk-version-02.png" class="" title="[JRE]">
+
+<h2 id="选择启动类启动"><a href="#选择启动类启动" class="headerlink" title="选择启动类启动"></a>选择启动类启动</h2><img src="/2020/04/15/ElasticSearch/es-debug/main-class.png" class="" title="[main class]">
+
+<h2 id="启动成功"><a href="#启动成功" class="headerlink" title="启动成功"></a>启动成功</h2><img src="/2020/04/15/ElasticSearch/es-debug/idea.png" class="" title="[idea]">
+
+<h1 id="测试"><a href="#测试" class="headerlink" title="测试"></a>测试</h1><img src="/2020/04/15/ElasticSearch/es-debug/helloword.png" class="" title="[hello world]">
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/elasticsearch/" rel="tag"># elasticsearch</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-next post-nav-item">
+                <a href="/2020/04/03/Apache-Kafka/kafka-replication/" rel="next" title="Kafka副本复制机制">
+                  <i class="fa fa-chevron-left"></i> Kafka副本复制机制
+                </a>
+            </div>
+
+            <span class="post-nav-divider"></span>
+
+            <div class="post-nav-prev post-nav-item">
+                <a href="/2020/04/17/Java/Basic/jmx/" rel="prev" title="什么是 JMX">
+                  什么是 JMX <i class="fa fa-chevron-right"></i>
+                </a>
+            </div>
+          </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#JDK-下载"><span class="nav-number">1.</span> <span class="nav-text">JDK 下载</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Elasticsearch-下载"><span class="nav-number">2.</span> <span class="nav-text">Elasticsearch 下载</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#源码下载"><span class="nav-number">2.1.</span> <span class="nav-text">源码下载</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#安装包下载"><span class="nav-number">2.2.</span> <span class="nav-text">安装包下载</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Kibana-下载"><span class="nav-number">3.</span> <span class="nav-text">Kibana 下载</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#配置-gradle"><span class="nav-number">4.</span> <span class="nav-text">配置 gradle</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#IDEA配置说明"><span class="nav-number">5.</span> <span class="nav-text">IDEA配置说明</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#创建-es-home-目录"><span class="nav-number">5.1.</span> <span class="nav-text">创建 es-home 目录</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#创建-elasticsearch-policy-文件"><span class="nav-number">5.2.</span> <span class="nav-text">创建 elasticsearch.policy 文件</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#配置-VM-options"><span class="nav-number">5.3.</span> <span class="nav-text">配置 VM options</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#勾选-Include-dependencies-with-“Provided”-scope"><span class="nav-number">5.4.</span> <span class="nav-text">勾选 Include dependencies with “Provided” scope</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#选择-JDK-版本"><span class="nav-number">5.5.</span> <span class="nav-text">选择 JDK 版本</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#选择启动类启动"><span class="nav-number">5.6.</span> <span class="nav-text">选择启动类启动</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#启动成功"><span class="nav-number">5.7.</span> <span class="nav-text">启动成功</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#测试"><span class="nav-number">6.</span> <span class="nav-text">测试</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="acronymor"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">acronymor</p>
+  <div class="site-description" itemprop="description">I am who i am, the unique fooid</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives">
+          <span class="site-state-item-count">216</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+        <span class="site-state-item-count">27</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+        <span class="site-state-item-count">35</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="feed-link motion-element">
+    <a href="/atom.xml" rel="alternate">
+      <i class="fa fa-rss"></i>RSS
+    </a>
+  </div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/acronymor" title="GitHub &amp;rarr; https:&#x2F;&#x2F;github.com&#x2F;acronymor" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yourname@acronymor.com" title="E-Mail &amp;rarr; mailto:yourname@acronymor.com"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">acronymor</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> v4.2.0
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">Theme – <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> v7.5.0
+  </div>
+
+        
+
+
+
+
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+  <link rel="alternate" href="/atom.xml" title="Acronymor's Blog" type="application/atom+xml">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Muse',
+    version: '7.5.0',
+    exturl: false,
+    sidebar: {"position":"right","display":"hide","offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: '',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    translation: {
+      copy_button: 'Copy',
+      copy_success: 'Copied',
+      copy_failure: 'Copy failed'
+    },
+    sidebarPadding: 40
+  };
+</script>
+
+  <meta name="description" content="数组是线性表的推广。一维数组可以看做是一个线性表；二维数组可以看做是线性表的线性表，依次类推。数组一旦被定义，它的维数和维界就不会在改变。一般情况下除了结构的初始化和销毁操作之外，数组仅会存取元素和修改元素的操作，因此数组一般采用顺序结构存储。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="第3章第1节 数组的存储结构">
+<meta property="og:url" content="http://acronymor.com/2016/03/04/Data-structure-and-algorithm/chapter3/%E7%AC%AC3%E7%AB%A0%E7%AC%AC1%E8%8A%82%20%E6%95%B0%E7%BB%84%E7%9A%84%E5%AD%98%E5%82%A8%E7%BB%93%E6%9E%84/index.html">
+<meta property="og:site_name" content="Acronymor&#39;s Blog">
+<meta property="og:description" content="数组是线性表的推广。一维数组可以看做是一个线性表；二维数组可以看做是线性表的线性表，依次类推。数组一旦被定义，它的维数和维界就不会在改变。一般情况下除了结构的初始化和销毁操作之外，数组仅会存取元素和修改元素的操作，因此数组一般采用顺序结构存储。">
+<meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2016-03-03T20:48:49.000Z">
+<meta property="article:modified_time" content="2016-03-03T20:48:49.000Z">
+<meta property="article:author" content="acronymor">
+<meta property="article:tag" content="数据结构">
+<meta property="article:tag" content="数组">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://acronymor.com/2016/03/04/Data-structure-and-algorithm/chapter3/%E7%AC%AC3%E7%AB%A0%E7%AC%AC1%E8%8A%82%20%E6%95%B0%E7%BB%84%E7%9A%84%E5%AD%98%E5%82%A8%E7%BB%93%E6%9E%84/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true,
+    isPage: false,
+    isArchive: false
+  };
+</script>
+
+  <title>第3章第1节 数组的存储结构 | Acronymor's Blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Acronymor's Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-movies">
+
+    <a href="/movies/" rel="section"><i class="fa fa-fw fa-film"></i>movies</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>About</a>
+
+  </li>
+  </ul>
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="en">
+    <link itemprop="mainEntityOfPage" href="http://acronymor.com/2016/03/04/Data-structure-and-algorithm/chapter3/%E7%AC%AC3%E7%AB%A0%E7%AC%AC1%E8%8A%82%20%E6%95%B0%E7%BB%84%E7%9A%84%E5%AD%98%E5%82%A8%E7%BB%93%E6%9E%84/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="acronymor">
+      <meta itemprop="description" content="I am who i am, the unique fooid">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Acronymor's Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          第3章第1节 数组的存储结构
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2016-03-04 04:48:49" itemprop="dateCreated datePublished" datetime="2016-03-04T04:48:49+08:00">2016-03-04</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E4%B8%8E%E7%AE%97%E6%B3%95/" itemprop="url" rel="index">
+                    <span itemprop="name">数据结构与算法</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>数组是线性表的推广。一维数组可以看做是一个线性表；二维数组可以看做是线性表的线性表，依次类推。数组一旦被定义，它的维数和维界就不会在改变。一般情况下除了结构的初始化和销毁操作之外，数组仅会存取元素和修改元素的操作，因此数组一般采用顺序结构存储。</p>
+<a id="more"></a>
+
+<h1 id="一-非压缩存储方式"><a href="#一-非压缩存储方式" class="headerlink" title="一.非压缩存储方式"></a>一.非压缩存储方式</h1><p>大多数计算机语言都提供了数组数据类型，逻辑意义上的数组可以采用计算机语言中的数组数据类型进行存储，一个数据的所有元素在内存中占用一段连续的存储空间。</p>
+<p>以一维数组</p>
+<p>$$<br>\begin{bmatrix}<br>    a_0 &amp; a_1 &amp; a_2 &amp; \cdots &amp; a_{n-1}<br>\end{bmatrix}<br>$$</p>
+<p>为例，其在内容中的存储形式如下所示：</p>
+<p>$$<br>\fbox{$a_0$} \fbox{$a_1$} \fbox{$a_2$} \cdots \fbox{$a_{n-1}$}<br>$$</p>
+<p>总结上述形式，发现一维数组中的数据与内存中的存储中的数据存在一定的关系，归纳总结后便可以得到内存中该元素的位置与该元素在一维数组中的位置之间的关系：</p>
+<blockquote>
+<p>$LOC(a_i) = LOC(a_0)+i \times L (0 \le i \lt n)$</p>
+</blockquote>
+<p>其中L是每个数组元素所占存储单元。</p>
+<p>现实生活中，数组不仅仅局限于一维，可能会用到二维，三维，甚至多维结构，但是计算机存储空间却只能是一维结构，那么此时便面临如何存储多维数组的问题。比如下述二维数组：</p>
+<p>$$<br>A_{2 \times 3} =<br>\begin{pmatrix}<br>    a_{0,0} &amp; a_{0,1} &amp; a_{0,2} &amp; \<br>    a_{1,0} &amp; a_{1,1} &amp; a_{1,2} &amp; \<br>\end{pmatrix}<br>$$</p>
+<p>采用按行优先方式在内存中的形式如下所示：<br>$$<br>\underbrace{\fbox{$a_{0,0}$} \fbox{$a_{0,1}$} \fbox{$a_{0,2}$}}<em>{\text{第1行}} \underbrace{\fbox{$a</em>{1,0}$} \fbox{$a_{1,1}$} \fbox{$a_{1,2}$}}_{\text{第2行}}<br>$$<br>采用按列优先方式在内存中的形式如下所示：</p>
+<p>$$<br>\underbrace{\fbox{$a_{0,0}$} \fbox{$a_{1,0}$}}<em>{\text{第1列}}  \underbrace{\fbox{$a</em>{0,1}$} \fbox{$a_{1,1}$}}<em>{\text{第2列}} \underbrace{\fbox{$a</em>{0,2}$} \fbox{$a_{1,2}$}}_{\text{第3列}}<br>$$</p>
+<p>此时可以发现虽然二维数组没有发生变化，但是内存中的存储方式却千差万别，因此在一组连续存储单元存放数组的数据元素时就进行一次约定，到底时采用那种方式存储的数组。在C语言中，默认按行优先方式在内存中存储，而在FORTRAN语言中则使用的是按列优先方式。</p>
+<p>为了方便后续使用，对二维数组归纳便可得到内存中该元素的位置与该元素在二维数组中的位置之间的关系(假设该数组为m行n列，且每个数组元素所占存储单元为L)。</p>
+<blockquote>
+<p>按行优先方式在内存的形式的通项公式：$LOC(a_{i,j})=LOC(a_{0,0})+[i \times (n+1) + j] \times L$<br>按列优先方式在内存的形式的通项公式：$LOC(a_{i,j})=LOC(a_{0,0})+[j \times (m+1) + i] \times L$</p>
+</blockquote>
+<h1 id="二-压缩存储"><a href="#二-压缩存储" class="headerlink" title="二.压缩存储"></a>二.压缩存储</h1><p>压缩存储一般指为多个相同的元素只分配一个存储空间，对零元素不分配存储空间，这样做的目的便是节省存储空间。但并不是所有的矩阵都可以采用压缩存储，能够采用压缩存储的矩阵要么元素之间有一定的规律，要么矩阵中存在大量的零元素。若具有许多相同矩阵元素或者令元素，并且这些相同矩阵元素或零元素的分布有一定的规律，这样的矩阵称之为特殊矩阵，常见的特殊矩阵有对称矩阵、上（下）三角矩阵，对角矩阵等。</p>
+<h2 id="2-1对称矩阵的压缩存储"><a href="#2-1对称矩阵的压缩存储" class="headerlink" title="2.1对称矩阵的压缩存储"></a>2.1对称矩阵的压缩存储</h2><p>若n阶方阵A中的任一个元素满足下述性质</p>
+<p>$$a_{i,j}=a_{j,i} \ \ \ \ \ \ \ \ 1 \le i, j \le n $$</p>
+<p>则称为n阶对称矩阵。</p>
+<p>根据对称矩阵的性质，很容易发现，对称矩阵必然关于主对角线对称，为了方便存储，只需要存储上三角和主对角线元素或着下三角和主对角线元素便可，而当需要使用的时候，只需要将下三角元素按对角线对称复制到上三角便可。<br>这里以按行优先的方式存储下三角元素和主对角线元素为例。</p>
+<p>$$<br>A_{n \times n} =<br>\begin{pmatrix}<br>    a_{1,1} &amp; a_{1,2} &amp; \cdots &amp; a_{1,n} &amp; \<br>    a_{2,1} &amp; a_{2,2} &amp; \cdots &amp; a_{2,n} &amp; \<br>    \vdots &amp; \vdots &amp; \ddots &amp; \vdots &amp; \<br>    a_{n,1} &amp; a_{n,2} &amp; \cdots &amp; a_{n,n} &amp; \<br>\end{pmatrix}<br>$$</p>
+<p>其存储在内存中的相对位置如下所示：</p>
+<p>$$<br>\underbrace{\fbox{$a_{1,1}$}}<em>{\text{第1行}} \underbrace{\fbox{$a</em>{2,1}$} \fbox{$a_{2,2}$}}<em>{\text{第2行}} \cdots \underbrace{\fbox{$a</em>{n,1}$} \fbox{$a_{n,2}$} \cdots \fbox{$a_{n,n}$}}_{\text{第n行}}<br>$$</p>
+<p>因为二维数组（矩阵）可以看成是数组的数组，存储在内存中的形式依旧是一维方式，按照一定的规律排列，此时可以简单的将已经存储在内存中的矩阵A看做是一个一维数组B。这样经过分析见可以发现矩阵A和数组B之间的对应关系。</p>
+<p>第1行：1个元素($a_{1,1}$);<br>第2行：2个元素($a_{2,1},a_{2,2}$);<br>$\vdots$<br>第i行：i个元素($a_{i,1},a_{i,2},a_{i,3},\vdots,a_{i,i}$);<br>$\vdots$<br>第n行：n个元素($a_{n,1},a_{n,2},a{n,3},a{n,4},\vdots,a_{n,n}$);</p>
+<p>归纳总结便可发现：</p>
+<p>对于下三角元素和主对角线元素在数组B中的对应关系为：</p>
+<p>$$<br>k=1+2+\cdots+(i-1)+j-1\<br> =\frac{i(i-1)}{2}+j-1<br>$$</p>
+<p><code>注：这里规定数组B下标从0开始，k为数组B的通用下标，表示第k（从0开始标记）个元素</code></p>
+<p>对于上三角元素，因为和下三角元素关于主对角线对称，因此上三角元素在数组B中的对应关系只需将上式的i和j调换下次序便可。总结便有矩阵A与数组B的对称关系，如下所示：</p>
+<p>$$<br>k =<br>\begin{cases}<br>\frac{i(i-1)}{2}+j-1\ \ 当i \ge j（下三角区元素和主对角线元素）\<br>\frac{j(j-1)}{2}+i-1\ \ 当i \lt j（上三角区元素）<br>\end{cases}<br>$$</p>
+<h2 id="2-2三角矩阵的压缩存储"><a href="#2-2三角矩阵的压缩存储" class="headerlink" title="2.2三角矩阵的压缩存储"></a>2.2三角矩阵的压缩存储</h2><h3 id="2-2-1下三角矩阵的压缩存储"><a href="#2-2-1下三角矩阵的压缩存储" class="headerlink" title="2.2.1下三角矩阵的压缩存储"></a>2.2.1下三角矩阵的压缩存储</h3><p>方阵A中的上（下）三角中的元素（不包括对角线元素）均为常数或者0，则该矩阵称为下（上）三角矩阵。</p>
+<p>对于这样的矩阵，只需要存储下（上）三角中的元素之外，在加一个存储常数的存储空间即可，于是三角矩阵的压缩存储便又变为了对称矩阵的压缩存储形式，这里以下三角矩阵为例:</p>
+<p>$$<br>A_{n \times n} =<br>\begin{pmatrix}<br>    a_{1,1} &amp;\<br>    a_{2,1} &amp; a_{2,2} &amp;\<br>    \vdots &amp; \vdots &amp; \ddots &amp; \<br>    a_{n,1} &amp; a_{n,2} &amp; \cdots &amp; a_{n,n} &amp; \<br>\end{pmatrix}<br>$$</p>
+<p>其内存中的相对关系如下所示：</p>
+<p>$$<br>\underbrace{\fbox{$a_{1,1}$}}<em>{\text{第1行}} \underbrace{\fbox{$a</em>{2,1}$} \fbox{$a_{2,2}$}}<em>{\text{第2行}} \cdots \underbrace{\fbox{$a</em>{n,1}$} \fbox{$a_{n,2}$} \cdots \fbox{$a_{n,n}$}}<em>{\text{第n行}} \underbrace{\fbox{$c$}}</em>{\text{常数项}}<br>$$</p>
+<p>同样假定一数据B，其与数组B的元素对应关系为：</p>
+<p>$$<br>k =<br>\begin{cases}<br>\frac{i(i-1)}{2}+j-1\ \ 当i \ge j（下三角区元素和主对角线元素）\<br>\frac{n(n+1)}{2}\ \ 当i \lt j（上三角区元素）<br>\end{cases}<br>$$</p>
+<h3 id="2-2-2上三角矩阵的压缩存储"><a href="#2-2-2上三角矩阵的压缩存储" class="headerlink" title="2.2.2上三角矩阵的压缩存储"></a>2.2.2上三角矩阵的压缩存储</h3><p>同理可得上三角矩阵在内存中的相对关系和与数组B元素的对应关系，如下所示：</p>
+<p>$$<br>A_{m \times n} =<br>\begin{pmatrix}<br>    a_{1,1} &amp; a_{1,2} &amp; a_{1,3} &amp; \cdots &amp; a_{1,n} &amp; \<br>     &amp; a_{2,2} &amp; a_{2,3} &amp; \cdots &amp; a_{2,n} &amp; \<br>     &amp; &amp; &amp; \ddots &amp; \vdots &amp; \<br>     &amp; &amp; &amp; &amp; a_{n,n} &amp; \<br>\end{pmatrix}<br>$$</p>
+<p>在内存中的相对关系：</p>
+<p>$$<br>\underbrace{ \fbox{$a_{1,1}$} \fbox{$a_{1,2}$} \cdots \fbox{$a_{1,n}$}}<em>{\text{第1行}} \underbrace{\fbox{$a</em>{2,2}$} \fbox{$a_{2,3}$} \cdots \fbox{$a_{2,n}$}}<em>{\text{第2行}} \cdots \underbrace{ \fbox{$a</em>{n,n}$}}<em>{\text{第n行}} \underbrace{\fbox{$c$}}</em>{\text{常数项}}<br>$$<br>与数组B的元素对应关系为：</p>
+<p>$$<br>k =<br>\begin{cases}<br>\frac{(i-1)(2n-i+2)}{j-i}\ \ 当i \le j（下三角区元素和主对角线元素）\<br>\frac{n(n+1)}{2}\ \ 当i \gt j（上三角区元素）<br>\end{cases}<br>$$</p>
+<h2 id="2-3三对角矩阵的压缩存储"><a href="#2-3三对角矩阵的压缩存储" class="headerlink" title="2.3三对角矩阵的压缩存储"></a>2.3三对角矩阵的压缩存储</h2><p>三对角矩阵也称为带状矩阵。若n阶方阵A中的任一元素$a_{i,j}$满足下述性质</p>
+<p>当$ |i-j| \gt 1$时，有$a_{i,j}=0 (1 \le i, j \le n)$</p>
+<p>则称为三对角矩阵，如下所示：</p>
+<p>$$<br>A_{n \times n} =<br>\begin{pmatrix}<br>    a_{1,1} &amp; a_{1,2} &amp; &amp; &amp; &amp; &amp; \<br>    a_{2,1} &amp; a_{2,2} &amp; a_{2,3} &amp; &amp; &amp; &amp; \<br>    &amp; a_{3,2} &amp; a_{3,3} &amp; a_{3,4} &amp; &amp; &amp; \<br>    &amp; &amp; \ddots &amp; \ddots &amp; \ddots &amp; &amp;\<br>    &amp; &amp; &amp;a_{n-1,n-2} &amp; a_{n-1,n-1} &amp;a_{n-1,n} &amp; \<br>    &amp; &amp; &amp; &amp; a_{n,n-1} &amp;a_{n,n} &amp; \<br>\end{pmatrix}<br>$$</p>
+<p>在三对角矩阵中，所有非零元素都集中在主对角线为中心的三条对角线的区域中，其他区域的元素都为零。</p>
+<p>三对角矩阵同样可以采用压缩存储，将三条对角线上的元素按行优先方式存放在内存中，其相对关系如下所示：</p>
+<p>$$<br>\underbrace{\fbox{$a_{1,1}$} \fbox{$a_{1,2}$}}<em>{\text{第1行}} \underbrace{\fbox{$a</em>{2,1}$} \fbox{$a_{2,2}$} \fbox{$a_{2,3}$}}<em>{\text{第2行}} \cdots \underbrace{\fbox{$a</em>{n,n-1}$}\fbox{$a_{n,n}$}}_{\text{第n行}}<br>$$</p>
+<p>由此便可以计算出矩阵A中的3条对角线的元素$a_{i,j} (1 \le i, j \le n, |i-j| \le 1)$，在一维数组B中存放的下标为</p>
+<p>$$ k=2 \times i + j - 3$$</p>
+<h2 id="2-4稀疏矩阵的压缩存储"><a href="#2-4稀疏矩阵的压缩存储" class="headerlink" title="2.4稀疏矩阵的压缩存储"></a>2.4稀疏矩阵的压缩存储</h2><p>矩阵元素个数s相对于矩阵中的非零元素t个数来说非常多，即s \gt\gt t的矩阵称为稀疏矩阵。<br>比如一个100\times 100的矩阵中，仅有少于100个非零元素，这样的矩阵便是稀疏矩阵。</p>
+<p>如果采用常规的方法存储稀疏矩阵无疑是非常浪费存储空间的，如果仅存储非零元素，这样便可以极大的节省存储空间，但是在稀疏矩阵中，非零元素并没有规律可言，所有上述的压缩存储方法不再适用。但是如若在存储稀疏矩阵的非零元素时，同时存储其所在行和所在列，那么便可以将稀疏矩阵的非零元素变成一个三元组（行标，列标，值），然后再将其存储，这样便可以极大的节省存储空间，不过也应注意到此种方法使其失去了随机存取的特性。</p>
+<p>$$<br>A_{n \times n} =<br>\begin{pmatrix}<br>    2 &amp; 0 &amp; 0 &amp; 0  &amp; \<br>    0 &amp; 0 &amp; 1 &amp; 0  &amp; \<br>    0 &amp; 3 &amp; 0 &amp; 0  &amp; \<br>    0 &amp; 0 &amp; 0 &amp; 4  &amp; \<br>\end{pmatrix}<br>$$</p>
+<p>其存储的三元组如下：</p>
+<table>
+<thead>
+<tr>
+<th align="center">i</th>
+<th align="center">j</th>
+<th align="center">v</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">0</td>
+<td align="center">0</td>
+<td align="center">2</td>
+</tr>
+<tr>
+<td align="center">1</td>
+<td align="center">2</td>
+<td align="center">1</td>
+</tr>
+<tr>
+<td align="center">2</td>
+<td align="center">1</td>
+<td align="center">3</td>
+</tr>
+<tr>
+<td align="center">3</td>
+<td align="center">3</td>
+<td align="center">4</td>
+</tr>
+</tbody></table>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/" rel="tag"># 数据结构</a>
+              <a href="/tags/%E6%95%B0%E7%BB%84/" rel="tag"># 数组</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-next post-nav-item">
+                <a href="/2016/03/04/Data-structure-and-algorithm/chapter3/%E7%AC%AC3%E7%AB%A0%E7%BA%BF%E6%80%A7%E8%A1%A8%E7%9A%84%E6%8E%A8%E5%B9%BF/" rel="next" title="第3章线性表的推广">
+                  <i class="fa fa-chevron-left"></i> 第3章线性表的推广
+                </a>
+            </div>
+
+            <span class="post-nav-divider"></span>
+
+            <div class="post-nav-prev post-nav-item">
+                <a href="/2016/04/24/Data-structure-and-algorithm/chapter3/%E7%AC%AC3%E7%AB%A0%E7%AC%AC1%E8%8A%82%E7%BB%83%E4%B9%A0%E9%A2%981%20%E8%9B%87%E5%BD%A2%E7%9F%A9%E9%98%B5/" rel="prev" title="第3章第1节练习题1 蛇形矩阵">
+                  第3章第1节练习题1 蛇形矩阵 <i class="fa fa-chevron-right"></i>
+                </a>
+            </div>
+          </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#一-非压缩存储方式"><span class="nav-number">1.</span> <span class="nav-text">一.非压缩存储方式</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#二-压缩存储"><span class="nav-number">2.</span> <span class="nav-text">二.压缩存储</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#2-1对称矩阵的压缩存储"><span class="nav-number">2.1.</span> <span class="nav-text">2.1对称矩阵的压缩存储</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-2三角矩阵的压缩存储"><span class="nav-number">2.2.</span> <span class="nav-text">2.2三角矩阵的压缩存储</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-2-1下三角矩阵的压缩存储"><span class="nav-number">2.2.1.</span> <span class="nav-text">2.2.1下三角矩阵的压缩存储</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-2-2上三角矩阵的压缩存储"><span class="nav-number">2.2.2.</span> <span class="nav-text">2.2.2上三角矩阵的压缩存储</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-3三对角矩阵的压缩存储"><span class="nav-number">2.3.</span> <span class="nav-text">2.3三对角矩阵的压缩存储</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-4稀疏矩阵的压缩存储"><span class="nav-number">2.4.</span> <span class="nav-text">2.4稀疏矩阵的压缩存储</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="acronymor"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">acronymor</p>
+  <div class="site-description" itemprop="description">I am who i am, the unique fooid</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives">
+          <span class="site-state-item-count">216</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+        <span class="site-state-item-count">27</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+        <span class="site-state-item-count">35</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="feed-link motion-element">
+    <a href="/atom.xml" rel="alternate">
+      <i class="fa fa-rss"></i>RSS
+    </a>
+  </div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/acronymor" title="GitHub &amp;rarr; https:&#x2F;&#x2F;github.com&#x2F;acronymor" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yourname@acronymor.com" title="E-Mail &amp;rarr; mailto:yourname@acronymor.com"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">acronymor</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> v4.2.0
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">Theme – <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> v7.5.0
+  </div>
+
+        
+
+
+
+
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

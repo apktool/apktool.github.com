@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+  <link rel="alternate" href="/atom.xml" title="Acronymor's Blog" type="application/atom+xml">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Muse',
+    version: '7.5.0',
+    exturl: false,
+    sidebar: {"position":"right","display":"hide","offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: '',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    translation: {
+      copy_button: 'Copy',
+      copy_success: 'Copied',
+      copy_failure: 'Copy failed'
+    },
+    sidebarPadding: 40
+  };
+</script>
+
+  <meta name="description" content="目前主流的RDBMS和其他非关系型数据库底层数据库结构大都会使用B树或B+树，有时还会使用LSM树(Log-Structured Tree)。HBase与BitTable一样，是基于LSM树的系统。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="HBase 架构 | HFile结构">
+<meta property="og:url" content="http://acronymor.com/2018/03/09/Apache-HBase/chapter8/hbase-storage-hfile/index.html">
+<meta property="og:site_name" content="Acronymor&#39;s Blog">
+<meta property="og:description" content="目前主流的RDBMS和其他非关系型数据库底层数据库结构大都会使用B树或B+树，有时还会使用LSM树(Log-Structured Tree)。HBase与BitTable一样，是基于LSM树的系统。">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="http://acronymor.com/2018/03/09/Apache-HBase/chapter8/hbase-storage-hfile/hfile-v1.png">
+<meta property="og:image" content="http://acronymor.com/2018/03/09/Apache-HBase/chapter8/hbase-storage-hfile/hfile-v2.png">
+<meta property="og:image" content="http://acronymor.com/2018/03/09/Apache-HBase/chapter8/hbase-storage-hfile/map-column-to-hdfs.png">
+<meta property="og:image" content="http://acronymor.com/2018/03/09/Apache-HBase/chapter8/hbase-storage-hfile/keyvalue.png">
+<meta property="article:published_time" content="2018-03-09T14:29:39.000Z">
+<meta property="article:modified_time" content="2018-03-18T11:20:00.000Z">
+<meta property="article:author" content="acronymor">
+<meta property="article:tag" content="HBase">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://acronymor.com/2018/03/09/Apache-HBase/chapter8/hbase-storage-hfile/hfile-v1.png">
+
+<link rel="canonical" href="http://acronymor.com/2018/03/09/Apache-HBase/chapter8/hbase-storage-hfile/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true,
+    isPage: false,
+    isArchive: false
+  };
+</script>
+
+  <title>HBase 架构 | HFile结构 | Acronymor's Blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Acronymor's Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-movies">
+
+    <a href="/movies/" rel="section"><i class="fa fa-fw fa-film"></i>movies</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>About</a>
+
+  </li>
+  </ul>
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="en">
+    <link itemprop="mainEntityOfPage" href="http://acronymor.com/2018/03/09/Apache-HBase/chapter8/hbase-storage-hfile/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="acronymor">
+      <meta itemprop="description" content="I am who i am, the unique fooid">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Acronymor's Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          HBase 架构 | HFile结构
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2018-03-09 22:29:39" itemprop="dateCreated datePublished" datetime="2018-03-09T22:29:39+08:00">2018-03-09</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                <span class="post-meta-item-text">Edited on</span>
+                <time title="Modified: 2018-03-18 19:20:00" itemprop="dateModified" datetime="2018-03-18T19:20:00+08:00">2018-03-18</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/HBase%E6%9D%83%E5%A8%81%E6%8C%87%E5%8D%97/" itemprop="url" rel="index">
+                    <span itemprop="name">HBase权威指南</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>目前主流的RDBMS和其他非关系型数据库底层数据库结构大都会使用B树或B+树，有时还会使用LSM树(Log-Structured Tree)。HBase与BitTable一样，是基于LSM树的系统。</p>
+<a id="more"></a>
+
+<h1 id="HFile-格式"><a href="#HFile-格式" class="headerlink" title="HFile 格式"></a>HFile 格式</h1><p>实际的存储文件功能是由HFile类实现的，它被专门创建达到一个目的：有效的存储HBase的数据。它们基于Hadoop的TFile类。HFile参考BigTable的SSTable和Hadoop的TFile实现，从HBase开始到现在，HFile经历了三个版本，其中V2在0.92引入，V3在0.98引入。</p>
+<h2 id="V1的格式"><a href="#V1的格式" class="headerlink" title="V1的格式"></a>V1的格式</h2><img src="/2018/03/09/Apache-HBase/chapter8/hbase-storage-hfile/hfile-v1.png" class="" title="[hfile(v1)]">
+
+<p>这些文件是可变长度的，唯一固定的块是File Info块和Trailer块。如上图所示：</p>
+<ul>
+<li>Trailer有指向其他块的指针，它是在持久化数据到文件结束时写入的，写入后即确定其成为不可变的数据存储文件。</li>
+<li>Index块记录Data和Meta块的偏移量。</li>
+<li>Data和Meta块实际上都是可选的，但是考虑到HBase如何使用数据文件，在存储文件中用户几乎总能找到Data块。</li>
+</ul>
+<h2 id="V2的格式"><a href="#V2的格式" class="headerlink" title="V2的格式"></a>V2的格式</h2><img src="/2018/03/09/Apache-HBase/chapter8/hbase-storage-hfile/hfile-v2.png" class="" title="[hfile(v2)]">
+
+<p>HFile中包含了一个多层索引系统。这个多层索引是的HBase可以在不读取整个文件的情况下查找数据。这一多层索引类似于一个B+树。</p>
+<ul>
+<li>键值对根据键大小升序排列。</li>
+<li>索引指向64KB大小的数据块。</li>
+<li>每一个数据块还有其相应的叶索引（leaf-index）。</li>
+<li>每一个数据块的最后一个键作为中间索引（intermediate index）。</li>
+<li>根索引（root index）指向中间索引。</li>
+<li>文件结尾指向meta block。</li>
+</ul>
+<p>因为meta block是在数据写入硬盘操作的结尾写入该文件中的。文件的结尾同时还包含一些别的信息。比如bloom filter及时间信息。Bloom filter可以帮助HBase加速数据查询的速度。因为HBase可以利用Bloom filter跳过不包含当前查询的键的文件。时间信息则可以帮助HBase在查询时跳过读操作所期望的时间区域之外的文件。</p>
+<h2 id="V3的格式"><a href="#V3的格式" class="headerlink" title="V3的格式"></a>V3的格式</h2><p>HFile V3主要的提高是压缩比和，通过把key放在一起 Value放在一起， key存在block 的开始位置，value存在block的结束位置，通过对于key和value应用不同的压缩算法，这样可以获得更好对应key和value的位置信息，可以减少写入磁盘的读写，减少I/O提高速度。</p>
+<p>在HDFS中，文件的默认块大小是64MB（现默认是128MB），这个是HFile默认块大小的1024倍，因此HBase存储文件的块与Hadoop的块之间并没有匹配关系。事实上，这两种块类型之间根本没有相关性。HBase把它的文件透明的存储到文件系统中，而HDFS也使用块来切分文件仅仅是一个巧合，并且HDFS并不知道HBase中存储的是什么。</p>
+<p>下图描述了逻辑上把一个单元格的数据存储到一张表中，到实际存储到HDFS的映射过程。</p>
+<img src="/2018/03/09/Apache-HBase/chapter8/hbase-storage-hfile/map-column-to-hdfs.png" class="" title="[map column to hdfs]">
+
+<h1 id="KeyValue格式"><a href="#KeyValue格式" class="headerlink" title="KeyValue格式"></a>KeyValue格式</h1><img src="/2018/03/09/Apache-HBase/chapter8/hbase-storage-hfile/keyvalue.png" class="" title="[KeyValue]">
+
+<p>KeyValue类是HBase中数据存储的核心，由<code>keylength</code>、<code>valuelength</code>、<code>key</code>、<code>value</code>四个部分组成。</p>
+<p>其中Key又由<code>Row Length</code>、<code>Row、Column Family Length</code>、<code>Column Family</code>、<code>Column Qualifier</code>、<code>Time Stamp</code>、<code>Key Type</code>七部分组成。</p>
+<p>KeyValue不会在块之间拆分。例如，如果有一个8 MB的KeyValue，即使块大小是64kb，这个KeyValue将作为一个连续块读取。</p>
+<ul>
+<li>KeyLength存储Key的长度，占4B；</li>
+<li>ValueLength存储Value的长度，占4B；</li>
+</ul>
+<h2 id="Key存储具体的Cell数据"><a href="#Key存储具体的Cell数据" class="headerlink" title="Key存储具体的Cell数据"></a>Key存储具体的Cell数据</h2><table>
+<thead>
+<tr>
+<th align="center">Key</th>
+<th align="left">作用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">Row Length</td>
+<td align="left">存储rowkey的长度，占2B (Bytes.SIZEOF_INT)</td>
+</tr>
+<tr>
+<td align="center">Row</td>
+<td align="left">存储Rowkey实际内容，其大小为Row Length</td>
+</tr>
+<tr>
+<td align="center">Column Family Length</td>
+<td align="left">存储列簇Column Family的长度，占1B (Bytes.SIZEOF_BYTE)</td>
+</tr>
+<tr>
+<td align="center">Column Family</td>
+<td align="left">存储Column Family实际内容，大小为Column Family Length</td>
+</tr>
+<tr>
+<td align="center">Column Qualifier</td>
+<td align="left">存储Column Qualifier对应的数据</td>
+</tr>
+<tr>
+<td align="center">Time Stamp</td>
+<td align="left">存储时间戳Time Stamp，占8B (Bytes.SIZEOF_LONG)</td>
+</tr>
+<tr>
+<td align="center">Key Type</td>
+<td align="left">存储Key类型Key Type，占1B ( Bytes.SIZEOF_BYTE)，Type分为Put、Delete、DeleteColumn、DeleteFamilyVersion、DeleteFamily、Maximum、Minimum等类型，标记这个KeyValue的类型</td>
+</tr>
+</tbody></table>
+<p>由于Key中其它的字段占用大小已经知道，并且知道整个Key的大小，因此没有存储Column Qualifier的大小。</p>
+<h2 id="Value存储单元格Cell对应的实际的值Value"><a href="#Value存储单元格Cell对应的实际的值Value" class="headerlink" title="Value存储单元格Cell对应的实际的值Value"></a>Value存储单元格Cell对应的实际的值Value</h2><h2 id="示例"><a href="#示例" class="headerlink" title="示例"></a>示例</h2><p>对于<code>Put: rowkey=row1, cf:attr1=value1</code>操作，Key对应关系如下：</p>
+<table>
+<thead>
+<tr>
+<th align="center">key</th>
+<th align="left">value</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">rowlength</td>
+<td align="left">4</td>
+</tr>
+<tr>
+<td align="center">row</td>
+<td align="left">row1</td>
+</tr>
+<tr>
+<td align="center">columnfamilylength</td>
+<td align="left">2</td>
+</tr>
+<tr>
+<td align="center">columnfamily</td>
+<td align="left">cf</td>
+</tr>
+<tr>
+<td align="center">columnqualifier</td>
+<td align="left">attr1</td>
+</tr>
+<tr>
+<td align="center">timestamp</td>
+<td align="left">server time of Put</td>
+</tr>
+<tr>
+<td align="center">keytype</td>
+<td align="left">Put</td>
+</tr>
+</tbody></table>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/HBase/" rel="tag"># HBase</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-next post-nav-item">
+                <a href="/2018/03/09/Apache-HBase/chapter8/hbase-storage-structure/" rel="next" title="HBase 架构 | 存储目录结构">
+                  <i class="fa fa-chevron-left"></i> HBase 架构 | 存储目录结构
+                </a>
+            </div>
+
+            <span class="post-nav-divider"></span>
+
+            <div class="post-nav-prev post-nav-item">
+                <a href="/2018/03/13/Apache-HBase/chapter8/write-ahead-log/" rel="prev" title="HBase 之 WAL (Write-Ahead Logging )">
+                  HBase 之 WAL (Write-Ahead Logging ) <i class="fa fa-chevron-right"></i>
+                </a>
+            </div>
+          </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#HFile-格式"><span class="nav-number">1.</span> <span class="nav-text">HFile 格式</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#V1的格式"><span class="nav-number">1.1.</span> <span class="nav-text">V1的格式</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#V2的格式"><span class="nav-number">1.2.</span> <span class="nav-text">V2的格式</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#V3的格式"><span class="nav-number">1.3.</span> <span class="nav-text">V3的格式</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#KeyValue格式"><span class="nav-number">2.</span> <span class="nav-text">KeyValue格式</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Key存储具体的Cell数据"><span class="nav-number">2.1.</span> <span class="nav-text">Key存储具体的Cell数据</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Value存储单元格Cell对应的实际的值Value"><span class="nav-number">2.2.</span> <span class="nav-text">Value存储单元格Cell对应的实际的值Value</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#示例"><span class="nav-number">2.3.</span> <span class="nav-text">示例</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="acronymor"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">acronymor</p>
+  <div class="site-description" itemprop="description">I am who i am, the unique fooid</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives">
+          <span class="site-state-item-count">216</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+        <span class="site-state-item-count">27</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+        <span class="site-state-item-count">35</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="feed-link motion-element">
+    <a href="/atom.xml" rel="alternate">
+      <i class="fa fa-rss"></i>RSS
+    </a>
+  </div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/acronymor" title="GitHub &amp;rarr; https:&#x2F;&#x2F;github.com&#x2F;acronymor" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yourname@acronymor.com" title="E-Mail &amp;rarr; mailto:yourname@acronymor.com"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">acronymor</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> v4.2.0
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">Theme – <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> v7.5.0
+  </div>
+
+        
+
+
+
+
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

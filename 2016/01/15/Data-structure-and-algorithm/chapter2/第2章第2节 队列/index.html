@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+  <link rel="alternate" href="/atom.xml" title="Acronymor's Blog" type="application/atom+xml">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Muse',
+    version: '7.5.0',
+    exturl: false,
+    sidebar: {"position":"right","display":"hide","offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: '',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    translation: {
+      copy_button: 'Copy',
+      copy_success: 'Copied',
+      copy_failure: 'Copy failed'
+    },
+    sidebarPadding: 40
+  };
+</script>
+
+  <meta name="description" content="关于队列的基本定义已经在第2章栈和队列以及串中说到了，与栈类似，同样有使用顺序结构存储的队列（这里简称顺序队列）和链式结构存储的队列（ 这里简称链队列）。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="第2章第2节 队列">
+<meta property="og:url" content="http://acronymor.com/2016/01/15/Data-structure-and-algorithm/chapter2/%E7%AC%AC2%E7%AB%A0%E7%AC%AC2%E8%8A%82%20%E9%98%9F%E5%88%97/index.html">
+<meta property="og:site_name" content="Acronymor&#39;s Blog">
+<meta property="og:description" content="关于队列的基本定义已经在第2章栈和队列以及串中说到了，与栈类似，同样有使用顺序结构存储的队列（这里简称顺序队列）和链式结构存储的队列（ 这里简称链队列）。">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="http://img.blog.csdn.net/20160115152616407">
+<meta property="og:image" content="http://img.blog.csdn.net/20160115154103494">
+<meta property="og:image" content="http://img.blog.csdn.net/20160115154501244">
+<meta property="og:image" content="http://img.blog.csdn.net/20160115154537880">
+<meta property="article:published_time" content="2016-01-14T20:03:02.000Z">
+<meta property="article:modified_time" content="2016-01-14T20:03:02.000Z">
+<meta property="article:author" content="acronymor">
+<meta property="article:tag" content="数据结构">
+<meta property="article:tag" content="队列">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://img.blog.csdn.net/20160115152616407">
+
+<link rel="canonical" href="http://acronymor.com/2016/01/15/Data-structure-and-algorithm/chapter2/%E7%AC%AC2%E7%AB%A0%E7%AC%AC2%E8%8A%82%20%E9%98%9F%E5%88%97/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true,
+    isPage: false,
+    isArchive: false
+  };
+</script>
+
+  <title>第2章第2节 队列 | Acronymor's Blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Acronymor's Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-movies">
+
+    <a href="/movies/" rel="section"><i class="fa fa-fw fa-film"></i>movies</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>About</a>
+
+  </li>
+  </ul>
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="en">
+    <link itemprop="mainEntityOfPage" href="http://acronymor.com/2016/01/15/Data-structure-and-algorithm/chapter2/%E7%AC%AC2%E7%AB%A0%E7%AC%AC2%E8%8A%82%20%E9%98%9F%E5%88%97/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="acronymor">
+      <meta itemprop="description" content="I am who i am, the unique fooid">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Acronymor's Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          第2章第2节 队列
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2016-01-15 04:03:02" itemprop="dateCreated datePublished" datetime="2016-01-15T04:03:02+08:00">2016-01-15</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E4%B8%8E%E7%AE%97%E6%B3%95/" itemprop="url" rel="index">
+                    <span itemprop="name">数据结构与算法</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>关于队列的基本定义已经在<a href="http://blog.csdn.net/u013595419/article/details/50516508#t3" target="_blank" rel="noopener">第2章栈和队列以及串</a>中说到了，与<a href="http://blog.csdn.net/u013595419/article/details/50518427" target="_blank" rel="noopener">栈</a>类似，同样有使用顺序结构存储的队列（这里简称顺序队列）和链式结构存储的队列（ 这里简称链队列）。</p>
+<a id="more"></a>
+
+<h1 id="一-顺序队列"><a href="#一-顺序队列" class="headerlink" title="一. 顺序队列"></a>一. 顺序队列</h1><h2 id="1-1定义"><a href="#1-1定义" class="headerlink" title="1.1定义"></a>1.1定义</h2><p>队列的顺序实现是指分配一块连续的存储单元用于存放队列中的元素，并附设两个指针front和rear分别指示头元素和队尾元素。设队头指针指向队头元素的位置，队尾指针指向队尾元素的下一个位置。</p>
+<p>队列的顺序存储类型则可以描述为：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">define</span> MaxSize 50</span></span><br><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span>&#123;</span></span><br><span class="line">	ElemType data[MaxSize];</span><br><span class="line">	<span class="keyword">int</span> front,rear;</span><br><span class="line">&#125;SqQueue;</span><br></pre></td></tr></table></figure>
+
+<p>这里对顺序队列的判断条件进行说明。</p>
+<blockquote>
+<ul>
+<li>队空条件：Q.front==Q.rear==0</li>
+<li>队满条件：<del>Q.rear==MaxSize</del></li>
+</ul>
+</blockquote>
+<p>这里应当注意到，上述判断队满条件实际是不正确的，比如当front指向队尾元素，而rear的值刚好等于MaxSize。<br>此时从$data[0]$到$data[MaxSize-2]$的所有元素中，均没有存储任何元素，但是根据上述判断条件却“已满”，造成“假溢出”。<br>为了解决这个问题，常见的有两种解决方法。</p>
+<blockquote>
+<ol>
+<li>将队列元素向前“平移”重新占用0至rear-front-1的空间</li>
+<li>将队列看成首尾相连的循环队列</li>
+</ol>
+</blockquote>
+<p>因为平移会浪费大量的无用时间，因此一般使用循环队列解决判断是否队满的问题。</p>
+<h1 id="二-循环队列"><a href="#二-循环队列" class="headerlink" title="二.循环队列"></a>二.循环队列</h1><h2 id="2-1定义"><a href="#2-1定义" class="headerlink" title="2.1定义"></a>2.1定义</h2><p>循环队列将一个顺序队列“臆造”成一个环状的空间，即把存储队列元素的表从逻辑上看成一个环，物理上依旧使用顺序存储结构。<br>在引入循环队列的同时，也引入判断队列是否为空或满的三种常见方法。</p>
+<p> <strong>1). 牺牲一个单元来区分队空和队满</strong></p>
+<blockquote>
+<ul>
+<li>队空条件：Q.front==Q.rear</li>
+<li>队满条件：(Q.rear+1)%MaxSize==Q.front</li>
+<li>队列中元素的个数：(Q.rear-Q.front+MaxSize)%MaxSize</li>
+</ul>
+</blockquote>
+<p><strong>2). 增设表示元素个数的数据成员size</strong></p>
+<blockquote>
+<p>队空条件：Q.size==0<br>队满条件：Q.size=MaxSize<br>队列中元素的个数：Q.size</p>
+</blockquote>
+<p><strong>3). 增设数据成员标志tag</strong></p>
+<blockquote>
+<p>队空条件：Q.tag==0&amp;&amp;Q.front==Q.rear<br>队满条件：Q.tag==1&amp;&amp;Q.front==Q.rear</p>
+</blockquote>
+<h2 id="2-2基本操作"><a href="#2-2基本操作" class="headerlink" title="2.2基本操作"></a>2.2基本操作</h2><p>初始化操作，完成对队首指针和队尾指针的复位操作。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">InitQueue</span><span class="params">(SqQueue* Q)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	Q-&gt;front=<span class="number">0</span>;</span><br><span class="line">	Q-&gt;rear=<span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>入队操作，因为队列中规定队尾指针指向队尾元素的下一个位置，因此在入队后需对队尾指针自增1。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">EnQueue</span><span class="params">(SqQueue* Q, ElemType x)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	<span class="keyword">if</span>((Q-&gt;rear+<span class="number">1</span>)%MaxSize==Q-&gt;front)&#123;</span><br><span class="line">		<span class="keyword">return</span> <span class="number">-1</span>;</span><br><span class="line">	&#125;</span><br><span class="line">	Q-&gt;data[Q-&gt;rear]=x;</span><br><span class="line">	Q-&gt;rear=(Q-&gt;rear+<span class="number">1</span>)%MaxSize;</span><br><span class="line">	<span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>出队操作，如果队空则返回-1；否则返回数据元素。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">DeQueue</span><span class="params">(SqQueue* Q, ElemType* x)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	<span class="keyword">if</span>(Q-&gt;rear==Q-&gt;front)&#123;</span><br><span class="line">		<span class="keyword">return</span> <span class="number">-1</span>;</span><br><span class="line">	&#125;</span><br><span class="line">	*x=Q-&gt;data[Q-&gt;front];</span><br><span class="line">	Q-&gt;front=(Q-&gt;front+<span class="number">1</span>)%MaxSize;</span><br><span class="line">	<span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>判断队列是否为空，若为空则返回0；否则返回-1。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">QueueEmpty</span><span class="params">(SqQueue* Q)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	<span class="keyword">if</span>(Q-&gt;rear==Q-&gt;front)&#123;</span><br><span class="line">		<span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">	&#125;<span class="keyword">else</span>&#123;</span><br><span class="line">		<span class="keyword">return</span> 	<span class="number">-1</span>;</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h1 id="三-链队列"><a href="#三-链队列" class="headerlink" title="三.链队列"></a>三.链队列</h1><h2 id="3-1定义"><a href="#3-1定义" class="headerlink" title="3.1定义"></a>3.1定义</h2><p>采用单链表结构存储的队列称为链队列。它同时带有指向队头结点的指针点和指向队尾结点的尾结点，一般为了方便在队头取出元素和在队尾中添加元素，故一般采用待有头节点的单链表。<br>如图所示：<br><img src="http://img.blog.csdn.net/20160115152616407" alt="链队列"></p>
+<p>这里对链队列的判断条件进行说明。</p>
+<blockquote>
+<ul>
+<li>队空条件：Q.front==Q.rear</li>
+</ul>
+</blockquote>
+<p>队列的链式存储类型则可以描述为：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span> <span class="title">LNode</span>&#123;</span></span><br><span class="line">	ElemType data;</span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">LNode</span> *<span class="title">next</span>;</span></span><br><span class="line">&#125;LNode,*LinkList;</span><br><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span>&#123;</span></span><br><span class="line">	LNode *front;</span><br><span class="line">	LNode *rear;</span><br><span class="line">&#125;LinkQueue;</span><br></pre></td></tr></table></figure>
+
+<p>链队特别适合元素数据变化比较大和需要同时使用多个队列的情形，因为不会存在由于队满而溢出的问题。</p>
+<h2 id="3-2基本操作"><a href="#3-2基本操作" class="headerlink" title="3.2基本操作"></a>3.2基本操作</h2><p>初始化操作。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">InitQueue</span><span class="params">(LinkQueue *Q)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	Q-&gt;front=(LNode*)<span class="built_in">malloc</span>(<span class="keyword">sizeof</span>(LNode));</span><br><span class="line">	Q-&gt;rear=Q-&gt;front;</span><br><span class="line">	Q-&gt;front-&gt;next=<span class="literal">NULL</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>判断队列是否为空，如若为空，则返回0；否则返回-1。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">QueueEmpty</span><span class="params">(LinkQueue *Q)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	<span class="keyword">if</span>(Q-&gt;front==Q-&gt;rear)&#123;</span><br><span class="line">		<span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">	&#125;<span class="keyword">else</span>&#123;</span><br><span class="line">		<span class="keyword">return</span> <span class="number">-1</span>;</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>入队操作，创建新的结点，然后插入队尾</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">EnQueue</span><span class="params">(LinkQueue *Q, ElemType x)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	LNode *s;</span><br><span class="line">	s=(LNode*)<span class="built_in">malloc</span>(<span class="keyword">sizeof</span>(LNode));</span><br><span class="line">	s-&gt;data=x;</span><br><span class="line">	Q-&gt;rear-&gt;next=s;</span><br><span class="line">	Q-&gt;rear=s;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>出队操作，如果队列为空，则返回-1；若不为空，则返回0。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">DeQueue</span><span class="params">(LinkQueue *Q, ElemType *x)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	LNode *p;</span><br><span class="line">	<span class="keyword">if</span>(Q-&gt;front==Q-&gt;rear)&#123;</span><br><span class="line">		<span class="keyword">return</span> <span class="number">-1</span>;</span><br><span class="line">	&#125;</span><br><span class="line">	p=Q-&gt;front-&gt;next;</span><br><span class="line">	*x=p-&gt;data;</span><br><span class="line">	Q-&gt;front-&gt;next=p-&gt;next;</span><br><span class="line">	<span class="keyword">if</span>(Q-&gt;rear==p)&#123;</span><br><span class="line">		Q-&gt;rear=Q-&gt;front;</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="built_in">free</span>(p);</span><br><span class="line">	<span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+<h1 id="四-双端队列"><a href="#四-双端队列" class="headerlink" title="四.双端队列"></a>四.双端队列</h1><p>##4.1定义<br>双端队列是允许两端都可以进行入队和出队操作的队列。</p>
+<p>在双端队列进队时，前端进的元素排列在队列中后端进的元素的前面，后端进的元素排列在队列中前端进的元素的后面。在双端队列出队时，无论前端还是后端出队，先出的元素排列在后出的元素的前面。如下图所示：<br><img src="http://img.blog.csdn.net/20160115154103494" alt="双端队列"></p>
+<p>输出受限的双端队列：允许在一端进行插入和删除，但在另一端只允许插入的双端队列 称为输出受限的双端队列。如下图所示：</p>
+<p><img src="http://img.blog.csdn.net/20160115154501244" alt="输出受限的双端队列"></p>
+<p>输入受限的双端队列：允许在一端进行插入和删除，但在另一端只允许删除的双端队列，而如果限定双端队列从某个端点插入的元素只 能从该端点删除，则该双端队列就蜕变为两个栈底相邻接的栈了。如下图所示：</p>
+<p><img src="http://img.blog.csdn.net/20160115154537880" alt="输入受限的双端队列"></p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/" rel="tag"># 数据结构</a>
+              <a href="/tags/%E9%98%9F%E5%88%97/" rel="tag"># 队列</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-next post-nav-item">
+                <a href="/2016/01/15/Data-structure-and-algorithm/chapter2/%E7%AC%AC2%E7%AB%A0%E7%AC%AC1%E8%8A%82%E7%BB%83%E4%B9%A0%E9%A2%983%20%E5%85%B1%E4%BA%AB%E6%A0%88%E7%9A%84%E5%9F%BA%E6%9C%AC%E6%93%8D%E4%BD%9C/" rel="next" title="第2章第1节练习题3 共享栈的基本操作">
+                  <i class="fa fa-chevron-left"></i> 第2章第1节练习题3 共享栈的基本操作
+                </a>
+            </div>
+
+            <span class="post-nav-divider"></span>
+
+            <div class="post-nav-prev post-nav-item">
+                <a href="/2016/01/15/Data-structure-and-algorithm/chapter2/%E7%AC%AC2%E7%AB%A0%E7%AC%AC2%E8%8A%82%E7%BB%83%E4%B9%A0%E9%A2%981%20%E9%80%86%E7%BD%AE%E9%98%9F%E5%88%97/" rel="prev" title="第2章第2节练习题1 逆置队列">
+                  第2章第2节练习题1 逆置队列 <i class="fa fa-chevron-right"></i>
+                </a>
+            </div>
+          </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#一-顺序队列"><span class="nav-number">1.</span> <span class="nav-text">一. 顺序队列</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#1-1定义"><span class="nav-number">1.1.</span> <span class="nav-text">1.1定义</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#二-循环队列"><span class="nav-number">2.</span> <span class="nav-text">二.循环队列</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#2-1定义"><span class="nav-number">2.1.</span> <span class="nav-text">2.1定义</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-2基本操作"><span class="nav-number">2.2.</span> <span class="nav-text">2.2基本操作</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#三-链队列"><span class="nav-number">3.</span> <span class="nav-text">三.链队列</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#3-1定义"><span class="nav-number">3.1.</span> <span class="nav-text">3.1定义</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-2基本操作"><span class="nav-number">3.2.</span> <span class="nav-text">3.2基本操作</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#四-双端队列"><span class="nav-number">4.</span> <span class="nav-text">四.双端队列</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="acronymor"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">acronymor</p>
+  <div class="site-description" itemprop="description">I am who i am, the unique fooid</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives">
+          <span class="site-state-item-count">216</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+        <span class="site-state-item-count">27</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+        <span class="site-state-item-count">35</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="feed-link motion-element">
+    <a href="/atom.xml" rel="alternate">
+      <i class="fa fa-rss"></i>RSS
+    </a>
+  </div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/acronymor" title="GitHub &amp;rarr; https:&#x2F;&#x2F;github.com&#x2F;acronymor" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yourname@acronymor.com" title="E-Mail &amp;rarr; mailto:yourname@acronymor.com"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">acronymor</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> v4.2.0
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">Theme – <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> v7.5.0
+  </div>
+
+        
+
+
+
+
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+  <link rel="alternate" href="/atom.xml" title="Acronymor's Blog" type="application/atom+xml">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Muse',
+    version: '7.5.0',
+    exturl: false,
+    sidebar: {"position":"right","display":"hide","offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: '',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    translation: {
+      copy_button: 'Copy',
+      copy_success: 'Copied',
+      copy_failure: 'Copy failed'
+    },
+    sidebarPadding: 40
+  };
+</script>
+
+  <meta name="description" content="ZooKeeper的视图结构和标准的Unix文件系统非常类似，单没有引入传统文件系统中目录和文件等相关概念，而是使用了其特有的“数据节点”概念，我们称为ZNode。ZNode是ZooKeeper中数据的最小单元，每个ZNode上都可以保存数据，同时还可以挂载子节点，因此构成了一个层次话的命名空间，我们称为树。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="ZooKeeper模型">
+<meta property="og:url" content="http://acronymor.com/2018/06/04/Apache-Zookeeper/zookeeper-model/index.html">
+<meta property="og:site_name" content="Acronymor&#39;s Blog">
+<meta property="og:description" content="ZooKeeper的视图结构和标准的Unix文件系统非常类似，单没有引入传统文件系统中目录和文件等相关概念，而是使用了其特有的“数据节点”概念，我们称为ZNode。ZNode是ZooKeeper中数据的最小单元，每个ZNode上都可以保存数据，同时还可以挂载子节点，因此构成了一个层次话的命名空间，我们称为树。">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="http://acronymor.com/2018/06/04/Apache-Zookeeper/zookeeper-model/watcher.png">
+<meta property="article:published_time" content="2018-06-04T04:23:40.000Z">
+<meta property="article:modified_time" content="2018-06-04T04:23:40.000Z">
+<meta property="article:author" content="acronymor">
+<meta property="article:tag" content="ZooKeeper">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://acronymor.com/2018/06/04/Apache-Zookeeper/zookeeper-model/watcher.png">
+
+<link rel="canonical" href="http://acronymor.com/2018/06/04/Apache-Zookeeper/zookeeper-model/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true,
+    isPage: false,
+    isArchive: false
+  };
+</script>
+
+  <title>ZooKeeper模型 | Acronymor's Blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Acronymor's Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-movies">
+
+    <a href="/movies/" rel="section"><i class="fa fa-fw fa-film"></i>movies</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>About</a>
+
+  </li>
+  </ul>
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="en">
+    <link itemprop="mainEntityOfPage" href="http://acronymor.com/2018/06/04/Apache-Zookeeper/zookeeper-model/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="acronymor">
+      <meta itemprop="description" content="I am who i am, the unique fooid">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Acronymor's Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          ZooKeeper模型
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2018-06-04 12:23:40" itemprop="dateCreated datePublished" datetime="2018-06-04T12:23:40+08:00">2018-06-04</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E5%88%86%E5%B8%83%E5%BC%8F%E5%9F%BA%E7%A1%80/" itemprop="url" rel="index">
+                    <span itemprop="name">分布式基础</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>ZooKeeper的视图结构和标准的Unix文件系统非常类似，单没有引入传统文件系统中目录和文件等相关概念，而是使用了其特有的“数据节点”概念，我们称为ZNode。ZNode是ZooKeeper中数据的最小单元，每个ZNode上都可以保存数据，同时还可以挂载子节点，因此构成了一个层次话的命名空间，我们称为树。</p>
+<a id="more"></a>
+
+<h1 id="数据模型"><a href="#数据模型" class="headerlink" title="数据模型"></a>数据模型</h1><h2 id="树"><a href="#树" class="headerlink" title="树"></a>树</h2><p>在ZooKeeper中，每一个数据节点都被称为ZNode，所有ZNode按层次化结构进行组织，形成一棵树。ZNode的节点路径标识方式和Unix文件系统路径非常相似，都是由一系列使用<code>/</code>进行分割的路径表示，开发人员可以向这个节点中写入数据，也可以在节点下面创建子节点。</p>
+<h2 id="事务ID"><a href="#事务ID" class="headerlink" title="事务ID"></a>事务ID</h2><p>在ZooKeeper中，事务是指能够改变ZooKeeper服务器状态的操作，我们也称为事务操作和更新操作，一般包括数据节点创建与删除、数据节点内容更新和客户端会话失效操作等。对于每一个事务请求，ZooKeeper都会为其分配一个全局唯一的事务ID，用ZXID表示，每一个ZXID对应一次更新操作，从这些ZXID中可以间接地识别出ZooKeeper处理这些更新操作请求的全局顺序。</p>
+<h1 id="节点特性"><a href="#节点特性" class="headerlink" title="节点特性"></a>节点特性</h1><p>在ZooKeeper中，每个数据节点都是有生命周期，其生命周期长短取决于数据节点的节点类型。在ZooKeeper中，节点类型可以分为持久节点(PERSISTENT)，临时节点(EPHEMERAL)和顺序节点(SEQUENTIAL)三大类，具体在节点创建过程中，通过组合使用，可以生成以下四种组合型节点类型。</p>
+<h2 id="持久节点-PERSISTENT"><a href="#持久节点-PERSISTENT" class="headerlink" title="持久节点(PERSISTENT)"></a>持久节点(PERSISTENT)</h2><p>持久节点是ZooKeeper中最常见的一种节点类型。所谓持久节点，是指该数据节点被创建后，就会一直存在于ZooKeeper服务器上，直到有删除操作来主动清除这个节点。</p>
+<h2 id="持久顺序节点（PERSISTENT-SEQUENTIAL）"><a href="#持久顺序节点（PERSISTENT-SEQUENTIAL）" class="headerlink" title="持久顺序节点（PERSISTENT_SEQUENTIAL）"></a>持久顺序节点（PERSISTENT_SEQUENTIAL）</h2><p>持久顺序节点的基本特性和持久节点是一致的，额外的特性表现在顺序性上。在ZooKeeper中，每个父节点都会为他的第一级子节点维护一份顺序，用于记录下每个子节点的创建的先后顺序。基于这个顺序特性，在创建子节点的时候，可以设置这个标记，那么在创建节点过程中，ZooKeeper会自动为给定点名加上一个数字后缀，作为一个新的、完整的节点名。</p>
+<p>另外需要注意的是，这个数字后缀的上限是整型的最大值。</p>
+<h2 id="临时节点（EPHEMERAL）"><a href="#临时节点（EPHEMERAL）" class="headerlink" title="临时节点（EPHEMERAL）"></a>临时节点（EPHEMERAL）</h2><p>和持久节点不同的是，临时节点的生命周期和客户端的会话绑定在一起，也就是说，如果客户端会话失效，那么这个节点就会被自动清理掉。注意，这里提到的是客户端会话失效，而非TCP连接断开。另外，ZooKeeper规定了不能基于临时节点来创建子节点，即临时节点只能作为叶子节点。</p>
+<h2 id="临时顺序节点（EPHEMERAL-SEQUENTIAL）"><a href="#临时顺序节点（EPHEMERAL-SEQUENTIAL）" class="headerlink" title="临时顺序节点（EPHEMERAL_SEQUENTIAL）"></a>临时顺序节点（EPHEMERAL_SEQUENTIAL）</h2><p>临时顺序节点的基本特性和临时节点也是一致的，同样是在临时节点的基础上，添加了顺序的特性。</p>
+<h2 id="状态信息"><a href="#状态信息" class="headerlink" title="状态信息"></a>状态信息</h2><p>每个数据节点除了存储了数据内容之外，还存储了数据节点本身的一些状态信息。使用get命令来获取一个数据节点的内容</p>
+<p>第一行是当前数据节点的数据内容，从第二行开始就是节点的状态信息。</p>
+<table>
+<thead>
+<tr>
+<th align="center">状态属性</th>
+<th align="left">说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">czxid</td>
+<td align="left">即Created ZXID，表示该数据节点被创建时的事务ID</td>
+</tr>
+<tr>
+<td align="center">mzxid</td>
+<td align="left">即Modified ZXID，表示该节点最后一次被更新时的事务ID</td>
+</tr>
+<tr>
+<td align="center">ctime</td>
+<td align="left">即Created Time，表示节点被创建的时候</td>
+</tr>
+<tr>
+<td align="center">mtime</td>
+<td align="left">即Modified Time，表示该节点最后一次被更新的时间</td>
+</tr>
+<tr>
+<td align="center">version</td>
+<td align="left">数据节点的版本号</td>
+</tr>
+<tr>
+<td align="center">cversion</td>
+<td align="left">子节点的版本号</td>
+</tr>
+<tr>
+<td align="center">aversion</td>
+<td align="left">节点的ACL版本号</td>
+</tr>
+<tr>
+<td align="center">ephemeralOwner</td>
+<td align="left">创建该临时节点的会话的sessionID。如果该节点是持久节点，那么这个属性值为0</td>
+</tr>
+<tr>
+<td align="center">dataLength</td>
+<td align="left">数据内容的长度</td>
+</tr>
+<tr>
+<td align="center">numChildren</td>
+<td align="left">当前节点的子节点个数</td>
+</tr>
+<tr>
+<td align="center">pzxid</td>
+<td align="left">表示该节点的子节点列表最后一次被修改时的事务ID。注意，只有子节点列表变更了才会变更pzxid，子节点内容变更不会影响pzxid</td>
+</tr>
+</tbody></table>
+<h1 id="版本（保证分布式数据原子性操作）"><a href="#版本（保证分布式数据原子性操作）" class="headerlink" title="版本（保证分布式数据原子性操作）"></a>版本（保证分布式数据原子性操作）</h1><p>ZooKeeper中为数据节点引入了版本的概念，每个数据节点都具有三种类型的版本信息，对数据节点的任何更新操作都会引起版本号的变化。</p>
+<table>
+<thead>
+<tr>
+<th align="center">版本类型</th>
+<th align="left">说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">version</td>
+<td align="left">当前数据节点数据内容的版本号</td>
+</tr>
+<tr>
+<td align="center">cversion</td>
+<td align="left">当前数据节点子节点的版本号</td>
+</tr>
+<tr>
+<td align="center">aversion</td>
+<td align="left">当前数据节点ACL变更版本号</td>
+</tr>
+</tbody></table>
+<p>ZooKeeper中的版本概念和传统意义上的软件版本有很大的区别，它表示的是对数据节点的数据内容，子节点列表，或是节点ACL信息的修改次数。</p>
+<p>乐观锁控制中，事务可以分为三个阶段：数据读取，写入校验和数据写入。其中写入校验阶段是整个乐观锁控制的关键所在。在ZooKeeper中，version属性正是用来实现乐观锁机制中的“写入校验”的。</p>
+<h1 id="Watcher-数据变更的通知"><a href="#Watcher-数据变更的通知" class="headerlink" title="Watcher(数据变更的通知)"></a>Watcher(数据变更的通知)</h1><p>ZooKeeper提供了分布式数据的发布/订阅功能，一个典型的发布/订阅模型系统定义了一种一对多的订阅关系，能够让多个订阅者同时监听某一个主题对象，当这个主题对象自身状态变化时，会通知所有订阅者，使他们能够做出相应的处理。在ZooKeeper中，引入了Watcher机制来实现这种分布式的通知功能。ZooKeeper允许客户端向服务器端注册一个Watcher监听，当服务端的一些指定事件触发了这个Watcher，那么就会向指定客户端发送一个事件通知来实现分布式的通知功能。</p>
+<img src="/2018/06/04/Apache-Zookeeper/zookeeper-model/watcher.png" class="" title="[watcher]">
+
+<p>从上图中，我们可以看到，ZooKeeper的Watcher机制主要包括客户端线程、客户端WatchManager和ZooKeeper服务器三部分。在具体工作流程上，简单地讲，客户端在向ZooKeeper服务器注册Watcher的同时，会将Watcher对象存储在客户端的WatchManager中。当ZooKeeper服务器端触发Watcher事件后，会向客户端发送通知，客户端线程从WatchManager中取出对应的Watcher对象来执行回调逻辑。</p>
+<h1 id="ACL-保障数据的安全"><a href="#ACL-保障数据的安全" class="headerlink" title="ACL(保障数据的安全)"></a>ACL(保障数据的安全)</h1><p>提到权限控制，Unix/Linux文件系统中使用的是UGO(User,Group,Others)权限控制机制。简单来说，UGO就是针对一个文件或目录，对创建者(User)，创建者所在的组(Group)和其他用户(Other)分别配置不同的权限。UGO是一种粗粒度的文件系统权限控制模式。</p>
+<p>ACL，即访问控制列表，是一种相对来说，比较新颖且更细粒度的权限管理方式，可以针对任意用户和组进行细粒度的权限控制。当然ZooKeeper的ACL权限控制和Unix/Linux操作系统中的ACL有一些区别，读者可以从三个方面来理解ACL机制，分别是：权限模式(Scheme)、授权对象(ID)和权限(Permission)。通常使用”scheme:id:permission”来标识一个有效的ACL信息。</p>
+<h2 id="权限模式-Scheme"><a href="#权限模式-Scheme" class="headerlink" title="权限模式: Scheme"></a>权限模式: Scheme</h2><table>
+<thead>
+<tr>
+<th align="center">模式名称</th>
+<th align="left">说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">IP</td>
+<td align="left">IP模式通过IP地址粒度来进行权限控制，同时也支持按照网段的方式进行配置</td>
+</tr>
+<tr>
+<td align="center">Digest</td>
+<td align="left">是最常用的权限控制模式,类似于“username:password”形式的权限标识来进行权限配置，便于区分不同应用来进行权限控制</td>
+</tr>
+<tr>
+<td align="center">World</td>
+<td align="left">World是一种最开放的权限控制模式，这种权限控制方式几乎没有任何作用</td>
+</tr>
+<tr>
+<td align="center">Super</td>
+<td align="left">在Super模式下，超级用户可以对任意ZooKeeper上的数据节点进行任何操作</td>
+</tr>
+</tbody></table>
+<h2 id="授权对象：ID"><a href="#授权对象：ID" class="headerlink" title="授权对象：ID"></a>授权对象：ID</h2><p>授权对象指的是权限赋予的用户或一个指定实体，如IP地址或者是机器等。在不同的权限模式下，授权对象是不同的。</p>
+<p>权限模式 | 授权对象<br>IP | 通常是一个IP地址或是IP段，例如“192.168.0.110”或“192.168.0.1/24”<br>Digest | 自定义，通常是“username:BASE64(SHA-1(username:password))”，例如“foo:kWN6aNSbjcKWPqjiV7cg0N24raU=”<br>World | 只有一个ID：”anyone”<br>Super | 与Digest模式一致</p>
+<h2 id="权限：Permission"><a href="#权限：Permission" class="headerlink" title="权限：Permission"></a>权限：Permission</h2><p> 权限就是指那些通过权限检查后可以被允许执行的操作。在ZooKeeper中，所有对数据的操作权限分为以下五大类：</p>
+<table>
+<thead>
+<tr>
+<th align="center">名称</th>
+<th align="left">解释</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">CREATE(C)</td>
+<td align="left">数据节点的创建权限，允许授权对象在该数据节点下创建子节点。</td>
+</tr>
+<tr>
+<td align="center">DELETE(D)</td>
+<td align="left">子节点的删除权限，允许授权对象删除该数据节点的子节点。</td>
+</tr>
+<tr>
+<td align="center">READ(R)</td>
+<td align="left">数据节点的读取权限，允许授权对象访问该数据节点并读取其数据内容或子节点列表等。</td>
+</tr>
+<tr>
+<td align="center">WRITE(W)</td>
+<td align="left">数据节点的更新权限，允许授权对象对该数据节点进行更新操作。</td>
+</tr>
+<tr>
+<td align="center">ADMIN(A)</td>
+<td align="left">数据节点的管理权限，允许授权对象对该数据节点进行ACL相关的设置操作。</td>
+</tr>
+</tbody></table>
+<hr>
+<h1 id="乐观锁和悲观锁"><a href="#乐观锁和悲观锁" class="headerlink" title="乐观锁和悲观锁"></a>乐观锁和悲观锁</h1><p>悲观锁，又被称作悲观并发控制(Pessimistic Concurrency Control, PCC)，是数据库中一种非常典型且非常严格的并发控制策略，悲观锁具有强烈的独占和排他特性，能够有效地避免不同事务对同一数据并发更新而造成的数据一致性问题。</p>
+<p>在悲观锁的实现原理中，如果一个事务正在对数据进行处理，那么整个处理过程中，都会将数据处于锁定状态，在这期间，其他事务将无法对这个数据进行更新操作，直到事务A完成该数据的处理，释放了对应的锁后，其他事务才能够重新竞争来对数据进行更新操作。</p>
+<p>乐观锁，又被称作乐观并发控制(Optimistic Concurrency Control, OCC)，是一种创建的乐观并发控制策略。悲观锁假定不同事务之间的处理一定会出现相互干扰，从而在一个事务从头到尾的过程中都对数据进行加锁处理。而乐观锁正好相反，它假定多个事务在处理过程中不会彼此影响，因此在事务处理的绝大部分时间里不需要进行加锁处理。在乐观锁机制中，在更新请求操作之前，每个事务都会检查当前事务读取后，是否有其他事务对该数据进行了修改，如果其他事务有更新的化，那么正在提交的事务就需要回滚。乐观锁通常适用在数据并发竞争不大，事务冲突较少的应用场景中。</p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/ZooKeeper/" rel="tag"># ZooKeeper</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-next post-nav-item">
+                <a href="/2018/06/01/Compute-Base-Knowledge/virtual-private-server/" rel="next" title="vps">
+                  <i class="fa fa-chevron-left"></i> vps
+                </a>
+            </div>
+
+            <span class="post-nav-divider"></span>
+
+            <div class="post-nav-prev post-nav-item">
+                <a href="/2018/06/05/MySQL/mysql-explain/" rel="prev" title="MySQL explain命令介绍">
+                  MySQL explain命令介绍 <i class="fa fa-chevron-right"></i>
+                </a>
+            </div>
+          </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#数据模型"><span class="nav-number">1.</span> <span class="nav-text">数据模型</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#树"><span class="nav-number">1.1.</span> <span class="nav-text">树</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#事务ID"><span class="nav-number">1.2.</span> <span class="nav-text">事务ID</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#节点特性"><span class="nav-number">2.</span> <span class="nav-text">节点特性</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#持久节点-PERSISTENT"><span class="nav-number">2.1.</span> <span class="nav-text">持久节点(PERSISTENT)</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#持久顺序节点（PERSISTENT-SEQUENTIAL）"><span class="nav-number">2.2.</span> <span class="nav-text">持久顺序节点（PERSISTENT_SEQUENTIAL）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#临时节点（EPHEMERAL）"><span class="nav-number">2.3.</span> <span class="nav-text">临时节点（EPHEMERAL）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#临时顺序节点（EPHEMERAL-SEQUENTIAL）"><span class="nav-number">2.4.</span> <span class="nav-text">临时顺序节点（EPHEMERAL_SEQUENTIAL）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#状态信息"><span class="nav-number">2.5.</span> <span class="nav-text">状态信息</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#版本（保证分布式数据原子性操作）"><span class="nav-number">3.</span> <span class="nav-text">版本（保证分布式数据原子性操作）</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Watcher-数据变更的通知"><span class="nav-number">4.</span> <span class="nav-text">Watcher(数据变更的通知)</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#ACL-保障数据的安全"><span class="nav-number">5.</span> <span class="nav-text">ACL(保障数据的安全)</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#权限模式-Scheme"><span class="nav-number">5.1.</span> <span class="nav-text">权限模式: Scheme</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#授权对象：ID"><span class="nav-number">5.2.</span> <span class="nav-text">授权对象：ID</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#权限：Permission"><span class="nav-number">5.3.</span> <span class="nav-text">权限：Permission</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#乐观锁和悲观锁"><span class="nav-number">6.</span> <span class="nav-text">乐观锁和悲观锁</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="acronymor"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">acronymor</p>
+  <div class="site-description" itemprop="description">I am who i am, the unique fooid</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives">
+          <span class="site-state-item-count">216</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+        <span class="site-state-item-count">27</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+        <span class="site-state-item-count">35</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="feed-link motion-element">
+    <a href="/atom.xml" rel="alternate">
+      <i class="fa fa-rss"></i>RSS
+    </a>
+  </div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/acronymor" title="GitHub &amp;rarr; https:&#x2F;&#x2F;github.com&#x2F;acronymor" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yourname@acronymor.com" title="E-Mail &amp;rarr; mailto:yourname@acronymor.com"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">acronymor</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> v4.2.0
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">Theme – <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> v7.5.0
+  </div>
+
+        
+
+
+
+
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

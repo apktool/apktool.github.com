@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+  <link rel="alternate" href="/atom.xml" title="Acronymor's Blog" type="application/atom+xml">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Muse',
+    version: '7.5.0',
+    exturl: false,
+    sidebar: {"position":"right","display":"hide","offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: '',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    translation: {
+      copy_button: 'Copy',
+      copy_success: 'Copied',
+      copy_failure: 'Copy failed'
+    },
+    sidebarPadding: 40
+  };
+</script>
+
+  <meta name="description" content="在计算机科学中，锁是在执行多线程时用于强行限制资源访问的同步机制，即用于在并发控制中保证对互斥要求的满足。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="锁简介">
+<meta property="og:url" content="http://acronymor.com/2018/03/31/Compute-Base-Knowledge/lock-profile/index.html">
+<meta property="og:site_name" content="Acronymor&#39;s Blog">
+<meta property="og:description" content="在计算机科学中，锁是在执行多线程时用于强行限制资源访问的同步机制，即用于在并发控制中保证对互斥要求的满足。">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="http://acronymor.com/2018/03/31/Compute-Base-Knowledge/lock-profile/lock.png">
+<meta property="og:image" content="http://acronymor.com/2018/03/31/Compute-Base-Knowledge/lock-profile/lock.jpg">
+<meta property="article:published_time" content="2018-03-31T01:18:42.000Z">
+<meta property="article:modified_time" content="2018-03-31T01:18:42.000Z">
+<meta property="article:author" content="acronymor">
+<meta property="article:tag" content="Lock">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://acronymor.com/2018/03/31/Compute-Base-Knowledge/lock-profile/lock.png">
+
+<link rel="canonical" href="http://acronymor.com/2018/03/31/Compute-Base-Knowledge/lock-profile/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true,
+    isPage: false,
+    isArchive: false
+  };
+</script>
+
+  <title>锁简介 | Acronymor's Blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Acronymor's Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-movies">
+
+    <a href="/movies/" rel="section"><i class="fa fa-fw fa-film"></i>movies</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>About</a>
+
+  </li>
+  </ul>
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="en">
+    <link itemprop="mainEntityOfPage" href="http://acronymor.com/2018/03/31/Compute-Base-Knowledge/lock-profile/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="acronymor">
+      <meta itemprop="description" content="I am who i am, the unique fooid">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Acronymor's Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          锁简介
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2018-03-31 09:18:42" itemprop="dateCreated datePublished" datetime="2018-03-31T09:18:42+08:00">2018-03-31</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E8%AE%A1%E7%AE%97%E6%9C%BA%E5%9F%BA%E7%A1%80/" itemprop="url" rel="index">
+                    <span itemprop="name">计算机基础</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>在计算机科学中，锁是在执行多线程时用于强行限制资源访问的同步机制，即用于在并发控制中保证对互斥要求的满足。</p>
+<a id="more"></a>
+
+<h1 id="锁的分类"><a href="#锁的分类" class="headerlink" title="锁的分类"></a>锁的分类</h1><p>悲观锁，乐观锁，独占锁，共享锁，公平锁，非公平锁，分布式锁，自旋锁。</p>
+<img src="/2018/03/31/Compute-Base-Knowledge/lock-profile/lock.png" class="" title="[lock]">
+
+<h1 id="乐观锁和悲观锁"><a href="#乐观锁和悲观锁" class="headerlink" title="乐观锁和悲观锁"></a>乐观锁和悲观锁</h1><p>一般喜欢放在数据库来讲(其实这两个概念是属于计算机的，不要被误导)，就说mysql吧，悲观锁，主要是表锁，行锁还有间隙锁，叶锁，读锁，因为这些锁在被触发的时候势必引起线程阻塞，所以叫悲观</p>
+<p>另外乐观锁其实在mysql本身中不存在的，但是mysql提供了种mvcc的机制，支持乐观锁机制。</p>
+<h2 id="MVCC-Multiversion-concurrency-control"><a href="#MVCC-Multiversion-concurrency-control" class="headerlink" title="MVCC(Multiversion concurrency control)"></a>MVCC(Multiversion concurrency control)</h2><p>只是在InnoDB引擎下存在，MVCC是为了满足事务的隔离，通过版本号的方式，避免同一数据不同事务间的竞争，所说的乐观锁只在事务级别为读未提交读提交，才会生效。</p>
+<p>MVCC或称为MVC，即多版本并发控制，保证数据操作在多线程过程中，保证事务隔离的机制，可以降低锁竞争的压力，保证比较高并发量，这个过程。在每开启一个事务时，会生成一个事务的版本号，被操作的数据会生成一条新的数据行（临时），但是在提交前对其他事务是不可见的，对于数据的更新操作成功，会将这个版本号更新到数据的行中，事务提交成功，将新的版本号，更新到此数据行（永久）中，这样保证了每个事务操作的数据，都是相互不影响的，也不存在锁的问题；</p>
+<p>在多个事务（操作同一条数据）并发过程中，MySQL判断谁先提交成功算谁的。</p>
+<h2 id="事务"><a href="#事务" class="headerlink" title="事务"></a>事务</h2><p>事务常说一系列操作作为一个整体要么都成功要么都失败，主要特性ACID，事务的的实现主要依赖两个log：<code>redo-log</code>，<code>undo-log</code>。</p>
+<p>每次事务都会记录数据修改前的数据undo-log，修改后的数据放入redo-log。</p>
+<p>提交成功则使用redo-log 更新到磁盘，失败则使用undo-log将数据恢复到事务之前的数据。</p>
+<h1 id="独占锁和共享锁"><a href="#独占锁和共享锁" class="headerlink" title="独占锁和共享锁"></a>独占锁和共享锁</h1><p>独占，共享，公平，非公平，自旋锁这些都是广泛的概念，很多语言都有，包括操作系统。</p>
+<p>独占锁很明显就是持锁的线程只能有一个，共享锁则可以有多个。</p>
+<p>共享锁是为了提高程序的效率，举个例子数据的操作有读写之分，对于写的操作加锁，保证数据正确性，而对于读的操作如果不加锁，在写读操作同时进行时，读的数据有可能不是最新数据，如果对读操作加独占锁，面对读多写少的程序肯定效率很低，所有就出现了共享锁，对于读的的操作就使用共享的概念，但是对于写的操作则是互斥的，保证了读写的数据操作都一致，在java中上述的锁叫读写锁。</p>
+<p>在Java中读写锁（ReadWritelock）的机制是基于AQS(AbstractQueuedSynchronizer)的一种实现，保证读读共享，读写互斥，写写互斥。</p>
+<p>如果要说读写锁机制的话，还要从AQS说起，这是java实现的一种锁机制，互斥锁，读者写锁，条件产量，信号量，栅栏的都是它的衍生物，主要工作基于CHL队列（CHL队列是一个非阻塞的 FIFO 队列，也就是说往里面插入或移除一个节点的时候，在并发条件下不会阻塞，而是通过自旋锁和 CAS 保证节点插入和移除的原子性。实现无锁且快速的插入），voliate关键字修饰的状态符stat，线程去修改状态符成功了就是获取成功，失败了就进队列等待，等待唤醒，AQS中还有很重要的一个概念是自旋。</p>
+<ul>
+<li>自旋就是在等待唤醒的时候，很多时候会使用（while（!cas()））的方式，不停的尝试获取锁，直到被其他线程获取成功。</li>
+<li>共享与独占的区别就在于，CHL队列中的节点的模式是EXCLUSIVE还是SHARED，当一个线程成功修改了stat状态，表示获取了锁，如果线程所在的节点为SHARED，将开始一个读锁传递的过程，从头结点，向队列后续节点传递唤醒，直到队列结束或者遇到了EXCLUSIVE的节点，等待所有激活的读操作完成，然后进入到独享模式。</li>
+<li>公平与非公平的区别就在于线程第一次获取锁时，也就是执行修改stat操作时，是进队列还是直接修改状态，这是基本的工作机制。</li>
+</ul>
+<h2 id="内置锁"><a href="#内置锁" class="headerlink" title="内置锁"></a>内置锁</h2><p>java 除了AQS，还有内置锁，即synchronized关键字，是语言自带的。</p>
+<p>synchronized关键字，我们都知道被synchronized修饰的方法或者代码块，在同一时间内，只允许一个线程执行，是明显的独享锁，synchronized的实现机制？可以参考AQS的实现方式，只是AQS使用显示的用lock.lock()调用，而sync作为关键字修饰，你可以认为在synchronized修饰的地方，自动添加了lock方法，结束的地方进行了unlock释放锁的方法，只是被隐藏了，我们看不到。</p>
+<p>它本身实现有两部分：monitor对象，线程，工作机制还是线程抢占对象使用权，对象都有自己的对象头，存储了对象的很多信息，其中有一个是标识被哪个线程持有，对比AQS，线程从修改stat，变为修改monitor的对象头，线程的等待区域动 AQS中的队列，变为monitor对象中的某个区域。</p>
+<h2 id="锁在内存中的操作"><a href="#锁在内存中的操作" class="headerlink" title="锁在内存中的操作"></a>锁在内存中的操作</h2><p>锁一直是围绕线程安全来实现的，比如独占锁，它在内存里面的操作是怎么样的呢?</p>
+<p>这个地方涉及到一个概念，内存模型。这个和jvm不要混淆（Java内存模型通常被用在JVM内，被用来区分线程栈和堆）Java内存模型是JVM用来区别线程栈和堆的内存方式，每个线程在运行的时候，所操作的数据存储空间有两个，一个是主内存 一个是工作内存，主内存其实就是JVM中堆，工作内存就是线程的栈，每次的数据操作，都是从主内存中把数据读到工作内存中，然后在工作内存中进行各种处理，如果进行了修改，会把数据回写到主内存，然后其他线程又进行同样的操作，就这样数据在工作内存和主内存，进进出出，不亦乐乎，在多次的情况下，就是因为进进出出的顺序乱了，不是按照线程预期的访问顺序，就出现了数据不一致的问题，导致了多线程的不安全性；整个操作过程还牵涉到CPU，高速缓存等概念。</p>
+<p>内存模型中还有 happen-befor 原则，Volatile 关键字（线程的可见性），内存屏障等概念。</p>
+<ul>
+<li>happen-befor原则定义了内存模型执行过程中的定律，就像1+1 = 2，不可能被打破的jvm的运行机制都依赖于这个原则，是jvm的宪法！</li>
+<li>Volatile修饰的数据，在被某个线程修改后，会被及时的回写到主内存，然后其他线程再获取时，就是新的数据，听起来很美好，但是Volatile没有办法控制线程的顺序，当一个数据（新数据）即将被修改到主内存时，刚好，另外一个线程从主内存读了数据（老数据），并又进行了一波操作，又将数据(更新的数据)回写到了主内存，整个过程（新数据）完全没有起到一毛钱作用，最终导致了数据的错误。</li>
+</ul>
+<h1 id="锁的知识体系"><a href="#锁的知识体系" class="headerlink" title="锁的知识体系"></a>锁的知识体系</h1><img src="/2018/03/31/Compute-Base-Knowledge/lock-profile/lock.jpg" class="" title="[lock]">
+
+<hr>
+<p><a href="https://zhuanlan.zhihu.com/p/34510121" target="_blank" rel="noopener">两程序员玩“锁”，一人抢救无效身亡</a><br><a href="http://www.cnblogs.com/waterystone/p/4920797.html" target="_blank" rel="noopener">Java并发之AQS详解</a><br><a href="https://tech.meituan.com/Java_Lock.html" target="_blank" rel="noopener">不可不说的Java“锁”事</a></p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Lock/" rel="tag"># Lock</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-next post-nav-item">
+                <a href="/2018/03/29/Apache-Hadoop/chapter1/yarn-architecture/" rel="next" title="YARN的基本架构">
+                  <i class="fa fa-chevron-left"></i> YARN的基本架构
+                </a>
+            </div>
+
+            <span class="post-nav-divider"></span>
+
+            <div class="post-nav-prev post-nav-item">
+                <a href="/2018/04/10/Compute-Base-Knowledge/OSI-model/" rel="prev" title="OSI参考模型">
+                  OSI参考模型 <i class="fa fa-chevron-right"></i>
+                </a>
+            </div>
+          </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#锁的分类"><span class="nav-number">1.</span> <span class="nav-text">锁的分类</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#乐观锁和悲观锁"><span class="nav-number">2.</span> <span class="nav-text">乐观锁和悲观锁</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#MVCC-Multiversion-concurrency-control"><span class="nav-number">2.1.</span> <span class="nav-text">MVCC(Multiversion concurrency control)</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#事务"><span class="nav-number">2.2.</span> <span class="nav-text">事务</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#独占锁和共享锁"><span class="nav-number">3.</span> <span class="nav-text">独占锁和共享锁</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#内置锁"><span class="nav-number">3.1.</span> <span class="nav-text">内置锁</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#锁在内存中的操作"><span class="nav-number">3.2.</span> <span class="nav-text">锁在内存中的操作</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#锁的知识体系"><span class="nav-number">4.</span> <span class="nav-text">锁的知识体系</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="acronymor"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">acronymor</p>
+  <div class="site-description" itemprop="description">I am who i am, the unique fooid</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives">
+          <span class="site-state-item-count">216</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+        <span class="site-state-item-count">27</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+        <span class="site-state-item-count">35</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="feed-link motion-element">
+    <a href="/atom.xml" rel="alternate">
+      <i class="fa fa-rss"></i>RSS
+    </a>
+  </div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/acronymor" title="GitHub &amp;rarr; https:&#x2F;&#x2F;github.com&#x2F;acronymor" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yourname@acronymor.com" title="E-Mail &amp;rarr; mailto:yourname@acronymor.com"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">acronymor</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> v4.2.0
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">Theme – <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> v7.5.0
+  </div>
+
+        
+
+
+
+
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

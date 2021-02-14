@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+  <link rel="alternate" href="/atom.xml" title="Acronymor's Blog" type="application/atom+xml">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Muse',
+    version: '7.5.0',
+    exturl: false,
+    sidebar: {"position":"right","display":"hide","offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: '',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    translation: {
+      copy_button: 'Copy',
+      copy_success: 'Copied',
+      copy_failure: 'Copy failed'
+    },
+    sidebarPadding: 40
+  };
+</script>
+
+  <meta name="description" content="IP协议旨在让最终目标主机收到数据报，但是这一过程中仅仅有IP是无法实现通信的。必须还有能够解析主机名称和MAC地址的功能，以及数据报在发送过程中异常情况处理的功能。 本节旨在介绍IP的辅助技术，具体包括DNS,ARP,ICMP,DHCP,NAT等，还包括IP隧道，IP多播，IP任播，质量控制(Qos)以及网络拥塞的显式通知等。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="IP相关协议">
+<meta property="og:url" content="http://acronymor.com/2018/04/29/Compute-Base-Knowledge/ip-protocol-releated/index.html">
+<meta property="og:site_name" content="Acronymor&#39;s Blog">
+<meta property="og:description" content="IP协议旨在让最终目标主机收到数据报，但是这一过程中仅仅有IP是无法实现通信的。必须还有能够解析主机名称和MAC地址的功能，以及数据报在发送过程中异常情况处理的功能。 本节旨在介绍IP的辅助技术，具体包括DNS,ARP,ICMP,DHCP,NAT等，还包括IP隧道，IP多播，IP任播，质量控制(Qos)以及网络拥塞的显式通知等。">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="http://acronymor.com/2018/04/29/Compute-Base-Knowledge/ip-protocol-releated/dns-lookup.png">
+<meta property="og:image" content="http://acronymor.com/2018/04/29/Compute-Base-Knowledge/ip-protocol-releated/arp-process.png">
+<meta property="og:image" content="http://acronymor.com/2018/04/29/Compute-Base-Knowledge/ip-protocol-releated/rarp-process.png">
+<meta property="og:image" content="http://acronymor.com/2018/04/29/Compute-Base-Knowledge/ip-protocol-releated/dhcp-process.png">
+<meta property="og:image" content="http://acronymor.com/2018/04/29/Compute-Base-Knowledge/ip-protocol-releated/nat-process.png">
+<meta property="og:image" content="http://acronymor.com/2018/04/29/Compute-Base-Knowledge/ip-protocol-releated/napt-process.png">
+<meta property="article:published_time" content="2018-04-29T07:57:17.000Z">
+<meta property="article:modified_time" content="2018-04-29T07:57:17.000Z">
+<meta property="article:author" content="acronymor">
+<meta property="article:tag" content="IP协议">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://acronymor.com/2018/04/29/Compute-Base-Knowledge/ip-protocol-releated/dns-lookup.png">
+
+<link rel="canonical" href="http://acronymor.com/2018/04/29/Compute-Base-Knowledge/ip-protocol-releated/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true,
+    isPage: false,
+    isArchive: false
+  };
+</script>
+
+  <title>IP相关协议 | Acronymor's Blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Acronymor's Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-movies">
+
+    <a href="/movies/" rel="section"><i class="fa fa-fw fa-film"></i>movies</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>About</a>
+
+  </li>
+  </ul>
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="en">
+    <link itemprop="mainEntityOfPage" href="http://acronymor.com/2018/04/29/Compute-Base-Knowledge/ip-protocol-releated/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="acronymor">
+      <meta itemprop="description" content="I am who i am, the unique fooid">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Acronymor's Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          IP相关协议
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2018-04-29 15:57:17" itemprop="dateCreated datePublished" datetime="2018-04-29T15:57:17+08:00">2018-04-29</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E7%BD%91%E7%BB%9C%E5%9F%BA%E7%A1%80/" itemprop="url" rel="index">
+                    <span itemprop="name">网络基础</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>IP协议旨在让最终目标主机收到数据报，但是这一过程中仅仅有IP是无法实现通信的。必须还有能够解析主机名称和MAC地址的功能，以及数据报在发送过程中异常情况处理的功能。</p>
+<p>本节旨在介绍IP的辅助技术，具体包括DNS,ARP,ICMP,DHCP,NAT等，还包括IP隧道，IP多播，IP任播，质量控制(Qos)以及网络拥塞的显式通知等。</p>
+<a id="more"></a>
+
+<h1 id="DNS"><a href="#DNS" class="headerlink" title="DNS"></a>DNS</h1><p>DNS如同互联网中分布式数据库，管理主机名与IP地址的映射关系，当然还会管理一些其他的信息，比如安全证书，邮箱与邮件组信息等。</p>
+<img src="/2018/04/29/Compute-Base-Knowledge/ip-protocol-releated/dns-lookup.png" class="" title="[dns lookup]">
+
+<h1 id="ARP"><a href="#ARP" class="headerlink" title="ARP"></a>ARP</h1><p>ARP是解决地址问题的协议，以目标IP地址为线索，用来定位下一个应该接收数据分包大网络设备对应的MAC地址。如果目标地址不在同一个链路上时，可以通过ARP查找下一条路由的MAC地址。不过ARP只适用于IPv4，不能用于IPv6。</p>
+<p>ARP借助APR请求与ARP响应两种类型的包确定MAC地址的。</p>
+<img src="/2018/04/29/Compute-Base-Knowledge/ip-protocol-releated/arp-process.png" class="" title="[arp]">
+
+<h1 id="RARP"><a href="#RARP" class="headerlink" title="RARP"></a>RARP</h1><p>RARP是将ARP地址反过来，从MAC地址定位IP地址的一种协议。例如将打印机服务器等小型嵌入式设备接入到网络时会经常用得到。</p>
+<p>平常，个人计算机会通过DHCP协议自动获取分配到的IP地址，然而对于嵌入式设备会遇到没有任何输入接口或无法通过DHCP动态获取IP地址的情况。这种情况下就可以使用RARP。为此需要一台RARP服务器，并在该服务器上面注册设备的MAC地址以及IP地址。</p>
+<img src="/2018/04/29/Compute-Base-Knowledge/ip-protocol-releated/rarp-process.png" class="" title="[rarp]">
+
+<h1 id="ICMP"><a href="#ICMP" class="headerlink" title="ICMP"></a>ICMP</h1><p>ICMP的功能包括，确认IP包是否成功送达目标地址，通知发送过程当中IP包被废弃的真正原因，改善网络设置等。因此对应的ICMP的消息大致可以分为两类，一类是通知出错原因的错误信息，另一类是用于诊断的查询信息。</p>
+<h1 id="DHCP"><a href="#DHCP" class="headerlink" title="DHCP"></a>DHCP</h1><p>DHCP需要架设一台DHCP服务器，然后将DHCP所要分配的IP地址设置到服务器上。</p>
+<img src="/2018/04/29/Compute-Base-Knowledge/ip-protocol-releated/dhcp-process.png" class="" title="[dhcp]">
+
+<h1 id="NAT-Network-Address-Translator"><a href="#NAT-Network-Address-Translator" class="headerlink" title="NAT(Network Address Translator)"></a>NAT(Network Address Translator)</h1><p>NAT是用于本地网络中使用私有地址，在连接互联网时使用全局IP地址的技术，除转换IP地址外，还出现了可以转换TCP、UDP端口号的NAPT(Network Address Ports Translator)技术，由此可以实现一个全局IP地址与多个主机的统通信。</p>
+<img src="/2018/04/29/Compute-Base-Knowledge/ip-protocol-releated/nat-process.png" class="" title="[nat]">
+
+<p>当私有网络内的多台机器同时都要与外部进行通信时，仅仅转换IP地址，人们不免担心全局IP地址是否不够用，这时会采用包含端口号一起转换的方式(NAPT)解决这个问题。</p>
+<img src="/2018/04/29/Compute-Base-Knowledge/ip-protocol-releated/napt-process.png" class="" title="[napt]">
+
+<h1 id="IP隧道"><a href="#IP隧道" class="headerlink" title="IP隧道"></a>IP隧道</h1><p>一般情况下，紧接这IP首部的是TCP或UDP的首部，然而，现在的应用中“IP首部的后面还是IP首部”或者“IP首部的后面是IPv6的首部”。这种在网络层后面继续追加网络层首部的通信方法就叫做“IP隧道”。</p>
+<h1 id="IP任播"><a href="#IP任播" class="headerlink" title="IP任播"></a>IP任播</h1><p>IP任播是指为那些提供同一种服务的服务器配置同一个IP地址，并与最近的服务器进行通信的一种方法。它可适用于IPv4和IPv6。</p>
+<p>在IP任播的应用中，最为有名的当属DNS根域名服务器。</p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/IP%E5%8D%8F%E8%AE%AE/" rel="tag"># IP协议</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-next post-nav-item">
+                <a href="/2018/04/19/Compute-Base-Knowledge/ip-protocol/" rel="next" title="IP协议">
+                  <i class="fa fa-chevron-left"></i> IP协议
+                </a>
+            </div>
+
+            <span class="post-nav-divider"></span>
+
+            <div class="post-nav-prev post-nav-item">
+                <a href="/2018/04/30/Compute-Base-Knowledge/transport-layer/" rel="prev" title="传输层">
+                  传输层 <i class="fa fa-chevron-right"></i>
+                </a>
+            </div>
+          </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#DNS"><span class="nav-number">1.</span> <span class="nav-text">DNS</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#ARP"><span class="nav-number">2.</span> <span class="nav-text">ARP</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#RARP"><span class="nav-number">3.</span> <span class="nav-text">RARP</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#ICMP"><span class="nav-number">4.</span> <span class="nav-text">ICMP</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#DHCP"><span class="nav-number">5.</span> <span class="nav-text">DHCP</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#NAT-Network-Address-Translator"><span class="nav-number">6.</span> <span class="nav-text">NAT(Network Address Translator)</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#IP隧道"><span class="nav-number">7.</span> <span class="nav-text">IP隧道</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#IP任播"><span class="nav-number">8.</span> <span class="nav-text">IP任播</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="acronymor"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">acronymor</p>
+  <div class="site-description" itemprop="description">I am who i am, the unique fooid</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives">
+          <span class="site-state-item-count">216</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+        <span class="site-state-item-count">27</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+        <span class="site-state-item-count">35</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="feed-link motion-element">
+    <a href="/atom.xml" rel="alternate">
+      <i class="fa fa-rss"></i>RSS
+    </a>
+  </div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/acronymor" title="GitHub &amp;rarr; https:&#x2F;&#x2F;github.com&#x2F;acronymor" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yourname@acronymor.com" title="E-Mail &amp;rarr; mailto:yourname@acronymor.com"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">acronymor</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> v4.2.0
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">Theme – <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> v7.5.0
+  </div>
+
+        
+
+
+
+
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

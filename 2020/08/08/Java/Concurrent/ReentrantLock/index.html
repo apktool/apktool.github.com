@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+  <link rel="alternate" href="/atom.xml" title="Acronymor's Blog" type="application/atom+xml">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Muse',
+    version: '7.5.0',
+    exturl: false,
+    sidebar: {"position":"right","display":"hide","offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: '',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    translation: {
+      copy_button: 'Copy',
+      copy_success: 'Copied',
+      copy_failure: 'Copy failed'
+    },
+    sidebarPadding: 40
+  };
+</script>
+
+  <meta name="description" content="Java 中的大部分同步类（Lock、Semaphore、ReentrantLock 等）都是基于 AbstractQueuedSynchronizer（简称为 AQS）实现的。AQS 是一种提供了原子式管理同步状态、阻塞和唤醒线程功能以及队列模型的简单框架。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="从 ReentrantLock 出发学习AQS">
+<meta property="og:url" content="http://acronymor.com/2020/08/08/Java/Concurrent/ReentrantLock/index.html">
+<meta property="og:site_name" content="Acronymor&#39;s Blog">
+<meta property="og:description" content="Java 中的大部分同步类（Lock、Semaphore、ReentrantLock 等）都是基于 AbstractQueuedSynchronizer（简称为 AQS）实现的。AQS 是一种提供了原子式管理同步状态、阻塞和唤醒线程功能以及队列模型的简单框架。">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="http://acronymor.com/2020/08/08/Java/Concurrent/ReentrantLock/AQS-API.png">
+<meta property="og:image" content="http://acronymor.com/2020/08/08/Java/Concurrent/ReentrantLock/CLH-State.png">
+<meta property="og:image" content="http://acronymor.com/2020/08/08/Java/Concurrent/ReentrantLock/nofair-lock.png">
+<meta property="og:image" content="http://acronymor.com/2020/08/08/Java/Concurrent/ReentrantLock/nofair-unlock.png">
+<meta property="article:published_time" content="2020-08-08T02:16:57.000Z">
+<meta property="article:modified_time" content="2020-08-08T02:18:00.000Z">
+<meta property="article:author" content="acronymor">
+<meta property="article:tag" content="Java">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://acronymor.com/2020/08/08/Java/Concurrent/ReentrantLock/AQS-API.png">
+
+<link rel="canonical" href="http://acronymor.com/2020/08/08/Java/Concurrent/ReentrantLock/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true,
+    isPage: false,
+    isArchive: false
+  };
+</script>
+
+  <title>从 ReentrantLock 出发学习AQS | Acronymor's Blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Acronymor's Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-movies">
+
+    <a href="/movies/" rel="section"><i class="fa fa-fw fa-film"></i>movies</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>About</a>
+
+  </li>
+  </ul>
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="en">
+    <link itemprop="mainEntityOfPage" href="http://acronymor.com/2020/08/08/Java/Concurrent/ReentrantLock/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="acronymor">
+      <meta itemprop="description" content="I am who i am, the unique fooid">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Acronymor's Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          从 ReentrantLock 出发学习AQS
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+              
+
+              <time title="Created: 2020-08-08 10:16:57 / Modified: 10:18:00" itemprop="dateCreated datePublished" datetime="2020-08-08T10:16:57+08:00">2020-08-08</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Java%E5%B9%B6%E5%8F%91%E7%BC%96%E7%A8%8B/" itemprop="url" rel="index">
+                    <span itemprop="name">Java并发编程</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>Java 中的大部分同步类（Lock、Semaphore、ReentrantLock 等）都是基于 AbstractQueuedSynchronizer（简称为 AQS）实现的。AQS 是一种提供了原子式管理同步状态、阻塞和唤醒线程功能以及队列模型的简单框架。</p>
+<a id="more"></a>
+
+<h1 id="AQS-API-介绍"><a href="#AQS-API-介绍" class="headerlink" title="AQS API 介绍"></a>AQS API 介绍</h1><img src="/2020/08/08/Java/Concurrent/ReentrantLock/AQS-API.png" class="" title="[AQS-API]">
+
+<p>在实际实现的时候，根据需要可以实现下表所示方法中的几个组合便可。一般来说，自定义同步器要么是独占方式（如 <code>ReentrantLock</code>），要么是共享方式，它们也只需实现 <strong>tryAcquire-tryRelease</strong>、<strong>tryAcquireShared-tryReleaseShared</strong> 中的一种即可。AQS 也支持自定义同步器同时实现独占和共享两种方式，如 <code>ReentrantReadWriteLock</code>。</p>
+<table>
+<thead>
+<tr>
+<th align="left">方法名</th>
+<th align="left">描述</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">protected boolean isHeldExclusively()</td>
+<td align="left">该线程是否正在独占资源。只有用到 Condition 才需要去实现它。</td>
+</tr>
+<tr>
+<td align="left">protected boolean tryAcquire(int arg)</td>
+<td align="left">独占方式。arg 为获取锁的次数，尝试获取资源，成功则返回 True，失败则返回 False。</td>
+</tr>
+<tr>
+<td align="left">protected boolean tryRelease(int arg)</td>
+<td align="left">独占方式。arg 为释放锁的次数，尝试释放资源，成功则返回 True，失败则返回 False。</td>
+</tr>
+<tr>
+<td align="left">protected int tryAcquireShared(int arg)</td>
+<td align="left">共享方式。arg 为获取锁的次数，尝试获取资源。负数表示失败；0 表示成功，但没有剩余可用资源；正数表示成功，且有剩余资源。</td>
+</tr>
+<tr>
+<td align="left">protected boolean tryReleaseShared(int arg)</td>
+<td align="left">共享方式。arg 为释放锁的次数，尝试释放资源，如果释放后允许唤醒后续等待结点返回 True，否则返回 False。</td>
+</tr>
+</tbody></table>
+<h1 id="AQS-数据结构"><a href="#AQS-数据结构" class="headerlink" title="AQS 数据结构"></a>AQS 数据结构</h1><p>AQS 核心思想是，如果被请求的共享资源(state)空闲，那么就将当前请求资源的线程设置为有效的工作线程，将共享资源设置为锁定状态；如果共享资源被占用，就需要一定的阻塞等待唤醒机制来保证锁分配。这个机制主要用的是 CLH 队列的变体实现的，将暂时获取不到锁的线程加入到队列中。</p>
+<p>CLH锁<code>Craig、Landin and Hagersten</code>是一种基于链表的可扩展、高性能、公平的自旋锁，申请线程只在本地变量上自旋，它不断轮询前驱的状态，如果发现前驱释放了锁就结束自旋。AQS 中的队列是 CLH 变体的虚拟双向队列（FIFO），AQS 是通过将每条请求共享资源(state)的线程封装成一个Node来实现锁的分配。</p>
+<p>主要原理图如下：</p>
+<img src="/2020/08/08/Java/Concurrent/ReentrantLock/CLH-State.png" class="" title="[CLH-State]">
+
+<h2 id="Node"><a href="#Node" class="headerlink" title="Node"></a>Node</h2><p>Node即为上面CLH变体队列中的节点。</p>
+<h3 id="Node定义了2种锁模式"><a href="#Node定义了2种锁模式" class="headerlink" title="Node定义了2种锁模式"></a>Node定义了2种锁模式</h3><table>
+<thead>
+<tr>
+<th align="center">模式</th>
+<th align="left">含义</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">SHARED</td>
+<td align="left">表示线程以共享的模式等待锁</td>
+</tr>
+<tr>
+<td align="center">EXCLUSIVE</td>
+<td align="left">表示线程正在以独占的方式等待锁</td>
+</tr>
+</tbody></table>
+<h4 id="Node定义了5种状态"><a href="#Node定义了5种状态" class="headerlink" title="Node定义了5种状态"></a>Node定义了5种状态</h4><table>
+<thead>
+<tr>
+<th align="center">枚举</th>
+<th align="center">取值</th>
+<th align="left">含义</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center"></td>
+<td align="center">0</td>
+<td align="left">当一个Node被初始化的时候的默认值</td>
+</tr>
+<tr>
+<td align="center">CANCELLED</td>
+<td align="center">1</td>
+<td align="left">表示线程获取锁的请求已经取消了</td>
+</tr>
+<tr>
+<td align="center">SIGNAL</td>
+<td align="center">-1</td>
+<td align="left">表示线程已经准备好了，就等资源释放了</td>
+</tr>
+<tr>
+<td align="center">CONDITION</td>
+<td align="center">-2</td>
+<td align="left">表示节点在等待队列中，节点线程等待唤醒</td>
+</tr>
+<tr>
+<td align="center">PROPAGATE</td>
+<td align="center">-3</td>
+<td align="left">当前线程处在SHARED情况下，该字段才会被使用</td>
+</tr>
+</tbody></table>
+<p>该值最后会被赋值到 Node 这个类的 waitStatus 变量里面</p>
+<h2 id="ConditionObject"><a href="#ConditionObject" class="headerlink" title="ConditionObject"></a>ConditionObject</h2><p>ConditionObject主要是为了实现等待/通知机制而引入的一个内部类，详见<a href="/2020/08/08/Java/Concurrent/Condition/" title="Condition">Condition</a></p>
+<h1 id="AQS-处理流程"><a href="#AQS-处理流程" class="headerlink" title="AQS 处理流程"></a>AQS 处理流程</h1><h2 id="lock"><a href="#lock" class="headerlink" title="lock"></a>lock</h2><img src="/2020/08/08/Java/Concurrent/ReentrantLock/nofair-lock.png" class="" title="[nofair lock]">
+
+<h2 id="unlock"><a href="#unlock" class="headerlink" title="unlock"></a>unlock</h2><img src="/2020/08/08/Java/Concurrent/ReentrantLock/nofair-unlock.png" class="" title="[nofair unlock]">
+
+<h1 id="借助-AQS-实现的其他并发类"><a href="#借助-AQS-实现的其他并发类" class="headerlink" title="借助 AQS 实现的其他并发类"></a>借助 AQS 实现的其他并发类</h1><table>
+<thead>
+<tr>
+<th align="left">同步工具</th>
+<th align="left">同步工具与AQS的关联</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">ReentrantLock</td>
+<td align="left">使用AQS保存锁重复持有的次数。当一个线程获取锁时，ReentrantLock记录当前获得锁的线程标识，用于检测是否重复获取，以及错误线程试图解锁操作时异常情况的处理。</td>
+</tr>
+<tr>
+<td align="left">Semaphore</td>
+<td align="left">使用AQS同步状态来保存信号量的当前计数。tryRelease会增加计数，acquireShared会减少计数。</td>
+</tr>
+<tr>
+<td align="left">CountDownLatch</td>
+<td align="left">使用AQS同步状态来表示计数。计数为0时，所有的Acquire操作（CountDownLatch的await方法）才可以通过。</td>
+</tr>
+<tr>
+<td align="left">ReentrantReadWriteLock</td>
+<td align="left">使用AQS同步状态中的16位保存写锁持有的次数，剩下的16位用于保存读锁的持有次数。</td>
+</tr>
+<tr>
+<td align="left">ThreadPoolExecutor</td>
+<td align="left">Worker利用AQS同步状态实现对独占线程变量的设置（tryAcquire和tryRelease）。</td>
+</tr>
+</tbody></table>
+<hr>
+<h1 id="Reference"><a href="#Reference" class="headerlink" title="Reference"></a>Reference</h1><p><a href="https://www.cnblogs.com/yuyutianxia/p/4296220.html" target="_blank" rel="noopener">CLH锁 、MCS锁</a><br><a href="https://tech.meituan.com/2019/12/05/aqs-theory-and-apply.html" target="_blank" rel="noopener">从 ReentrantLock 的实现看 AQS 的原理及应用</a><br><a href="https://www.cnblogs.com/wang-meng/p/12816829.html" target="_blank" rel="noopener">我画了 35 张图就是为了让你深入 AQS</a><br><a href="https://www.jianshu.com/p/a372528f47a3" target="_blank" rel="noopener">Java并发编程之锁机制之AQS(AbstractQueuedSynchronizer)</a></p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Java/" rel="tag"># Java</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-next post-nav-item">
+                <a href="/2020/08/02/Java/Concurrent/Synchronized-State/" rel="next" title="Synchronized 之 锁优化">
+                  <i class="fa fa-chevron-left"></i> Synchronized 之 锁优化
+                </a>
+            </div>
+
+            <span class="post-nav-divider"></span>
+
+            <div class="post-nav-prev post-nav-item">
+                <a href="/2020/08/08/Java/Concurrent/Condition/" rel="prev" title="Condition">
+                  Condition <i class="fa fa-chevron-right"></i>
+                </a>
+            </div>
+          </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#AQS-API-介绍"><span class="nav-number">1.</span> <span class="nav-text">AQS API 介绍</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#AQS-数据结构"><span class="nav-number">2.</span> <span class="nav-text">AQS 数据结构</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Node"><span class="nav-number">2.1.</span> <span class="nav-text">Node</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Node定义了2种锁模式"><span class="nav-number">2.1.1.</span> <span class="nav-text">Node定义了2种锁模式</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#Node定义了5种状态"><span class="nav-number">2.1.1.1.</span> <span class="nav-text">Node定义了5种状态</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#ConditionObject"><span class="nav-number">2.2.</span> <span class="nav-text">ConditionObject</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#AQS-处理流程"><span class="nav-number">3.</span> <span class="nav-text">AQS 处理流程</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#lock"><span class="nav-number">3.1.</span> <span class="nav-text">lock</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#unlock"><span class="nav-number">3.2.</span> <span class="nav-text">unlock</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#借助-AQS-实现的其他并发类"><span class="nav-number">4.</span> <span class="nav-text">借助 AQS 实现的其他并发类</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Reference"><span class="nav-number">5.</span> <span class="nav-text">Reference</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="acronymor"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">acronymor</p>
+  <div class="site-description" itemprop="description">I am who i am, the unique fooid</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives">
+          <span class="site-state-item-count">216</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+        <span class="site-state-item-count">27</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+        <span class="site-state-item-count">35</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="feed-link motion-element">
+    <a href="/atom.xml" rel="alternate">
+      <i class="fa fa-rss"></i>RSS
+    </a>
+  </div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/acronymor" title="GitHub &amp;rarr; https:&#x2F;&#x2F;github.com&#x2F;acronymor" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yourname@acronymor.com" title="E-Mail &amp;rarr; mailto:yourname@acronymor.com"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">acronymor</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> v4.2.0
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">Theme – <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> v7.5.0
+  </div>
+
+        
+
+
+
+
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

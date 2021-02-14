@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+  <link rel="alternate" href="/atom.xml" title="Acronymor's Blog" type="application/atom+xml">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Muse',
+    version: '7.5.0',
+    exturl: false,
+    sidebar: {"position":"right","display":"hide","offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: '',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    translation: {
+      copy_button: 'Copy',
+      copy_success: 'Copied',
+      copy_failure: 'Copy failed'
+    },
+    sidebarPadding: 40
+  };
+</script>
+
+  <meta name="description" content="问题描述 假设指针p和指针q分别指向二叉树中任意两个节点的指针，试编写算法找到p和q的最近公共祖先节点r">
+<meta property="og:type" content="article">
+<meta property="og:title" content="第4章第1节练习题11 查找最近公共祖先节点">
+<meta property="og:url" content="http://acronymor.com/2016/08/23/Data-structure-and-algorithm/chapter4/%E7%AC%AC4%E7%AB%A0%E7%AC%AC1%E8%8A%82%E7%BB%83%E4%B9%A0%E9%A2%9811%20%E6%9F%A5%E6%89%BE%E6%9C%80%E8%BF%91%E5%85%AC%E5%85%B1%E7%A5%96%E5%85%88%E8%8A%82%E7%82%B9/index.html">
+<meta property="og:site_name" content="Acronymor&#39;s Blog">
+<meta property="og:description" content="问题描述 假设指针p和指针q分别指向二叉树中任意两个节点的指针，试编写算法找到p和q的最近公共祖先节点r">
+<meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2016-08-22T17:40:05.000Z">
+<meta property="article:modified_time" content="2016-08-22T17:40:05.000Z">
+<meta property="article:author" content="acronymor">
+<meta property="article:tag" content="数据结构">
+<meta property="article:tag" content="二叉树">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://acronymor.com/2016/08/23/Data-structure-and-algorithm/chapter4/%E7%AC%AC4%E7%AB%A0%E7%AC%AC1%E8%8A%82%E7%BB%83%E4%B9%A0%E9%A2%9811%20%E6%9F%A5%E6%89%BE%E6%9C%80%E8%BF%91%E5%85%AC%E5%85%B1%E7%A5%96%E5%85%88%E8%8A%82%E7%82%B9/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true,
+    isPage: false,
+    isArchive: false
+  };
+</script>
+
+  <title>第4章第1节练习题11 查找最近公共祖先节点 | Acronymor's Blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Acronymor's Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-movies">
+
+    <a href="/movies/" rel="section"><i class="fa fa-fw fa-film"></i>movies</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>About</a>
+
+  </li>
+  </ul>
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="en">
+    <link itemprop="mainEntityOfPage" href="http://acronymor.com/2016/08/23/Data-structure-and-algorithm/chapter4/%E7%AC%AC4%E7%AB%A0%E7%AC%AC1%E8%8A%82%E7%BB%83%E4%B9%A0%E9%A2%9811%20%E6%9F%A5%E6%89%BE%E6%9C%80%E8%BF%91%E5%85%AC%E5%85%B1%E7%A5%96%E5%85%88%E8%8A%82%E7%82%B9/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="acronymor">
+      <meta itemprop="description" content="I am who i am, the unique fooid">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Acronymor's Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          第4章第1节练习题11 查找最近公共祖先节点
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2016-08-23 01:40:05" itemprop="dateCreated datePublished" datetime="2016-08-23T01:40:05+08:00">2016-08-23</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E4%B8%8E%E7%AE%97%E6%B3%95/" itemprop="url" rel="index">
+                    <span itemprop="name">数据结构与算法</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h1 id="问题描述"><a href="#问题描述" class="headerlink" title="问题描述"></a>问题描述</h1><blockquote>
+<p>假设指针p和指针q分别指向二叉树中任意两个节点的指针，试编写算法找到p和q的最近公共祖先节点r</p>
+</blockquote>
+<a id="more"></a>
+
+<h1 id="算法思想"><a href="#算法思想" class="headerlink" title="算法思想"></a>算法思想</h1><blockquote>
+<p>因为计算的是公共祖先节点，因此可以考虑使用非递归后序遍历的思想。在非递归后序遍历的算法实现中，栈里面存放了即将入栈的元素的所有祖先节点。<br>为了方便表示说明，这里使用下图所描述的二叉树来说明。<br>假设指针p指向节点E，指针q指向节点G。</p>
+<ul>
+<li>按照正常的非递归后序遍历算法进行遍历，即借助栈<code>S</code>完成；</li>
+<li>当遍历到节点E时，将此时栈<code>S</code>中的元素复制到临时栈<code>S1</code>中。此时栈<code>S1</code>中的所有元素便为节点E的全部祖先节点；</li>
+<li>当编列到节点G时，将此时栈<code>S</code>中的元素复制到临时栈<code>S2</code>中。此时栈<code>S2</code>中的所有元素便为节点G的全部祖先节点；</li>
+<li>最后在分别按照从栈顶到栈底的顺序寻找栈<code>S1</code>和栈<code>S2</code>中的公共因子便可，第一个匹配到的便是节点E和节点G的最近公共祖先节点。</li>
+</ul>
+</blockquote>
+<center>![二叉树](http://img.blog.csdn.net/20160823133831400)</center>
+
+<h1 id="算法描述"><a href="#算法描述" class="headerlink" title="算法描述"></a>算法描述</h1><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">PostOrder</span><span class="params">(BiTNode* T)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	BiTNode *p=T;</span><br><span class="line">	BiTNode *r=<span class="literal">NULL</span>;</span><br><span class="line"></span><br><span class="line">	SqStack S;</span><br><span class="line">	InitStack(&amp;S);</span><br><span class="line">	SqStack S1;</span><br><span class="line">	InitStack(&amp;S1);</span><br><span class="line">	SqStack S2;</span><br><span class="line">	InitStack(&amp;S2);</span><br><span class="line"></span><br><span class="line">	<span class="keyword">int</span> flag=<span class="number">1</span>;</span><br><span class="line"></span><br><span class="line">	<span class="keyword">while</span>(IsEmptyStack(&amp;S)!=<span class="number">0</span>||p!=<span class="literal">NULL</span>)&#123;</span><br><span class="line">		<span class="keyword">if</span>(p)&#123;</span><br><span class="line">			Push(&amp;S,p);</span><br><span class="line">			p=p-&gt;lchild;</span><br><span class="line">		&#125;<span class="keyword">else</span>&#123;</span><br><span class="line">			p=GetTop(&amp;S);</span><br><span class="line"></span><br><span class="line">			<span class="keyword">if</span>(p-&gt;data==<span class="string">'E'</span>)&#123;</span><br><span class="line">				<span class="keyword">for</span>(<span class="keyword">int</span> i=<span class="number">0</span>;i&lt;=S.top;i++)&#123;</span><br><span class="line">					S1.data[i]=S.data[i];</span><br><span class="line">					S1.top=S.top;</span><br><span class="line">				&#125;</span><br><span class="line">			&#125;</span><br><span class="line">			<span class="keyword">if</span>(p-&gt;data==<span class="string">'G'</span>)&#123;</span><br><span class="line">				<span class="keyword">for</span>(<span class="keyword">int</span> i=<span class="number">0</span>;i&lt;=S.top;i++)&#123;</span><br><span class="line">					S2.data[i]=S.data[i];</span><br><span class="line">					S2.top=S.top;</span><br><span class="line">				&#125;</span><br><span class="line">			&#125;</span><br><span class="line"></span><br><span class="line">			<span class="keyword">if</span>(p-&gt;rchild!=<span class="literal">NULL</span>&amp;&amp;p-&gt;rchild!=r)&#123;</span><br><span class="line">				p=p-&gt;rchild;</span><br><span class="line">				Push(&amp;S,p);</span><br><span class="line">				p=p-&gt;lchild;</span><br><span class="line">			&#125;<span class="keyword">else</span>&#123;</span><br><span class="line">				p=Pop(&amp;S);</span><br><span class="line"></span><br><span class="line">				<span class="keyword">if</span>(IsEmptyStack(&amp;S1)!=<span class="number">0</span>&amp;&amp;IsEmptyStack(&amp;S2)!=<span class="number">0</span>)&#123;</span><br><span class="line">					<span class="keyword">for</span>(<span class="keyword">int</span> i=S1.top;i&gt;<span class="number">-1</span>&amp;&amp;flag;i--)&#123;</span><br><span class="line">						<span class="keyword">for</span>(<span class="keyword">int</span> j=S2.top;j&gt;<span class="number">-1</span>;j--)&#123;</span><br><span class="line">							<span class="keyword">if</span>(S1.data[i]==S2.data[j])&#123;</span><br><span class="line">								<span class="built_in">printf</span>(<span class="string">"%c"</span>,S1.data[i]-&gt;data);</span><br><span class="line">								flag=<span class="number">0</span>;</span><br><span class="line">							&#125;</span><br><span class="line">						&#125;</span><br><span class="line">					&#125;</span><br><span class="line">				&#125;</span><br><span class="line"></span><br><span class="line">				r=p;</span><br><span class="line">				p=<span class="literal">NULL</span>;</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>具体代码见附件。</p>
+<hr>
+<h1 id="附件"><a href="#附件" class="headerlink" title="附件"></a>附件</h1><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br><span class="line">146</span><br><span class="line">147</span><br><span class="line">148</span><br><span class="line">149</span><br></pre></td><td class="code"><pre><span class="line">&#x2F;&#x2F;AB#DF##G##C#E##</span><br><span class="line">#include&lt;stdio.h&gt;</span><br><span class="line">#include&lt;stdlib.h&gt;</span><br><span class="line">#define MaxSize 100</span><br><span class="line"></span><br><span class="line">&#x2F;&#x2F;---------------------------------------------------------------------</span><br><span class="line"></span><br><span class="line">typedef char ElemType;</span><br><span class="line">typedef struct BiTNode&#123;</span><br><span class="line">	ElemType data;</span><br><span class="line">	struct BiTNode *lchild, *rchild;</span><br><span class="line">&#125;BiTNode,*BiTree;</span><br><span class="line"></span><br><span class="line">typedef struct&#123;</span><br><span class="line">	BiTNode* data[MaxSize];</span><br><span class="line">	int top;</span><br><span class="line">&#125;SqStack;</span><br><span class="line"></span><br><span class="line">void InitStack(SqStack*);</span><br><span class="line">void Push(SqStack*,BiTNode*);</span><br><span class="line">BiTNode* Pop(SqStack*);</span><br><span class="line">BiTNode* GetTop(SqStack*);</span><br><span class="line">int IsEmptyStack(SqStack*);</span><br><span class="line"></span><br><span class="line">BiTree CreateBiTree(BiTNode*);</span><br><span class="line">void PostOrder(BiTNode*);</span><br><span class="line"></span><br><span class="line">&#x2F;&#x2F;---------------------------------------------------------------------</span><br><span class="line"></span><br><span class="line">int main(int argc,char* argv[])</span><br><span class="line">&#123;</span><br><span class="line">	BiTNode *T;</span><br><span class="line">	T&#x3D;(BiTNode*)malloc(sizeof(BiTNode));</span><br><span class="line">	T&#x3D;CreateBiTree(T);</span><br><span class="line">	PostOrder(T);</span><br><span class="line">	printf(&quot;\n&quot;);</span><br><span class="line">	return 0;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">&#x2F;&#x2F;---------------------------------------------------------------------</span><br><span class="line"></span><br><span class="line">BiTree CreateBiTree(BiTNode* T)</span><br><span class="line">&#123;</span><br><span class="line">	ElemType x;</span><br><span class="line">	scanf(&quot;%c&quot;,&amp;x);</span><br><span class="line">	if(x&#x3D;&#x3D;&#39;#&#39;)&#123;</span><br><span class="line">		return T&#x3D;NULL;</span><br><span class="line">	&#125;else&#123;</span><br><span class="line">		T&#x3D;(BiTNode*)malloc(sizeof(BiTNode));</span><br><span class="line">		T-&gt;data&#x3D;x;</span><br><span class="line">		T-&gt;lchild&#x3D;CreateBiTree(T-&gt;lchild);</span><br><span class="line">		T-&gt;rchild&#x3D;CreateBiTree(T-&gt;rchild);</span><br><span class="line">	&#125;</span><br><span class="line">	return T;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">void PostOrder(BiTNode* T)</span><br><span class="line">&#123;</span><br><span class="line">	BiTNode *p&#x3D;T;</span><br><span class="line">	BiTNode *r&#x3D;NULL;</span><br><span class="line"></span><br><span class="line">	SqStack S;</span><br><span class="line">	InitStack(&amp;S);</span><br><span class="line">	SqStack S1;</span><br><span class="line">	InitStack(&amp;S1);</span><br><span class="line">	SqStack S2;</span><br><span class="line">	InitStack(&amp;S2);</span><br><span class="line"></span><br><span class="line">	int flag&#x3D;1;</span><br><span class="line"></span><br><span class="line">	while(IsEmptyStack(&amp;S)!&#x3D;0||p!&#x3D;NULL)&#123;</span><br><span class="line">		if(p)&#123;</span><br><span class="line">			Push(&amp;S,p);</span><br><span class="line">			p&#x3D;p-&gt;lchild;</span><br><span class="line">		&#125;else&#123;</span><br><span class="line">			p&#x3D;GetTop(&amp;S);</span><br><span class="line"></span><br><span class="line">			if(p-&gt;data&#x3D;&#x3D;&#39;E&#39;)&#123;</span><br><span class="line">				for(int i&#x3D;0;i&lt;&#x3D;S.top;i++)&#123;</span><br><span class="line">					S1.data[i]&#x3D;S.data[i];</span><br><span class="line">					S1.top&#x3D;S.top;</span><br><span class="line">				&#125;</span><br><span class="line">			&#125;</span><br><span class="line">			if(p-&gt;data&#x3D;&#x3D;&#39;G&#39;)&#123;</span><br><span class="line">				for(int i&#x3D;0;i&lt;&#x3D;S.top;i++)&#123;</span><br><span class="line">					S2.data[i]&#x3D;S.data[i];</span><br><span class="line">					S2.top&#x3D;S.top;</span><br><span class="line">				&#125;</span><br><span class="line">			&#125;</span><br><span class="line"></span><br><span class="line">			if(p-&gt;rchild!&#x3D;NULL&amp;&amp;p-&gt;rchild!&#x3D;r)&#123;</span><br><span class="line">				p&#x3D;p-&gt;rchild;</span><br><span class="line">				Push(&amp;S,p);</span><br><span class="line">				p&#x3D;p-&gt;lchild;</span><br><span class="line">			&#125;else&#123;</span><br><span class="line">				p&#x3D;Pop(&amp;S);</span><br><span class="line"></span><br><span class="line">				if(IsEmptyStack(&amp;S1)!&#x3D;0&amp;&amp;IsEmptyStack(&amp;S2)!&#x3D;0)&#123;</span><br><span class="line">					for(int i&#x3D;S1.top;i&gt;-1&amp;&amp;flag;i--)&#123;</span><br><span class="line">						for(int j&#x3D;S2.top;j&gt;-1;j--)&#123;</span><br><span class="line">							if(S1.data[i]&#x3D;&#x3D;S2.data[j])&#123;</span><br><span class="line">								printf(&quot;%c&quot;,S1.data[i]-&gt;data);</span><br><span class="line">								flag&#x3D;0;</span><br><span class="line">							&#125;</span><br><span class="line">						&#125;</span><br><span class="line">					&#125;</span><br><span class="line">				&#125;</span><br><span class="line"></span><br><span class="line">				r&#x3D;p;</span><br><span class="line">				p&#x3D;NULL;</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">&#x2F;&#x2F;---------------------------------------------------------------------</span><br><span class="line"></span><br><span class="line">void InitStack(SqStack* S)&#123;</span><br><span class="line">	S-&gt;top&#x3D;-1;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">void Push(SqStack* S,BiTNode* T)&#123;</span><br><span class="line">	if(S-&gt;top&#x3D;&#x3D;MaxSize-1)&#123;</span><br><span class="line">		return;</span><br><span class="line">	&#125;</span><br><span class="line">	S-&gt;data[++S-&gt;top]&#x3D;T;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">BiTNode* Pop(SqStack* S)&#123;</span><br><span class="line">	if(S-&gt;top&#x3D;&#x3D;-1)&#123;</span><br><span class="line">		return NULL;</span><br><span class="line">	&#125;</span><br><span class="line">	return S-&gt;data[S-&gt;top--];</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">BiTNode* GetTop(SqStack* S)&#123;</span><br><span class="line">	if(S-&gt;top&#x3D;&#x3D;-1)&#123;</span><br><span class="line">		return NULL;</span><br><span class="line">	&#125;</span><br><span class="line">	return S-&gt;data[S-&gt;top];</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">int IsEmptyStack(SqStack* S)&#123;</span><br><span class="line">	if(S-&gt;top&#x3D;&#x3D;-1)&#123;</span><br><span class="line">		return 0;</span><br><span class="line">	&#125;else&#123;</span><br><span class="line">		return -1;</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/" rel="tag"># 数据结构</a>
+              <a href="/tags/%E4%BA%8C%E5%8F%89%E6%A0%91/" rel="tag"># 二叉树</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-next post-nav-item">
+                <a href="/2016/08/19/Data-structure-and-algorithm/chapter4/%E7%AC%AC4%E7%AB%A0%E7%AC%AC1%E8%8A%82%E7%BB%83%E4%B9%A0%E9%A2%9810%20%E5%88%A4%E6%96%AD%E6%9F%90%E4%BA%8C%E5%8F%89%E6%A0%91%E6%98%AF%E5%90%A6%E4%B8%BA%E5%AE%8C%E5%85%A8%E4%BA%8C%E5%8F%89%E6%A0%91/" rel="next" title="第4章第1节练习题10 判断某二叉树是否为完全二叉树">
+                  <i class="fa fa-chevron-left"></i> 第4章第1节练习题10 判断某二叉树是否为完全二叉树
+                </a>
+            </div>
+
+            <span class="post-nav-divider"></span>
+
+            <div class="post-nav-prev post-nav-item">
+                <a href="/2016/08/24/Data-structure-and-algorithm/chapter4/%E7%AC%AC4%E7%AB%A0%E7%AC%AC1%E8%8A%82%E7%BB%83%E4%B9%A0%E9%A2%9812%20%E5%88%A0%E9%99%A4%E4%BB%A5%E6%8C%87%E5%AE%9A%E8%8A%82%E7%82%B9%E4%B8%BA%E6%A0%B9%E8%8A%82%E7%82%B9%E7%9A%84%E6%89%80%E6%9C%89%E5%AD%90%E6%A0%91/" rel="prev" title="第4章第1节练习题12 删除以指定节点为根节点的所有子树">
+                  第4章第1节练习题12 删除以指定节点为根节点的所有子树 <i class="fa fa-chevron-right"></i>
+                </a>
+            </div>
+          </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#问题描述"><span class="nav-number">1.</span> <span class="nav-text">问题描述</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#算法思想"><span class="nav-number">2.</span> <span class="nav-text">算法思想</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#算法描述"><span class="nav-number">3.</span> <span class="nav-text">算法描述</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#附件"><span class="nav-number">4.</span> <span class="nav-text">附件</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="acronymor"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">acronymor</p>
+  <div class="site-description" itemprop="description">I am who i am, the unique fooid</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives">
+          <span class="site-state-item-count">216</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+        <span class="site-state-item-count">27</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+        <span class="site-state-item-count">35</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="feed-link motion-element">
+    <a href="/atom.xml" rel="alternate">
+      <i class="fa fa-rss"></i>RSS
+    </a>
+  </div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/acronymor" title="GitHub &amp;rarr; https:&#x2F;&#x2F;github.com&#x2F;acronymor" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yourname@acronymor.com" title="E-Mail &amp;rarr; mailto:yourname@acronymor.com"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">acronymor</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> v4.2.0
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">Theme – <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> v7.5.0
+  </div>
+
+        
+
+
+
+
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

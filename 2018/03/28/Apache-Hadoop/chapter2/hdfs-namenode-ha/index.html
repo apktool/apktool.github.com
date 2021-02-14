@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+  <link rel="alternate" href="/atom.xml" title="Acronymor's Blog" type="application/atom+xml">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Muse',
+    version: '7.5.0',
+    exturl: false,
+    sidebar: {"position":"right","display":"hide","offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: '',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    translation: {
+      copy_button: 'Copy',
+      copy_success: 'Copied',
+      copy_failure: 'Copy failed'
+    },
+    sidebarPadding: 40
+  };
+</script>
+
+  <meta name="description" content="在Hadoop1.0时代，Hadoop的两大核心组件HDFSNameNode和JobTracker都存在着单点问题，这其中以NameNode的单点问题尤为严重。因为NameNode保存了整个HDFS的元数据信息，一旦NameNode挂掉，整个HDFS就无法访问，同时Hadoop生态系统中依赖于HDFS的各个组件，包括MapReduce、Hive、Pig以及HBase等也都无法正常工作，并且重新启动">
+<meta property="og:type" content="article">
+<meta property="og:title" content="HDFS Namenode高可用">
+<meta property="og:url" content="http://acronymor.com/2018/03/28/Apache-Hadoop/chapter2/hdfs-namenode-ha/index.html">
+<meta property="og:site_name" content="Acronymor&#39;s Blog">
+<meta property="og:description" content="在Hadoop1.0时代，Hadoop的两大核心组件HDFSNameNode和JobTracker都存在着单点问题，这其中以NameNode的单点问题尤为严重。因为NameNode保存了整个HDFS的元数据信息，一旦NameNode挂掉，整个HDFS就无法访问，同时Hadoop生态系统中依赖于HDFS的各个组件，包括MapReduce、Hive、Pig以及HBase等也都无法正常工作，并且重新启动">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="http://acronymor.com/2018/03/28/Apache-Hadoop/chapter2/hdfs-namenode-ha/hdfs-HA.png">
+<meta property="article:published_time" content="2018-03-28T06:52:59.000Z">
+<meta property="article:modified_time" content="2018-03-28T06:52:59.000Z">
+<meta property="article:author" content="acronymor">
+<meta property="article:tag" content="Hadoop">
+<meta property="article:tag" content="HDFS">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://acronymor.com/2018/03/28/Apache-Hadoop/chapter2/hdfs-namenode-ha/hdfs-HA.png">
+
+<link rel="canonical" href="http://acronymor.com/2018/03/28/Apache-Hadoop/chapter2/hdfs-namenode-ha/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true,
+    isPage: false,
+    isArchive: false
+  };
+</script>
+
+  <title>HDFS Namenode高可用 | Acronymor's Blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Acronymor's Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-movies">
+
+    <a href="/movies/" rel="section"><i class="fa fa-fw fa-film"></i>movies</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>About</a>
+
+  </li>
+  </ul>
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="en">
+    <link itemprop="mainEntityOfPage" href="http://acronymor.com/2018/03/28/Apache-Hadoop/chapter2/hdfs-namenode-ha/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="acronymor">
+      <meta itemprop="description" content="I am who i am, the unique fooid">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Acronymor's Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          HDFS Namenode高可用
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2018-03-28 14:52:59" itemprop="dateCreated datePublished" datetime="2018-03-28T14:52:59+08:00">2018-03-28</time>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>在Hadoop1.0时代，Hadoop的两大核心组件HDFSNameNode和JobTracker都存在着单点问题，这其中以NameNode的单点问题尤为严重。因为NameNode保存了整个HDFS的元数据信息，一旦NameNode挂掉，整个HDFS就无法访问，同时Hadoop生态系统中依赖于HDFS的各个组件，包括MapReduce、Hive、Pig以及HBase等也都无法正常工作，并且重新启动NameNode和进行数据恢复的过程也会比较耗时。这些问题在给Hadoop的使用者带来困扰的同时，也极大地限制了Hadoop的使用场景，使得Hadoop在很长的时间内仅能用作离线存储和离线计算，无法应用到对可用性和数据一致性要求很高的在线应用场景中。</p>
+<p>所幸的是，在Hadoop2.0中，HDFS NameNode和YARN Resource Manger(Job Tracker在2.0中已经被整合到YARN Resource Manger之中)的单点问题都得到了解决，经过多个版本的迭代和发展，目前已经能用于生产环境。HDFS NameNode和YARN ResourceManger的高可用(High Availability，HA)方案基本类似，两者也复用了部分代码，但是由于HDFS NameNode对于数据存储和数据一致性的要求比YARN ResourceManger高得多，所以HDFS NameNode的高可用实现更为复杂一些，本文从内部实现的角度对HDFS NameNode的高可用机制进行详细的分析。</p>
+<a id="more"></a>
+
+<h1 id="Namenode-HA的架构"><a href="#Namenode-HA的架构" class="headerlink" title="Namenode HA的架构"></a>Namenode HA的架构</h1><img src="/2018/03/28/Apache-Hadoop/chapter2/hdfs-namenode-ha/hdfs-HA.png" class="" title="[HDFS NameNode HA]">
+
+<h1 id="Namenode-HA的组件概述"><a href="#Namenode-HA的组件概述" class="headerlink" title="Namenode HA的组件概述"></a>Namenode HA的组件概述</h1><h2 id="Active-NameNode-与-Standby-NameNode"><a href="#Active-NameNode-与-Standby-NameNode" class="headerlink" title="Active NameNode 与 Standby NameNode"></a>Active NameNode 与 Standby NameNode</h2><p>在NameNode的HA方案中有两个不同状态的NameNode，分别为活跃态（Active）和后备态（Standby），其中只有Active NameNode能对外提供服务，Standby NameNode会根据Active NameNode的状态变化，在必要时可切换成Active.</p>
+<h2 id="ZKFC-ZKFailoverController"><a href="#ZKFC-ZKFailoverController" class="headerlink" title="ZKFC(ZKFailoverController)"></a>ZKFC(ZKFailoverController)</h2><p>ZKFC即ZKFailoverController，是基于Zookeeper的故障转移控制器，它负责控制NameNode的主备切换，ZKFC会监测NameNode的健康状态，当发现Active NameNode出现异常时会通过Zookeeper进行一次新的选举，完成Active和Standby状态的切换</p>
+<h2 id="HealthMonitor"><a href="#HealthMonitor" class="headerlink" title="HealthMonitor"></a>HealthMonitor</h2><p>周期性调用NameNode的HAServiceProtocol RPC接口（monitorHealth 和 getServiceStatus），监控NameNode的健康状态并向ZKFC反馈</p>
+<h2 id="ActiveStandbyElector"><a href="#ActiveStandbyElector" class="headerlink" title="ActiveStandbyElector"></a>ActiveStandbyElector</h2><p>接收ZKFC的选举请求，通过Zookeeper自动完成主备选举，选举完成后回调ZKFC的主备切换方法对NameNode进行Active和Standby状态的切换.</p>
+<h2 id="DataNode"><a href="#DataNode" class="headerlink" title="DataNode"></a>DataNode</h2><p>NameNode包含了HDFS的元数据信息和数据块信息（blockmap），其中数据块信息通过DataNode主动向Active NameNode和Standby NameNode上报</p>
+<h2 id="共享存储系统"><a href="#共享存储系统" class="headerlink" title="共享存储系统"></a>共享存储系统</h2><p>共享存储系统负责存储HDFS的元数据（EditsLog），Active NameNode（写入）和 Standby NameNode（读取）通过共享存储系统实现元数据同步，在主备切换过程中，新的Active NameNode必须确保元数据同步完成才能对外提供服务</p>
+<h1 id="主备切换流程"><a href="#主备切换流程" class="headerlink" title="主备切换流程"></a>主备切换流程</h1><h2 id="监控状态"><a href="#监控状态" class="headerlink" title="监控状态"></a>监控状态</h2><p>HealthMonitor调用NameNode的RPC方法monitorHealth监控NameNode的健康状态，包括</p>
+<table>
+<thead>
+<tr>
+<th align="left">状态</th>
+<th align="left">描述</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">INITIALIZING</td>
+<td align="left">HealthMonitor正在启动中，未开始监控</td>
+</tr>
+<tr>
+<td align="left">HEALTH_MONITOR_FAILED</td>
+<td align="left">HealthMonitor运行出错，触发ZKFC的fatalError，ZKFC进程退出</td>
+</tr>
+<tr>
+<td align="left">SERVICE_NOT_RESPONDING</td>
+<td align="left">调用NameNode的monitorHealth方法无响应</td>
+</tr>
+<tr>
+<td align="left">SERVICE_UNHEALTHY</td>
+<td align="left">NameNode正在运行，但NameNode健康检查失败，抛出HealthCheckFailedException异常</td>
+</tr>
+<tr>
+<td align="left">SERVICE_HEALTHY</td>
+<td align="left">NameNode正常运行</td>
+</tr>
+</tbody></table>
+<p>HealthMonitor调用NameNode的RPC方法getServiceStatus监控NameNode的角色状态，包括</p>
+<table>
+<thead>
+<tr>
+<th align="left">状态</th>
+<th align="left">描述</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">INITIALIZING</td>
+<td align="left">NameNode正在启动中</td>
+</tr>
+<tr>
+<td align="left">ACTIVE</td>
+<td align="left">NameNode当前为Active NameNode</td>
+</tr>
+<tr>
+<td align="left">STANDBY</td>
+<td align="left">NameNode当前为Standby NameNode</td>
+</tr>
+<tr>
+<td align="left">STOPPING</td>
+<td align="left">NameNode已经停止</td>
+</tr>
+</tbody></table>
+<h2 id="状态变化回调"><a href="#状态变化回调" class="headerlink" title="状态变化回调"></a>状态变化回调</h2><p>当NameNode的健康状态或角色状态发生变化时，HealthMonitor会回调ZKFC注册的回调方法，ZKFC根据状态的变化决定是否需要进行选举</p>
+<h2 id="需要主备选举"><a href="#需要主备选举" class="headerlink" title="需要主备选举"></a>需要主备选举</h2><p>NameNode的健康状态（state）变化在主备选举中起核心作用，ZKFC在不同状态下的决策：</p>
+<table>
+<thead>
+<tr>
+<th align="left">状态</th>
+<th align="left">描述</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">SERVICE_HEALTHY</td>
+<td align="left">NameNode有资格进行主备选举，调用ActiveStandbyElector的joinElection发起一次主备选举</td>
+</tr>
+<tr>
+<td align="left">SERVICE_NOT_RESPONDING 或 SERVICE_UNHEALTHY</td>
+<td align="left">NameNode不适合成为Active NameNode，调用quitElection(true)从Zookeeper上删除已经建立的临时节点退出主备选举，并进行隔离</td>
+</tr>
+<tr>
+<td align="left">INITIALIZING</td>
+<td align="left">HealthMonitor未开始监控，调用quitElection(false)从Zookeeper上删除已经建立的临时节点退出主备选举，不需要隔离</td>
+</tr>
+</tbody></table>
+<p>NameNode的角色状态（status）变化在主备选举中起辅佐作用，ZKFC会比较NameNode的最新角色和自己期望的角色是否一致，如果不一致则调用quitElection退出主备选举</p>
+<h2 id="通过zk进行主备选举"><a href="#通过zk进行主备选举" class="headerlink" title="通过zk进行主备选举"></a>通过zk进行主备选举</h2><p>ZKFC通过 ActiveStandbyElector 的 joinElection 发起NameNode的主备选举，这个过程利用了Zookeeper的写一致性和临时节点机制：</p>
+<p>当发起一次主备选举时，Zookeeper会尝试创建临时节点 ActiveStandbyElectorLock ，如果创建成功则表示该 NameNode 竞选Active成功，否则视为竞选失败，最后会通知ZKFC<br>不管竞选是否成功（有且只有一个NameNode竞选成功），所有 ActiveStandbyElector 都会向Zookeeper注册一个watcher用于监听临时节点 ActiveStandbyElectorLock 的 NodeDelete 事件</p>
+<p>当调用quitElection退出主备选举或Active NameNode由于宕机使临时节点 ActiveStandbyElectorLock 被Zookeeper自动删除时就会触发NodeDeleted事件，Standby NameNode会再次尝试创建 ActiveStandbyElectorLock ，一旦创建成功则该Standby NameNode竞选Active成功，最后通知ZKFC</p>
+<h3 id="防止脑裂"><a href="#防止脑裂" class="headerlink" title="防止脑裂"></a>防止脑裂</h3><p>在分布式系统中脑裂又称为双主现象，由于Zookeeper的“假死”可能会导致出现两个NameNode同时为Active状态，此时两个NameNode都可以对外提供服务，无法保证数据一致性。ActiveStandbyElector通过隔离（Fencing）机制防止脑裂现象。</p>
+<p>当某个NameNode竞选成功，成功创建 ActiveStandbyElectorLock 临时节点后会创建另一个名为 ActiveBreadCrumb 的持久节点，该节点保存了NameNode的地址信息，正常情况下删除 ActiveStandbyElectorLock 节点时会主动删除 ActiveBreadCrumb ，但如果由于异常情况导致 ZookeeperSession 关闭，此时临时节点 ActiveStandbyElectorLock 会被删除，但持久节点 ActiveBreadCrumb 并不会删除，当有新的NameNode竞选成功后它会发现已经存在一个旧的NameNode遗留下来的 ActiveBreadCrumb 节点，此时会通知ZKFC。</p>
+<h2 id="通知ZKFC主备选举结果"><a href="#通知ZKFC主备选举结果" class="headerlink" title="通知ZKFC主备选举结果"></a>通知ZKFC主备选举结果</h2><p>主备选举结束后ZKFC会收到ActiveStandbyElector反馈的选举结果，包括：竞选Active成功、竞选Active失败、发现旧的Active NameNode遗留的ActiveBreadCrumb等</p>
+<h2 id="切换主备状态"><a href="#切换主备状态" class="headerlink" title="切换主备状态"></a>切换主备状态</h2><p>收到主备选举结果后ZKFC会根据选举结果进行NameNode的Active和Standby状态变更：</p>
+<ul>
+<li>竞选Active成功：回调NameNode的 transitionToActive 方法使其成为Active状态</li>
+<li>竞选Active失败：回调NameNode的 transitionToStandby 方法使其成为Standby状态</li>
+<li>发现遗留ActiveBreadCrumb：调用 fenceOldActive 方法隔离旧的Active NameNode（首先尝试把它设为Standby，不行就ssh到目标机器上杀死进程或执行自定义的shell进行隔离），只有成功隔离后新的NameNode才会被设为Active状态并对外提供服务</li>
+</ul>
+<hr>
+<p><a href="https://www.ibm.com/developerworks/cn/opensource/os-cn-hadoop-name-node/index.html" target="_blank" rel="noopener">Hadoop NameNode 高可用 (High Availability) 实现解析</a><br><a href="http://hejunhao.me/archives/807" target="_blank" rel="noopener">Hadoop NameNode 高可用架构</a></p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Hadoop/" rel="tag"># Hadoop</a>
+              <a href="/tags/HDFS/" rel="tag"># HDFS</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-next post-nav-item">
+                <a href="/2018/03/27/Apache-Hadoop/chapter1/hadoop-basic-conception/" rel="next" title="YARN的基本介绍">
+                  <i class="fa fa-chevron-left"></i> YARN的基本介绍
+                </a>
+            </div>
+
+            <span class="post-nav-divider"></span>
+
+            <div class="post-nav-prev post-nav-item">
+                <a href="/2018/03/29/Apache-Hadoop/chapter1/yarn-architecture/" rel="prev" title="YARN的基本架构">
+                  YARN的基本架构 <i class="fa fa-chevron-right"></i>
+                </a>
+            </div>
+          </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#Namenode-HA的架构"><span class="nav-number">1.</span> <span class="nav-text">Namenode HA的架构</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Namenode-HA的组件概述"><span class="nav-number">2.</span> <span class="nav-text">Namenode HA的组件概述</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Active-NameNode-与-Standby-NameNode"><span class="nav-number">2.1.</span> <span class="nav-text">Active NameNode 与 Standby NameNode</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#ZKFC-ZKFailoverController"><span class="nav-number">2.2.</span> <span class="nav-text">ZKFC(ZKFailoverController)</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#HealthMonitor"><span class="nav-number">2.3.</span> <span class="nav-text">HealthMonitor</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#ActiveStandbyElector"><span class="nav-number">2.4.</span> <span class="nav-text">ActiveStandbyElector</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#DataNode"><span class="nav-number">2.5.</span> <span class="nav-text">DataNode</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#共享存储系统"><span class="nav-number">2.6.</span> <span class="nav-text">共享存储系统</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#主备切换流程"><span class="nav-number">3.</span> <span class="nav-text">主备切换流程</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#监控状态"><span class="nav-number">3.1.</span> <span class="nav-text">监控状态</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#状态变化回调"><span class="nav-number">3.2.</span> <span class="nav-text">状态变化回调</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#需要主备选举"><span class="nav-number">3.3.</span> <span class="nav-text">需要主备选举</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#通过zk进行主备选举"><span class="nav-number">3.4.</span> <span class="nav-text">通过zk进行主备选举</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#防止脑裂"><span class="nav-number">3.4.1.</span> <span class="nav-text">防止脑裂</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#通知ZKFC主备选举结果"><span class="nav-number">3.5.</span> <span class="nav-text">通知ZKFC主备选举结果</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#切换主备状态"><span class="nav-number">3.6.</span> <span class="nav-text">切换主备状态</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="acronymor"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">acronymor</p>
+  <div class="site-description" itemprop="description">I am who i am, the unique fooid</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives">
+          <span class="site-state-item-count">216</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+        <span class="site-state-item-count">27</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+        <span class="site-state-item-count">35</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="feed-link motion-element">
+    <a href="/atom.xml" rel="alternate">
+      <i class="fa fa-rss"></i>RSS
+    </a>
+  </div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/acronymor" title="GitHub &amp;rarr; https:&#x2F;&#x2F;github.com&#x2F;acronymor" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yourname@acronymor.com" title="E-Mail &amp;rarr; mailto:yourname@acronymor.com"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">acronymor</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> v4.2.0
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">Theme – <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> v7.5.0
+  </div>
+
+        
+
+
+
+
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

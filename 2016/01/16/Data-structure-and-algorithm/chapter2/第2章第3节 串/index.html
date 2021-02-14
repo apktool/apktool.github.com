@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+  <link rel="alternate" href="/atom.xml" title="Acronymor's Blog" type="application/atom+xml">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Muse',
+    version: '7.5.0',
+    exturl: false,
+    sidebar: {"position":"right","display":"hide","offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: '',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    translation: {
+      copy_button: 'Copy',
+      copy_success: 'Copied',
+      copy_failure: 'Copy failed'
+    },
+    sidebarPadding: 40
+  };
+</script>
+
+  <meta name="description" content="关于串的基本定义已经在第2章栈和队列以及串中介绍过了，与栈和队列类似，同样存在顺序结构存储的串（这里简称顺序串）和链式结构存储的串（这里简称链串）。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="第2章第3节 串">
+<meta property="og:url" content="http://acronymor.com/2016/01/16/Data-structure-and-algorithm/chapter2/%E7%AC%AC2%E7%AB%A0%E7%AC%AC3%E8%8A%82%20%E4%B8%B2/index.html">
+<meta property="og:site_name" content="Acronymor&#39;s Blog">
+<meta property="og:description" content="关于串的基本定义已经在第2章栈和队列以及串中介绍过了，与栈和队列类似，同样存在顺序结构存储的串（这里简称顺序串）和链式结构存储的串（这里简称链串）。">
+<meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2016-01-15T21:41:34.000Z">
+<meta property="article:modified_time" content="2016-01-15T21:41:34.000Z">
+<meta property="article:author" content="acronymor">
+<meta property="article:tag" content="数据结构">
+<meta property="article:tag" content="串">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://acronymor.com/2016/01/16/Data-structure-and-algorithm/chapter2/%E7%AC%AC2%E7%AB%A0%E7%AC%AC3%E8%8A%82%20%E4%B8%B2/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true,
+    isPage: false,
+    isArchive: false
+  };
+</script>
+
+  <title>第2章第3节 串 | Acronymor's Blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Acronymor's Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-movies">
+
+    <a href="/movies/" rel="section"><i class="fa fa-fw fa-film"></i>movies</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>About</a>
+
+  </li>
+  </ul>
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="en">
+    <link itemprop="mainEntityOfPage" href="http://acronymor.com/2016/01/16/Data-structure-and-algorithm/chapter2/%E7%AC%AC2%E7%AB%A0%E7%AC%AC3%E8%8A%82%20%E4%B8%B2/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="acronymor">
+      <meta itemprop="description" content="I am who i am, the unique fooid">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Acronymor's Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          第2章第3节 串
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2016-01-16 05:41:34" itemprop="dateCreated datePublished" datetime="2016-01-16T05:41:34+08:00">2016-01-16</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E4%B8%8E%E7%AE%97%E6%B3%95/" itemprop="url" rel="index">
+                    <span itemprop="name">数据结构与算法</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>关于串的基本定义已经在<a href="http://blog.csdn.net/u013595419/article/details/50516508#t6" target="_blank" rel="noopener">第2章栈和队列以及串</a>中介绍过了，与栈和队列类似，同样存在顺序结构存储的串（这里简称顺序串）和链式结构存储的串（这里简称链串）。</p>
+<a id="more"></a>
+
+<h1 id="一-顺序串"><a href="#一-顺序串" class="headerlink" title="一.顺序串"></a>一.顺序串</h1><h2 id="1-1定义"><a href="#1-1定义" class="headerlink" title="1.1定义"></a>1.1定义</h2><p>串的顺序实现是指分配一块连续的存储单元用于串中的元素，并附设表示串长度的标志。<br>串的顺序结构存储可以描述为：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">typedef</span> <span class="keyword">char</span> ElemType;</span><br><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span>&#123;</span></span><br><span class="line">	ElemType data[MaxSize];</span><br><span class="line">	<span class="keyword">int</span> length;</span><br><span class="line">&#125;<span class="keyword">String</span>;</span><br></pre></td></tr></table></figure>
+<h2 id="1-2基本操作"><a href="#1-2基本操作" class="headerlink" title="1.2基本操作"></a>1.2基本操作</h2><h3 id="1-2-1创建串"><a href="#1-2-1创建串" class="headerlink" title="1.2.1创建串"></a>1.2.1创建串</h3><p>输入字符元素，以“#”号作为结束标志。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">StrCreat</span><span class="params">(<span class="keyword">String</span>* S)</span></span>&#123;</span><br><span class="line">	<span class="keyword">char</span> x;</span><br><span class="line">	S-&gt;length=<span class="number">0</span>;</span><br><span class="line">	<span class="built_in">printf</span>(<span class="string">"Input String_S(End of '#'!):\n"</span>);</span><br><span class="line">	<span class="built_in">scanf</span>(<span class="string">"%c"</span>,&amp;x);</span><br><span class="line">	<span class="keyword">while</span>(x!=<span class="string">'#'</span>)&#123;</span><br><span class="line">		S-&gt;data[S-&gt;length++]=x;</span><br><span class="line">		<span class="built_in">scanf</span>(<span class="string">"%c"</span>,&amp;x);</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="1-2-2求串长度"><a href="#1-2-2求串长度" class="headerlink" title="1.2.2求串长度"></a>1.2.2求串长度</h3><p>因为串的定义中有length变量，只需返回结果便可。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">StrLength</span><span class="params">(<span class="keyword">String</span>* S)</span></span>&#123;</span><br><span class="line">	<span class="keyword">return</span> S-&gt;length;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="1-2-3拷贝字符串"><a href="#1-2-3拷贝字符串" class="headerlink" title="1.2.3拷贝字符串"></a>1.2.3拷贝字符串</h3><p>将字符串S拷贝到字符串T中，对字符串依次访问，同时赋值于字符串T即可完成拷贝。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">StrCopy</span><span class="params">(<span class="keyword">String</span>* S, <span class="keyword">String</span>* T)</span></span>&#123;</span><br><span class="line">	<span class="keyword">for</span>(<span class="keyword">int</span> i=<span class="number">0</span>;i&lt;S-&gt;length;i++)&#123;</span><br><span class="line">		T-&gt;data[i]=S-&gt;data[i];</span><br><span class="line">	&#125;</span><br><span class="line">	T-&gt;length=S-&gt;length;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="1-2-4比较字符串大小"><a href="#1-2-4比较字符串大小" class="headerlink" title="1.2.4比较字符串大小"></a>1.2.4比较字符串大小</h3><p>字符串大小比较实际是比较ASCII码大小，从左向右依次比较，如果此时哪个字符串的ASCII码值比较大，则返回结果；如果两个字符串长度不相等，但前面若干个字符均相等，则长度大的字符串比较大。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">StrCompare</span><span class="params">(<span class="keyword">String</span>* S,<span class="keyword">String</span>* T)</span></span>&#123;</span><br><span class="line">	<span class="keyword">int</span> i=<span class="number">0</span>;</span><br><span class="line">	<span class="keyword">while</span>(i!=S-&gt;length&amp;&amp;i!=T-&gt;length)&#123;</span><br><span class="line">		<span class="keyword">if</span>(S-&gt;data[i]&lt;T-&gt;data[i])&#123;</span><br><span class="line">			<span class="keyword">return</span> <span class="number">-1</span>;</span><br><span class="line">		&#125;<span class="keyword">else</span> <span class="keyword">if</span>(S-&gt;data[i]&gt;T-&gt;data[i])&#123;</span><br><span class="line">			<span class="keyword">return</span> <span class="number">1</span>;</span><br><span class="line">		&#125;<span class="keyword">else</span>&#123;</span><br><span class="line">			i++;</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">if</span>(i&lt;S-&gt;length)&#123;</span><br><span class="line">		<span class="keyword">return</span> <span class="number">1</span>;</span><br><span class="line">	&#125;<span class="keyword">else</span> <span class="keyword">if</span>(i&lt;T-&gt;length)&#123;</span><br><span class="line">		<span class="keyword">return</span> <span class="number">-1</span>;</span><br><span class="line">	&#125;<span class="keyword">else</span>&#123;</span><br><span class="line">		<span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="1-2-5连接字符串"><a href="#1-2-5连接字符串" class="headerlink" title="1.2.5连接字符串"></a>1.2.5连接字符串</h3><p>将字符串T连接在字符串S后，注意此时S的长度以便，注意修改length变量。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">StrConcat</span><span class="params">(<span class="keyword">String</span>* S, <span class="keyword">String</span>* T)</span></span>&#123;</span><br><span class="line">	<span class="keyword">int</span> i=S-&gt;length;</span><br><span class="line">	<span class="keyword">for</span>(i=i+<span class="number">1</span>;i&lt;S-&gt;length+T-&gt;length;i++)&#123;</span><br><span class="line">		S-&gt;data[i]=T-&gt;data[i-S-&gt;length];</span><br><span class="line">	&#125;</span><br><span class="line">	S-&gt;length=i;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="1-2-6以串S中pos位置开始的len个字符生成子串Sub"><a href="#1-2-6以串S中pos位置开始的len个字符生成子串Sub" class="headerlink" title="1.2.6以串S中pos位置开始的len个字符生成子串Sub"></a>1.2.6以串S中pos位置开始的len个字符生成子串Sub</h3><p>因为采用的是顺序存储结构，可以使用函数随机访问，直接找到pos位置，然后将其后len个字符串均赋值给新的子串T便可。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">String</span>* <span class="title">SubString</span><span class="params">(<span class="keyword">String</span>*S,<span class="keyword">int</span> pos,<span class="keyword">int</span> len)</span></span>&#123;</span><br><span class="line">	<span class="keyword">String</span> *T;</span><br><span class="line">	T=(<span class="keyword">String</span>*)<span class="built_in">malloc</span>(<span class="keyword">sizeof</span>(<span class="keyword">String</span>));</span><br><span class="line">	T-&gt;length=<span class="number">0</span>;</span><br><span class="line">	<span class="keyword">if</span>(pos&gt;S-&gt;length||(pos+len)&gt;S-&gt;length)&#123;</span><br><span class="line">		<span class="built_in">printf</span>(<span class="string">"Illege Position!\n"</span>);</span><br><span class="line">		<span class="built_in">exit</span>(<span class="number">0</span>);</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">for</span>(<span class="keyword">int</span> i=pos;i&lt;pos+len;i++)&#123;</span><br><span class="line">		T-&gt;data[T-&gt;length++]=S-&gt;data[i];</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">return</span> T;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h1 id="二-链串"><a href="#二-链串" class="headerlink" title="二.链串"></a>二.链串</h1><h2 id="2-1定义"><a href="#2-1定义" class="headerlink" title="2.1定义"></a>2.1定义</h2><p>采用链式存储的串称为链串。一般采用不带头结点的单链表实现。<br>链串的数据结构描述如下：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span> <span class="title">SNode</span></span></span><br><span class="line"><span class="class">&#123;</span>    ElemType data;</span><br><span class="line">     <span class="class"><span class="keyword">struct</span> <span class="title">SNode</span> *<span class="title">next</span>;</span></span><br><span class="line">&#125;<span class="keyword">String</span>;</span><br></pre></td></tr></table></figure>
+
+<p>因为采用链式存储时的串与<a href="http://blog.csdn.net/u013595419/article/details/50481785" target="_blank" rel="noopener">第1章的单链表</a>操作类似，这里便不再详细说明。</p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/" rel="tag"># 数据结构</a>
+              <a href="/tags/%E4%B8%B2/" rel="tag"># 串</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-next post-nav-item">
+                <a href="/2016/01/16/Data-structure-and-algorithm/chapter2/%E7%AC%AC2%E7%AB%A0%E7%AC%AC2%E8%8A%82%E7%BB%83%E4%B9%A0%E9%A2%983%20%E4%BD%BF%E7%94%A8%E9%98%9F%E5%88%97%E6%A8%A1%E6%8B%9F%E6%B8%A1%E5%8F%A3%E7%AE%A1%E7%90%86/" rel="next" title="第2章第2节练习题3 使用队列模拟渡口管理">
+                  <i class="fa fa-chevron-left"></i> 第2章第2节练习题3 使用队列模拟渡口管理
+                </a>
+            </div>
+
+            <span class="post-nav-divider"></span>
+
+            <div class="post-nav-prev post-nav-item">
+                <a href="/2016/01/17/Data-structure-and-algorithm/chapter2/%E7%AC%AC2%E7%AB%A0%E7%AC%AC3%E8%8A%82%E7%BB%83%E4%B9%A0%E9%A2%981%20%E4%B8%B2%E7%9A%84%E6%A8%A1%E5%BC%8F%E5%8C%B9%E9%85%8D(Naive)/" rel="prev" title="第2章第3节练习题1 串的模式匹配(Naive)">
+                  第2章第3节练习题1 串的模式匹配(Naive) <i class="fa fa-chevron-right"></i>
+                </a>
+            </div>
+          </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#一-顺序串"><span class="nav-number">1.</span> <span class="nav-text">一.顺序串</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#1-1定义"><span class="nav-number">1.1.</span> <span class="nav-text">1.1定义</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-2基本操作"><span class="nav-number">1.2.</span> <span class="nav-text">1.2基本操作</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-2-1创建串"><span class="nav-number">1.2.1.</span> <span class="nav-text">1.2.1创建串</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#1-2-2求串长度"><span class="nav-number">1.2.2.</span> <span class="nav-text">1.2.2求串长度</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#1-2-3拷贝字符串"><span class="nav-number">1.2.3.</span> <span class="nav-text">1.2.3拷贝字符串</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#1-2-4比较字符串大小"><span class="nav-number">1.2.4.</span> <span class="nav-text">1.2.4比较字符串大小</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#1-2-5连接字符串"><span class="nav-number">1.2.5.</span> <span class="nav-text">1.2.5连接字符串</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#1-2-6以串S中pos位置开始的len个字符生成子串Sub"><span class="nav-number">1.2.6.</span> <span class="nav-text">1.2.6以串S中pos位置开始的len个字符生成子串Sub</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#二-链串"><span class="nav-number">2.</span> <span class="nav-text">二.链串</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#2-1定义"><span class="nav-number">2.1.</span> <span class="nav-text">2.1定义</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="acronymor"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">acronymor</p>
+  <div class="site-description" itemprop="description">I am who i am, the unique fooid</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives">
+          <span class="site-state-item-count">216</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+        <span class="site-state-item-count">27</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+        <span class="site-state-item-count">35</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="feed-link motion-element">
+    <a href="/atom.xml" rel="alternate">
+      <i class="fa fa-rss"></i>RSS
+    </a>
+  </div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/acronymor" title="GitHub &amp;rarr; https:&#x2F;&#x2F;github.com&#x2F;acronymor" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yourname@acronymor.com" title="E-Mail &amp;rarr; mailto:yourname@acronymor.com"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">acronymor</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> v4.2.0
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">Theme – <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> v7.5.0
+  </div>
+
+        
+
+
+
+
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

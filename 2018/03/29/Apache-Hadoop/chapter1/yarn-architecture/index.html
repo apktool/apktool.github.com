@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+  <link rel="alternate" href="/atom.xml" title="Acronymor's Blog" type="application/atom+xml">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Muse',
+    version: '7.5.0',
+    exturl: false,
+    sidebar: {"position":"right","display":"hide","offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: '',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    translation: {
+      copy_button: 'Copy',
+      copy_success: 'Copied',
+      copy_failure: 'Copy failed'
+    },
+    sidebarPadding: 40
+  };
+</script>
+
+  <meta name="description" content="YARN 是 Hadoop 2.0 中的资源管理系统，它的基本设计思想是将 MRv1 中的 JobTracker 拆分成了两个独立的服务 ：一个全局的资源管理器 ResourceManager 和每个应用程序特有的 ApplicationMaster。其中 ResourceManager 负责整个系统的资源管理和分配，而 ApplicationMaster 负责单个应用程序的管理。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="YARN的基本架构">
+<meta property="og:url" content="http://acronymor.com/2018/03/29/Apache-Hadoop/chapter1/yarn-architecture/index.html">
+<meta property="og:site_name" content="Acronymor&#39;s Blog">
+<meta property="og:description" content="YARN 是 Hadoop 2.0 中的资源管理系统，它的基本设计思想是将 MRv1 中的 JobTracker 拆分成了两个独立的服务 ：一个全局的资源管理器 ResourceManager 和每个应用程序特有的 ApplicationMaster。其中 ResourceManager 负责整个系统的资源管理和分配，而 ApplicationMaster 负责单个应用程序的管理。">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="http://acronymor.com/2018/03/29/Apache-Hadoop/chapter1/yarn-architecture/yarn-architecture.png">
+<meta property="og:image" content="http://acronymor.com/2018/03/29/Apache-Hadoop/chapter1/yarn-architecture/rpc.png">
+<meta property="og:image" content="http://acronymor.com/2018/03/29/Apache-Hadoop/chapter1/yarn-architecture/yarn-workflow.png">
+<meta property="article:published_time" content="2018-03-29T13:41:31.000Z">
+<meta property="article:modified_time" content="2018-03-29T13:41:31.000Z">
+<meta property="article:author" content="acronymor">
+<meta property="article:tag" content="YARN">
+<meta property="article:tag" content="Hadoop">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://acronymor.com/2018/03/29/Apache-Hadoop/chapter1/yarn-architecture/yarn-architecture.png">
+
+<link rel="canonical" href="http://acronymor.com/2018/03/29/Apache-Hadoop/chapter1/yarn-architecture/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true,
+    isPage: false,
+    isArchive: false
+  };
+</script>
+
+  <title>YARN的基本架构 | Acronymor's Blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Acronymor's Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-movies">
+
+    <a href="/movies/" rel="section"><i class="fa fa-fw fa-film"></i>movies</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>About</a>
+
+  </li>
+  </ul>
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="en">
+    <link itemprop="mainEntityOfPage" href="http://acronymor.com/2018/03/29/Apache-Hadoop/chapter1/yarn-architecture/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="acronymor">
+      <meta itemprop="description" content="I am who i am, the unique fooid">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Acronymor's Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          YARN的基本架构
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2018-03-29 21:41:31" itemprop="dateCreated datePublished" datetime="2018-03-29T21:41:31+08:00">2018-03-29</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Hadoop%E6%8A%80%E6%9C%AF%E5%86%85%E5%B9%95/" itemprop="url" rel="index">
+                    <span itemprop="name">Hadoop技术内幕</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>YARN 是 Hadoop 2.0 中的资源管理系统，它的基本设计思想是将 MRv1 中的 JobTracker 拆分成了两个独立的服务 ：一个全局的资源管理器 ResourceManager 和每个应用程序特有的 ApplicationMaster。其中 ResourceManager 负责整个系统的资源管理和分配，而 ApplicationMaster 负责单个应用程序的管理。</p>
+<a id="more"></a>
+
+<h1 id="YARN基本组成结构"><a href="#YARN基本组成结构" class="headerlink" title="YARN基本组成结构"></a>YARN基本组成结构</h1><p>YARN 总体上仍然是 Master/Slave 结构，在整个资源管理框架中，ResourceManager 为 Master，NodeManager 为 Slave，ResourceManager 负责对各个 NodeManager 上的资源进行统一管理和调度。当用户提交一个应用程序时，需要提供一个用以跟踪和管理这个程序的 ApplicationMaster，它负责向 ResourceManager 申请资源，并要求 NodeManger 启动可以占用一定资源的任务。由于不同的 ApplicationMaster 被分布到不同的节点上，因此它们之间不会相互影响。</p>
+<img src="/2018/03/29/Apache-Hadoop/chapter1/yarn-architecture/yarn-architecture.png" class="" title="[yarn architecture]">
+
+<p>上图描述了YARN 的基本组成结构，YARN 主要由 ResourceManager、NodeManager、ApplicationMaster(图中给出了 MapReduce 和 MPI 两种计算框架的 ApplicationMaster，分别为 MR AppMstr 和 MPI AppMstr)和 Container 等几个组件构成。</p>
+<h2 id="ResourceManager-RM"><a href="#ResourceManager-RM" class="headerlink" title="ResourceManager ( RM )"></a>ResourceManager ( RM )</h2><p>RM 是一个全局的资源管理器，负责整个系统的资源管理和分配。它主要由两个组件构成：调度器(Scheduler)和应用程序管理器(Applications Manager，ASM)。</p>
+<h3 id="Scheduler"><a href="#Scheduler" class="headerlink" title="Scheduler"></a>Scheduler</h3><p>Scheduler根据容量、队列等限制条件(如每个队列分配一定的资源，最多执行一定数量的作业等)，将系统中的资源分配给各个正在运行的应用程序。</p>
+<p>需要注意的是，该Scheduler是一个“纯Scheduler”，它不从事任何与具体应用程序相关的工作，比如不负责监控或者跟踪应用的执行状态等，也不负责重新启动因应用执行失败或者硬件故障而产生的失败任务，这些均交由应用程序相关的 ApplicationMaster 完成。</p>
+<p>Scheduler仅根据各个应用程序的资源需求进行资源分配，而资源分配单位用一个抽象概念“资源容器”(Resource Container，简称 Container)表示，Container 是一个动态资源分配单位，它将内存、CPU、磁盘、网络等资源封装在一起，从而限定每个任务使用的资源量。</p>
+<p>此外，该Scheduler是一个可插拔的组件，用户可根据自己的需要设计新的Scheduler，YARN 提供了多种直接可用的Scheduler，比如 Fair Scheduler 和 Capacity Scheduler 等。</p>
+<h3 id="Applications-Manager-ASM"><a href="#Applications-Manager-ASM" class="headerlink" title="Applications Manager (ASM)"></a>Applications Manager (ASM)</h3><p>Applications Manager负责管理整个系统中所有应用程序，包括应用程序提交、与Scheduler协商资源以启动 ApplicationMaster、监控 ApplicationMaster 运行状态并在失败时重新启动它等。</p>
+<h2 id="ApplicationMaster-AM"><a href="#ApplicationMaster-AM" class="headerlink" title="ApplicationMaster (AM)"></a>ApplicationMaster (AM)</h2><p>用户提交的每个应用程序均包含一个 AM，主要功能包括：</p>
+<ul>
+<li>与 RM 调度器协商以获取资源(用 Container 表示)；</li>
+<li>将得到的任务进一步分配给内部的任务；</li>
+<li>与 NM 通信以启动/停止任务；</li>
+<li>监控所有任务运行状态，并在任务运行失败时重新为任务申请资源以重启任务。</li>
+</ul>
+<p>当前 YARN 自带了两个 AM 实现，</p>
+<ul>
+<li>一个是用于演示 AM 编写方法的实例程序 distributedshell，它可以申请一定数目的 Container 以并行运行一个 Shell 命令或者 Shell 脚本； </li>
+<li>一个是运行 MapReduce 应用程序的 AM—MRAppMaster。</li>
+</ul>
+<p>此外，一些其他的计算框架对应的 AM 正在开发中，比如 Open MPI、Spark 等。</p>
+<h2 id="NodeManager-NM"><a href="#NodeManager-NM" class="headerlink" title="NodeManager ( NM )"></a>NodeManager ( NM )</h2><p>NM 是每个节点上的资源和任务管理器，</p>
+<ul>
+<li>一方面，它会定时地向 RM 汇报本节点上的资源使用情况和各个 Container 的运行状态；</li>
+<li>一方面，它接收并处理来自 AM 的 Container 启动/停止等各种请求。</li>
+</ul>
+<h2 id="Container"><a href="#Container" class="headerlink" title="Container"></a>Container</h2><p>Container 是 YARN 中的资源抽象， 它封装了某个节点上的多维度资源，如内存、CPU、磁盘、网络等，当 AM 向 RM 申请资源时，RM 为 AM 返回的资源便是用 Container 表示的。YARN 会为每个任务分配一个 Container，且该任务只能使用该 Container 中描述的资源。需要注意的是，Container 不同于 MRv1 中的 slot，它是一个动态资源划分单位，是根据应用程序的需求动态生成的。截至2014年，YARN 仅支持 CPU 和内存两种资源，且使用了轻量级资源隔离机制 Cgroups 进行资源隔离 。</p>
+<h1 id="YARN-通信协议"><a href="#YARN-通信协议" class="headerlink" title="YARN 通信协议"></a>YARN 通信协议</h1><p>RPC 协议是连接各个组件的“大动脉”，了解不同组件之间的 RPC 协议有助于我们更深入地学习 YARN 框架。在 YARN 中，任何两个需相互通信的组件之间仅有一个 RPC 协议，而对于任何一个 RPC 协议，通信双方有一端是 Client，另一端为 Server，且 Client 总是主动连接 Server 的，因此，YARN 实际上采用的是拉式(pull-based)通信模型。</p>
+<p>如图所示：</p>
+<img src="/2018/03/29/Apache-Hadoop/chapter1/yarn-architecture/rpc.png" class="" title="[rpc on YARN]">
+
+<p>箭头指向的组件是 RPC Server，而箭头尾部的组件是 RPC Client，YARN 主要由以下几个 RPC 协议组成。</p>
+<ul>
+<li>JobClient(作业提交客户端) 与RM之间的协议——ApplicationClientProtocol<br>JobClient 通过该 RPC 协议提交应用程序、查询应用程序状态等。</li>
+<li>Admin(管理员)与 RM 之间的通信协议——ResourceManagerAdministrationProtocol<br>Admin 通过该 RPC 协议更新系统配置文件，比如节点黑白名单、用户队列权限等。</li>
+<li>AM 与 RM 之间的协议——ApplicationMasterProtocol<br>AM 通过该 RPC 协议向 RM 注册和撤销自己，并为各个任务申请资源。</li>
+<li>AM 与 NM 之间的协议——ContainerManagementProtocol<br>AM 通过该 RPC 要求NM 启动或者停止 Container，获取各个 Container 的使用状态等信息。</li>
+<li>NM 与 RM 之间的协议——ResourceTracker<br>NM 通过该 RPC 协议向 RM 注册，并定时发送心跳信息汇报当前节点的资源使用情况和 Container 运行情况。</li>
+</ul>
+<p>为了提高 Hadoop 的向后兼容性和不同版本之间的兼容性，YARN 中的序列化框架采用了 Google 开源的 Protocol Buffers。Protocol Buffers 的引入使得 YARN 具有协议向后兼容性。</p>
+<h1 id="YARN-工作流程"><a href="#YARN-工作流程" class="headerlink" title="YARN 工作流程"></a>YARN 工作流程</h1><p>运行在 YARN 上的应用程序主要分为两类 ：短应用程序和长应用程序。</p>
+<p>短应用程序是指一定时间内(可能是秒级、分钟级或小时级，尽管天级别或者更长时间的也存在，但非常少)可运行完成并正常退出的应用程序，比如 MapReduce 作业、Tez DAG 作业等。</p>
+<p>长应用程序是指不出意外，永不终止运行的应用程序，通常是一些服务，比如 Storm Service(主要包括 Nimbus 和 Supervisor 两类服务)，HBase Service(包括 Hmaster 和 RegionServer 两类服务) 等，而它们本身作为一个框架提供了编程接口供用户使用。</p>
+<p>尽管这两类应用程序作用不同，一类直接运行数据处理程序，一类用于部署服务(服务之上再运行数据处理程序)，但运行在 YARN 上的流程是相同的。</p>
+<p>当用户向 YARN 中提交一个应用程序后，YARN 将分两个阶段运行该应用程序 ：</p>
+<ul>
+<li>第一个阶段是启动 ApplicationMaster；</li>
+<li>第二个阶段是由 ApplicationMaster 创建应用程序，为它申请资源，并监控它的整个运行过程，直到运行完成。</li>
+</ul>
+<img src="/2018/03/29/Apache-Hadoop/chapter1/yarn-architecture/yarn-workflow.png" class="" title="[yarn workflow]">
+
+<p>如图所示，YARN 的工作流程分为以下几个步骤：</p>
+<ol>
+<li>用户向 YARN 中提交应用程序， 其中包括 ApplicationMaster 程序、启动 ApplicationMaster 的命令、用户程序等。</li>
+<li>ResourceManager 为该应用程序分配第一个 Container， 并与对应的NodeManager 通信，要求它在这个 Container 中启动应用程序的 ApplicationMaster。</li>
+<li>ApplicationMaster 首先向 ResourceManager 注册， 这样用户可以直接通过 ResourceManage 查看应用程序的运行状态，然后它将为各个任务申请资源，并监控它的运行状态，直到运行结束，即重复步骤 4~7。</li>
+<li>ApplicationMaster 采用轮询的方式通过 RPC 协议向 ResourceManager 申请和领取资源。</li>
+<li>一旦 ApplicationMaster 申请到资源后，便与对应的 NodeManager 通信，要求它启动任务。</li>
+<li>NodeManager 为任务设置好运行环境(包括环境变量、JAR 包、二进制程序等)后，将任务启动命令写到一个脚本中，并通过运行该脚本启动任务。</li>
+<li>各个任务通过某个 RPC 协议向 ApplicationMaster 汇报自己的状态和进度，以让 ApplicationMaster 随时掌握各个任务的运行状态，从而可以在任务失败时重新启动任务。在应用程序运行过程中，用户可随时通过 RPC 向 ApplicationMaster 查询应用程序的当前运行状态。</li>
+<li>应用程序运行完成后， ApplicationMaster 向 ResourceManager 注销并关闭自己。</li>
+</ol>
+<h1 id="多角度理解-YARN"><a href="#多角度理解-YARN" class="headerlink" title="多角度理解 YARN"></a>多角度理解 YARN</h1><h2 id="并行编程"><a href="#并行编程" class="headerlink" title="并行编程"></a>并行编程</h2><p>在单机程序设计中，为了快速处理一个大的数据集，通常采用多线程并行编程。</p>
+<p>大体流程如下 ：先由操作系统启动一个主线程，由它负责数据切分、任务分配、子线程启动和销毁等工作，而各个子线程只负责计算自己的数据，当所有子线程处理完数据后，主线程再退出。</p>
+<p>类比理解，YARN 上的应用程序运行过程与之非常相近，只不过它是集群上的分布式并行编程。可将 YARN 看做一个云操作系统，它负责为应用程序启动 ApplicationMaster(相当于主线程)，然后再由 ApplicationMaster 负责数据切分、任务分配、启动和监控等工作，而由 ApplicationMaster 启动的各个 Task(相当于子线程)仅负责自己的计算任务。当所有任务计算完成后，ApplicationMaster 认为应用程序运行完成，然后退出。</p>
+<h2 id="资源管理系统"><a href="#资源管理系统" class="headerlink" title="资源管理系统"></a>资源管理系统</h2><p>资源管理系统的主要功能是对集群中各类资源进行抽象，并根据各种应用程序或者服务的要求，按照一定的调度策略，将资源分配给它们使用，同时需采用一定的资源隔离机制防止应用程序或者服务之间因资源抢占而相互干扰。YARN 正是一个资源管理系统，它的出现弱化了计算框架之争，引入 YARN 这一层后，各种计算框架可各自发挥自己的优势， 并由 YARN 进行统一管理，进而运行在一个大集群上。截至本书出版时，各种开源系统都在开发 YARN 版本，包括 MapReduce、Spark、Storm、HBase 等。</p>
+<h2 id="云计算"><a href="#云计算" class="headerlink" title="云计算"></a>云计算</h2><p>普遍认为，云计算包括以下几个层次的服务 ：IaaS、PaaS 和 SaaS。这里所谓的层次， 是分层体系架构意义上的“层次”。IaaS、PaaS、SaaS 分别实现在基础设施层、软件开放运行平台层、应用软件层。</p>
+<h3 id="IaaS-Infrastructure-as-a-Service-：基础设施即服务。"><a href="#IaaS-Infrastructure-as-a-Service-：基础设施即服务。" class="headerlink" title="IaaS(Infrastructure-as-a-Service) ：基础设施即服务。"></a>IaaS(Infrastructure-as-a-Service) ：基础设施即服务。</h3><p>消费者通过 Internet 可以从完善的计算机基础设施获得服务。Iaas 通过网络向用户提供计算机(物理机和虚拟机)、存储空间、 网络连接、负载均衡和防火墙等基本计算资源 ；用户在此基础上部署和运行各种软件，包括操作系统和应用程序等。</p>
+<h3 id="PaaS-Platform-as-a-Service-：平台即服务。"><a href="#PaaS-Platform-as-a-Service-：平台即服务。" class="headerlink" title="PaaS(Platform-as-a-Service) ：平台即服务。"></a>PaaS(Platform-as-a-Service) ：平台即服务。</h3><p>PaaS 是将软件研发的平台作为一种服务，以 SaaS 的模式提交给用户。平台通常包括操作系统、编程语言的运行环境、数据库和 Web 服务器等，用户可以在平台上部署和运行自己的应用。通常而言，用户不能管理和控制底层的基础设施，只能控制自己部署的应用。</p>
+<h3 id="SaaS-Software-as-a-Service-：软件即服务。"><a href="#SaaS-Software-as-a-Service-：软件即服务。" class="headerlink" title="SaaS(Software-as-a-Service) ：软件即服务。"></a>SaaS(Software-as-a-Service) ：软件即服务。</h3><p>它是一种通过 Internet 提供软件的模式，用户无需购买软件，而是向提供商租用基于 Web 的软件，来管理企业经营活动。云提供商在云端安装和运行应用软件，云用户通过云客户端(比如 Web 浏览器)使用软件。</p>
+<p>从云计算分层概念上讲，YARN 可看做 PAAS 层，它能够为不同类型的应用程序提供统一的管理和调度。</p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/YARN/" rel="tag"># YARN</a>
+              <a href="/tags/Hadoop/" rel="tag"># Hadoop</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-next post-nav-item">
+                <a href="/2018/03/28/Apache-Hadoop/chapter2/hdfs-namenode-ha/" rel="next" title="HDFS Namenode高可用">
+                  <i class="fa fa-chevron-left"></i> HDFS Namenode高可用
+                </a>
+            </div>
+
+            <span class="post-nav-divider"></span>
+
+            <div class="post-nav-prev post-nav-item">
+                <a href="/2018/03/31/Compute-Base-Knowledge/lock-profile/" rel="prev" title="锁简介">
+                  锁简介 <i class="fa fa-chevron-right"></i>
+                </a>
+            </div>
+          </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#YARN基本组成结构"><span class="nav-number">1.</span> <span class="nav-text">YARN基本组成结构</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#ResourceManager-RM"><span class="nav-number">1.1.</span> <span class="nav-text">ResourceManager ( RM )</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Scheduler"><span class="nav-number">1.1.1.</span> <span class="nav-text">Scheduler</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Applications-Manager-ASM"><span class="nav-number">1.1.2.</span> <span class="nav-text">Applications Manager (ASM)</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#ApplicationMaster-AM"><span class="nav-number">1.2.</span> <span class="nav-text">ApplicationMaster (AM)</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#NodeManager-NM"><span class="nav-number">1.3.</span> <span class="nav-text">NodeManager ( NM )</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Container"><span class="nav-number">1.4.</span> <span class="nav-text">Container</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#YARN-通信协议"><span class="nav-number">2.</span> <span class="nav-text">YARN 通信协议</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#YARN-工作流程"><span class="nav-number">3.</span> <span class="nav-text">YARN 工作流程</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#多角度理解-YARN"><span class="nav-number">4.</span> <span class="nav-text">多角度理解 YARN</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#并行编程"><span class="nav-number">4.1.</span> <span class="nav-text">并行编程</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#资源管理系统"><span class="nav-number">4.2.</span> <span class="nav-text">资源管理系统</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#云计算"><span class="nav-number">4.3.</span> <span class="nav-text">云计算</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#IaaS-Infrastructure-as-a-Service-：基础设施即服务。"><span class="nav-number">4.3.1.</span> <span class="nav-text">IaaS(Infrastructure-as-a-Service) ：基础设施即服务。</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#PaaS-Platform-as-a-Service-：平台即服务。"><span class="nav-number">4.3.2.</span> <span class="nav-text">PaaS(Platform-as-a-Service) ：平台即服务。</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#SaaS-Software-as-a-Service-：软件即服务。"><span class="nav-number">4.3.3.</span> <span class="nav-text">SaaS(Software-as-a-Service) ：软件即服务。</span></a></li></ol></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="acronymor"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">acronymor</p>
+  <div class="site-description" itemprop="description">I am who i am, the unique fooid</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives">
+          <span class="site-state-item-count">216</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+        <span class="site-state-item-count">27</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+        <span class="site-state-item-count">35</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="feed-link motion-element">
+    <a href="/atom.xml" rel="alternate">
+      <i class="fa fa-rss"></i>RSS
+    </a>
+  </div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/acronymor" title="GitHub &amp;rarr; https:&#x2F;&#x2F;github.com&#x2F;acronymor" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yourname@acronymor.com" title="E-Mail &amp;rarr; mailto:yourname@acronymor.com"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">acronymor</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> v4.2.0
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">Theme – <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> v7.5.0
+  </div>
+
+        
+
+
+
+
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

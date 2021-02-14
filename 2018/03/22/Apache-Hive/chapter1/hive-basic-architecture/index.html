@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+  <link rel="alternate" href="/atom.xml" title="Acronymor's Blog" type="application/atom+xml">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Muse',
+    version: '7.5.0',
+    exturl: false,
+    sidebar: {"position":"right","display":"hide","offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: '',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    translation: {
+      copy_button: 'Copy',
+      copy_success: 'Copied',
+      copy_failure: 'Copy failed'
+    },
+    sidebarPadding: 40
+  };
+</script>
+
+  <meta name="description" content="Apache Hive是一个建立在Hadoop架构之上的数据仓库。它能够提供数据的精炼，查询和分析。Apache Hive起初由Facebook开发，目前也有其他公司使用和开发Apache Hive，例如Netflix等。亚马逊公司也开发了一个定制版本的Apache Hive，亚马逊网络服务包中的Amazon Elastic MapReduce包含了该定制版本。 hive是基于Hadoop的一个数">
+<meta property="og:type" content="article">
+<meta property="og:title" content="hive 基本架构">
+<meta property="og:url" content="http://acronymor.com/2018/03/22/Apache-Hive/chapter1/hive-basic-architecture/index.html">
+<meta property="og:site_name" content="Acronymor&#39;s Blog">
+<meta property="og:description" content="Apache Hive是一个建立在Hadoop架构之上的数据仓库。它能够提供数据的精炼，查询和分析。Apache Hive起初由Facebook开发，目前也有其他公司使用和开发Apache Hive，例如Netflix等。亚马逊公司也开发了一个定制版本的Apache Hive，亚马逊网络服务包中的Amazon Elastic MapReduce包含了该定制版本。 hive是基于Hadoop的一个数">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="http://acronymor.com/2018/03/22/Apache-Hive/chapter1/hive-basic-architecture/hive_component.png">
+<meta property="og:image" content="http://acronymor.com/2018/03/22/Apache-Hive/chapter1/hive-basic-architecture/system_architecture.png">
+<meta property="article:published_time" content="2018-03-22T12:42:45.000Z">
+<meta property="article:modified_time" content="2018-03-25T01:54:05.000Z">
+<meta property="article:author" content="acronymor">
+<meta property="article:tag" content="Hive">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://acronymor.com/2018/03/22/Apache-Hive/chapter1/hive-basic-architecture/hive_component.png">
+
+<link rel="canonical" href="http://acronymor.com/2018/03/22/Apache-Hive/chapter1/hive-basic-architecture/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true,
+    isPage: false,
+    isArchive: false
+  };
+</script>
+
+  <title>hive 基本架构 | Acronymor's Blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Acronymor's Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-movies">
+
+    <a href="/movies/" rel="section"><i class="fa fa-fw fa-film"></i>movies</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>About</a>
+
+  </li>
+  </ul>
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="en">
+    <link itemprop="mainEntityOfPage" href="http://acronymor.com/2018/03/22/Apache-Hive/chapter1/hive-basic-architecture/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="acronymor">
+      <meta itemprop="description" content="I am who i am, the unique fooid">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Acronymor's Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          hive 基本架构
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2018-03-22 20:42:45" itemprop="dateCreated datePublished" datetime="2018-03-22T20:42:45+08:00">2018-03-22</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                <span class="post-meta-item-text">Edited on</span>
+                <time title="Modified: 2018-03-25 09:54:05" itemprop="dateModified" datetime="2018-03-25T09:54:05+08:00">2018-03-25</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Hive%E7%BC%96%E7%A8%8B%E6%8C%87%E5%8D%97/" itemprop="url" rel="index">
+                    <span itemprop="name">Hive编程指南</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>Apache Hive是一个建立在Hadoop架构之上的数据仓库。它能够提供数据的精炼，查询和分析。Apache Hive起初由Facebook开发，目前也有其他公司使用和开发Apache Hive，例如Netflix等。亚马逊公司也开发了一个定制版本的Apache Hive，亚马逊网络服务包中的Amazon Elastic MapReduce包含了该定制版本。</p>
+<p>hive是基于Hadoop的一个数据仓库工具，可以将结构化的数据文件映射为一张数据库表，并提供简单的SQL查询功能，可以将SQL语句转换为MapReduce任务进行运行。其优点是学习成本低，可以通过类SQL语句快速实现简单的MapReduce统计，不必开发专门的MapReduce应用，十分适合数据仓库的统计分析。</p>
+<a id="more"></a>
+
+<h1 id="Hive基本架构"><a href="#Hive基本架构" class="headerlink" title="Hive基本架构"></a>Hive基本架构</h1><p>如下图所示，从逻辑上来看，Hive包含了3大部分。</p>
+<ul>
+<li>Hive Clients</li>
+<li>Hive Services</li>
+<li>Hive Storage and Computing</li>
+</ul>
+<img src="/2018/03/22/Apache-Hive/chapter1/hive-basic-architecture/hive_component.png" class="" title="[hive component]">
+
+<p>用户操作Hive的接口主要有三个：CLI，Client 和 WUI。</p>
+<p>其中最常用的是CLI，Cli启动的时候，会同时启动一个Hive副本。</p>
+<p>Client是Hive的客户端，用户连接至Hive Server。在启动 Client模式的时候，需要指出Hive Server所在节点，并且在该节点启动Hive Server。而客户端则又可以分为三种<strong>Thrift Client</strong>，<strong>JDBC Client</strong>，<strong>ODBC Client</strong>。</p>
+<p>Web Interface是通过浏览器访问Hive。</p>
+<ul>
+<li>Hive将元数据存储在数据库中，如mysql、derby。Hive中的元数据包括表的名字，表的列和分区及其属性，表的属性（是否为外部表等），表的数据所在目录等。</li>
+<li>解释器、编译器、优化器完成HQL查询语句从词法分析、语法分析、编译、优化以及查询计划的生成。生成的查询计划存储在HDFS中，并在随后由MapReduce调用执行。</li>
+<li>Hive的数据存储在HDFS中，大部分的查询、计算由MapReduce完成（注意，包含*的查询，比如select * from tbl不会生成MapRedcue任务）。</li>
+</ul>
+<p>上图中的Driver会处理从应用到metastore到filed system的所有请求，以进行后续操作。</p>
+<h1 id="Hive组件"><a href="#Hive组件" class="headerlink" title="Hive组件"></a>Hive组件</h1><h2 id="Driver"><a href="#Driver" class="headerlink" title="Driver"></a>Driver</h2><p>实现了session handler，在JDBC/ODBC接口上实现了执行和获取信息的API。</p>
+<h2 id="Compiler"><a href="#Compiler" class="headerlink" title="Compiler"></a>Compiler</h2><p>该组件用于对不同的查询表达式做解析查询，语义分析，最终会根据从metastore中查询到的表和分区元数据生成一个execution plain。</p>
+<h2 id="Execution-Egine"><a href="#Execution-Egine" class="headerlink" title="Execution Egine"></a>Execution Egine</h2><p>该组件会执行由compiler创建的execution。其中plan从数据结构上来看，是一个DAG，该组件会管理plan的不同stage与组件中执行这些plan之间的依赖。</p>
+<h2 id="Metastore"><a href="#Metastore" class="headerlink" title="Metastore"></a>Metastore</h2><p>Hive的metastore组件是hive元数据集中存放地。该组件存储了包括变量表中列和列类型等结构化的信息以及数据仓库中的分区信息（包括列和列类型信息，读写数据时必要的序列化和反序列化信息，数据被存储在HDFS文件中的位置）。</p>
+<p>Metastore组件包括两个部分：metastore services和Meta storage database。</p>
+<ul>
+<li>Metastore database的介质就是关系数据库，例如hive默认的嵌入式磁盘数据库derby，还有mysql数据库。</li>
+<li>Metastore services是建立在后台数据存储介质(HDFS)之上，并且可以和hive services进行交互的服务组件。</li>
+</ul>
+<p>默认情况下，metastore services和hive services是安装在一起的，运行在同一个进程当中。也可以把metastore services从hive services里剥离出来，将metastore独立安装在一个集群里，hive远程调用metastore services。这样我们可以把元数据这一层放到防火墙之后，客户端访问hive服务，就可以连接到元数据这一层，从而提供了更好的管理性和安全保障。</p>
+<p>使用远程的metastore services，可以让metastore services和hive services运行在不同的进程里，这样也保证了hive的稳定性，提升了hive services的效率。</p>
+<h1 id="Hive执行过程"><a href="#Hive执行过程" class="headerlink" title="Hive执行过程"></a>Hive执行过程</h1><img src="/2018/03/22/Apache-Hive/chapter1/hive-basic-architecture/system_architecture.png" class="" title="[system architecture]">
+
+<p>流程大致步骤为：</p>
+<ol>
+<li>用户提交查询等任务给Driver。</li>
+<li>Driver为查询操作创建一个session handler，接着dirver会发送查询操作到compiler去生成一个execute plan</li>
+<li>Compiler根据用户任务去MetaStore中获取需要的Hive的元数据信息。这些元数据在后续stage中用作抽象语法树的类型检测和修剪。</li>
+<li>Compiler得到元数据信息，对task进行编译，先将HiveQL转换为抽象语法树，然后将抽象语法树转换成查询块，将查询块转化为逻辑的查询plan，重写逻辑查询plan，将逻辑plan转化为物理的plan（MapReduce）, 最后选择最佳策略。</li>
+<li>将最终的plan提交给Driver。</li>
+<li>Driver将plan转交给ExecutionEngine去执行，将获取到的元数据信息，提交到JobTracker或者RsourceManager执行该task，任务会直接读取到HDFS中进行相应的操作。</li>
+<li>获取执行的结果。</li>
+<li>取得并返回执行结果。</li>
+</ol>
+<h2 id="创建表"><a href="#创建表" class="headerlink" title="创建表"></a>创建表</h2><p>解析用户提交的Hive语句-&gt;对其进行解析-&gt;分解为表、字段、分区等Hive对象</p>
+<p>根据解析到的信息构建对应的表、字段、分区等对象，从SEQUENCE_TABLE中获取构建对象的最新的ID，与构建对象信息（名称、类型等等）一同通过DAO方法写入元数据库的表中，成功后将SEQUENCE_TABLE中对应的最新ID+5。</p>
+<p>实际上常见的RDBMS都是通过这种方法进行组织的，其系统表中和Hive元数据一样显示了这些ID信息。通过这些元数据可以很容易的读取到数据。</p>
+<h2 id="优化器"><a href="#优化器" class="headerlink" title="优化器"></a>优化器</h2><p>优化器是一个不断更新的组件，大部分plan的转移都是通过优化器完成的。</p>
+<ul>
+<li>将多Multiple join 合并为一个Muti-way join</li>
+<li>对join、group-by和自定义的MapReduce操作重新进行划分。</li>
+<li>消减不必要的列。</li>
+<li>在表的扫描操作中推行使用断言。</li>
+<li>对于已分区的表，消减不必要的分区。</li>
+<li>在抽样查询中，消减不必要的桶。</li>
+<li>优化器还增加了局部聚合操作用于处理大分组聚合和增加再分区操作用于处理不对称的分组聚合。</li>
+</ul>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Hive/" rel="tag"># Hive</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-next post-nav-item">
+                <a href="/2018/03/20/Compute-Base-Knowledge/cookie-brief/" rel="next" title="Cookie简介">
+                  <i class="fa fa-chevron-left"></i> Cookie简介
+                </a>
+            </div>
+
+            <span class="post-nav-divider"></span>
+
+            <div class="post-nav-prev post-nav-item">
+                <a href="/2018/03/25/Apache-Hive/chapter2/hive-basic-concept/" rel="prev" title="Hive 基础">
+                  Hive 基础 <i class="fa fa-chevron-right"></i>
+                </a>
+            </div>
+          </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#Hive基本架构"><span class="nav-number">1.</span> <span class="nav-text">Hive基本架构</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Hive组件"><span class="nav-number">2.</span> <span class="nav-text">Hive组件</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Driver"><span class="nav-number">2.1.</span> <span class="nav-text">Driver</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Compiler"><span class="nav-number">2.2.</span> <span class="nav-text">Compiler</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Execution-Egine"><span class="nav-number">2.3.</span> <span class="nav-text">Execution Egine</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Metastore"><span class="nav-number">2.4.</span> <span class="nav-text">Metastore</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Hive执行过程"><span class="nav-number">3.</span> <span class="nav-text">Hive执行过程</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#创建表"><span class="nav-number">3.1.</span> <span class="nav-text">创建表</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#优化器"><span class="nav-number">3.2.</span> <span class="nav-text">优化器</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="acronymor"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">acronymor</p>
+  <div class="site-description" itemprop="description">I am who i am, the unique fooid</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives">
+          <span class="site-state-item-count">216</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+        <span class="site-state-item-count">27</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+        <span class="site-state-item-count">35</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="feed-link motion-element">
+    <a href="/atom.xml" rel="alternate">
+      <i class="fa fa-rss"></i>RSS
+    </a>
+  </div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/acronymor" title="GitHub &amp;rarr; https:&#x2F;&#x2F;github.com&#x2F;acronymor" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yourname@acronymor.com" title="E-Mail &amp;rarr; mailto:yourname@acronymor.com"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">acronymor</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> v4.2.0
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">Theme – <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> v7.5.0
+  </div>
+
+        
+
+
+
+
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

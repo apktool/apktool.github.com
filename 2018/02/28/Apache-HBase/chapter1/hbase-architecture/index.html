@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+  <link rel="alternate" href="/atom.xml" title="Acronymor's Blog" type="application/atom+xml">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Muse',
+    version: '7.5.0',
+    exturl: false,
+    sidebar: {"position":"right","display":"hide","offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: '',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    translation: {
+      copy_button: 'Copy',
+      copy_success: 'Copied',
+      copy_failure: 'Copy failed'
+    },
+    sidebarPadding: 40
+  };
+</script>
+
+  <meta name="description" content="HBase 的表、列和单元格基本单位是列(column)，一列或多个列成行(row)，一个行有唯一行健(rowkey)确定存储，每个列可能有多个版本，多个版本存储在单元格(cell)中，行序是按照字典顺序进行排序的，意思是从左到右依次对比每一个键。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="HBase的基本结构">
+<meta property="og:url" content="http://acronymor.com/2018/02/28/Apache-HBase/chapter1/hbase-architecture/index.html">
+<meta property="og:site_name" content="Acronymor&#39;s Blog">
+<meta property="og:description" content="HBase 的表、列和单元格基本单位是列(column)，一列或多个列成行(row)，一个行有唯一行健(rowkey)确定存储，每个列可能有多个版本，多个版本存储在单元格(cell)中，行序是按照字典顺序进行排序的，意思是从左到右依次对比每一个键。">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="http://acronymor.com/2018/02/28/Apache-HBase/chapter1/hbase-architecture/HBase-column-and-row.jpeg">
+<meta property="og:image" content="http://acronymor.com/2018/02/28/Apache-HBase/chapter1/hbase-architecture/time-based.png">
+<meta property="og:image" content="http://acronymor.com/2018/02/28/Apache-HBase/chapter1/hbase-architecture/table-based.png">
+<meta property="og:image" content="http://acronymor.com/2018/02/28/Apache-HBase/chapter1/hbase-architecture/HBase-implemetion.png">
+<meta property="og:image" content="http://acronymor.com/2018/02/28/Apache-HBase/chapter1/hbase-architecture/HBase-system.png">
+<meta property="article:published_time" content="2018-02-28T14:03:53.000Z">
+<meta property="article:modified_time" content="2018-02-28T14:03:53.000Z">
+<meta property="article:author" content="acronymor">
+<meta property="article:tag" content="HBase">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://acronymor.com/2018/02/28/Apache-HBase/chapter1/hbase-architecture/HBase-column-and-row.jpeg">
+
+<link rel="canonical" href="http://acronymor.com/2018/02/28/Apache-HBase/chapter1/hbase-architecture/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true,
+    isPage: false,
+    isArchive: false
+  };
+</script>
+
+  <title>HBase的基本结构 | Acronymor's Blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Acronymor's Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-movies">
+
+    <a href="/movies/" rel="section"><i class="fa fa-fw fa-film"></i>movies</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>About</a>
+
+  </li>
+  </ul>
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="en">
+    <link itemprop="mainEntityOfPage" href="http://acronymor.com/2018/02/28/Apache-HBase/chapter1/hbase-architecture/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="acronymor">
+      <meta itemprop="description" content="I am who i am, the unique fooid">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Acronymor's Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          HBase的基本结构
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2018-02-28 22:03:53" itemprop="dateCreated datePublished" datetime="2018-02-28T22:03:53+08:00">2018-02-28</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/HBase%E6%9D%83%E5%A8%81%E6%8C%87%E5%8D%97/" itemprop="url" rel="index">
+                    <span itemprop="name">HBase权威指南</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h1 id="HBase-的表、列和单元格"><a href="#HBase-的表、列和单元格" class="headerlink" title="HBase 的表、列和单元格"></a>HBase 的表、列和单元格</h1><p>基本单位是列(column)，一列或多个列成行(row)，一个行有唯一行健(rowkey)确定存储，每个列可能有多个版本，多个版本存储在单元格(cell)中，行序是按照字典顺序进行排序的，意思是从左到右依次对比每一个键。</p>
+<a id="more"></a>
+
+<p>排列顺序可能跟预期的不一样，可以添加补键来获取正确的顺序，比如  row-1 永远小于 row-2，无论后面是什么，将始终按照这个顺序排列。</p>
+<p>按照行健排序可以获得像RDBMS的主键索引一样的特性，也就是说，行健总是唯一，并且只出现一次，否则你就是在更新同一行。一行由若干列组成，若干列又构成一个列族(column family)，这不仅有助于构建数据的语义边界或者局部边界，还有助于我们给它们设置某些特性（如压缩），或者指示它们存储在内存中。一个列族的所有列存储在同一个底层的存储文件里，这个存储文件叫做<code>HFile</code>。</p>
+<p>HBase的设计中，行和列并不像经典的电子表格模型那样排列，而是采用了标签描述(tag metaphor)，也就是说，信息保存在一个特定标签下面。如图所示：</p>
+<img src="/2018/02/28/Apache-HBase/chapter1/hbase-architecture/HBase-column-and-row.jpeg" class="" title="[HBase column and row]">
+
+<p>每一个列的值或单元格的值都具有时间戳，默认由系统指定，也可以由用户显式设置。（时间戳可以用来区分不同版本的值），一个单元格的不同版本的值按照降序排列在一起，访问的时候优先读取最新的值。这种优化的目的在与让新值比老值更容易被读取。</p>
+<p>HBase是按照BigTable模型实现的，是一个稀疏的、分布式的、持久化的、多维的映射，由行健，列建和时间戳索引。将上述特点联系在一起，我们就有了如下的数据存取格式。</p>
+<blockquote>
+<p>(Table, RowKey, Family, Column, Timestamp) -&gt; Value</p>
+</blockquote>
+<p>为了方便表示，这里使用两种视图进行展示。</p>
+<h2 id="基于时间的行的组成部分"><a href="#基于时间的行的组成部分" class="headerlink" title="基于时间的行的组成部分"></a>基于时间的行的组成部分</h2><img src="/2018/02/28/Apache-HBase/chapter1/hbase-architecture/time-based.png" class="" title="[the row based on time]">
+
+<h2 id="用电子表格展示行中相同的部分"><a href="#用电子表格展示行中相同的部分" class="headerlink" title="用电子表格展示行中相同的部分"></a>用电子表格展示行中相同的部分</h2><img src="/2018/02/28/Apache-HBase/chapter1/hbase-architecture/table-based.png" class="" title="[the row based on table]">
+
+<h1 id="自动分区"><a href="#自动分区" class="headerlink" title="自动分区"></a>自动分区</h1><p><strong>Hbase中扩展和负载均衡的基本单元称为<code>region</code></strong>，region本质上是以行健排序的连续存储的区间。如果region太大，系统就会把它们动态拆分，相反，就把多个region合并，以减少存储文件数量。</p>
+<p>一张表初始的时候只有一个region，用户开始向表种插入数据，系统会检测这个region的大小，确保其不超过这个配置最大值。如果超过了限制就会从中间键（middle key, region中间的那个行键）处将这个region拆分为大致相等的两个子region。</p>
+<p>每一个region只能由一台region服务器(region server)加载，每一台region服务器可以同时加载多个region。</p>
+<p>region拆分和服务相当于其他系统提供的自动分区(autosharding)，当一个服务器出现故障后，该服务器上面的region可以快速恢复，并获得细粒度的负载均衡，因为当服务于某个region的服务器当前负载过大、发生错误或者被停止使用导致不可用时，系统会将该region移到其他服务器上面。</p>
+<p>region拆分的操作也非常快——接近瞬间，因为拆分后的region读取的仍然是原存储文件，直到合并把存储文件异步地写成独立的文件。</p>
+<h1 id="HBase的实现"><a href="#HBase的实现" class="headerlink" title="HBase的实现"></a>HBase的实现</h1><p>数据存储在存储文件(store file)中，称为HFile，HFile存储的是经过排序的键值映射结构。文件内部由连续的块组成，块的索引信息存储在文件的尾部。当把HFile文件打开并加载到内存时，索引信息会优先加载到内存中，每个块的默认大小是64KB，可以根据需要配置不同的块大小。存储文件提供了一个设定起始和终止行健范围的API用于扫描特定的值。</p>
+<p>每一个HFile都有一个块索引，通过一个磁盘查找就可以实现查询。首先，在内存的块索引中进行二分查找，确定可能包含地给定键的块，然后读取磁盘块找到实际要找的键。</p>
+<p>存储文件通常保存在HDFS中，HDFS提供了一个可扩展的、持久的、冗余的HBase存储层。存储文件通过将更改写入到可配置数目的物理服务器中，以保证数据不会丢失数据。</p>
+<h2 id="更新数据"><a href="#更新数据" class="headerlink" title="更新数据"></a>更新数据</h2><p>每次更新数据时，都会先将数据记录在提交日志(commit log)中，在HBase中这叫做预写日志(write-ahead log, WAL)，然后才会将这些数据写入内存中的memstore中。一旦内存保存的写入数据的累计大小超过了一个给定的最大值，系统就会将这些数据移出内存作为HFile文件写入到磁盘中。数据移出内存后，系统会丢弃对应的提交日志，只保留未持久化到磁盘中的提交日志。在系统将数据移出memstore写入磁盘的过程中，可以不必阻塞系统的读写，通过滚动内存中的memstore就能达到这个目的，即用空的新的memstore获取更新数据，将满的旧的memstore转换成一个文件。请注意，memstore中的数据已经按照行健排序，持久化到磁盘中的HFile也是按照这个顺序的，所以不必执行排序或者其他的特殊处理。</p>
+<img src="/2018/02/28/Apache-HBase/chapter1/hbase-architecture/HBase-implemetion.png" class="" title="[HBase-implemetion]">
+
+<p>因为存储文件是不可被改变的，所以无法通过移除某个键值对来简单的删除值，可行的解决办法是做删除标记(delete marker)，或称为墓碑标记，表明给定行已经被删除的事实。在检索过程中，这些删除标记覆盖了实际值，客户端读不到实际值。</p>
+<h2 id="读回数据"><a href="#读回数据" class="headerlink" title="读回数据"></a>读回数据</h2><p>读回数据是两部分数据合并的结果，一部分是memstore中还没有写入磁盘的数据，另一部分是磁盘上的存储文件。值的注意的是，检索文件时用不到WAL，只有服务器内存中的数据在服务器崩溃前没有写入到磁盘，而后进行恢复时才会用到WAL。</p>
+<h2 id="管家机制"><a href="#管家机制" class="headerlink" title="管家机制"></a>管家机制</h2><p>随着memstore中的数据不断写入到磁盘中，会产生越来越多的HFile文件，HBase内部有一个解决这个问题的管家机制，即用合并将多个文件合并到一个较大的文件。合并有两种类型：<code>minor compaction</code>和<code>major compaction</code>。</p>
+<h3 id="minor合并"><a href="#minor合并" class="headerlink" title="minor合并"></a>minor合并</h3><p>minor合并是将多个小文件重写为数量较小的大文件，减少存储文件的数量，这个过程实际上是多路归并的过程。因为HFile的每个文件都是经过归并的，所以合并速度非常块，只受到磁盘I/O性能的影响。</p>
+<h3 id="major合并"><a href="#major合并" class="headerlink" title="major合并"></a>major合并</h3><p>major合并是将一个region中一个列族的若干个HFile重写为一个新的HFile，与minor合并相比，还有更独特的功能：major合并能扫描所有的键值对，顺序重写全部数据，重写数据的过程中会略过做了删除标记的数据。断言删除此时生效。例如，对于那些超过版本号限制的数据以及生存时间到期的数据，在重写数据时就不再写入磁盘了。</p>
+<h1 id="Hbase的基本组件"><a href="#Hbase的基本组件" class="headerlink" title="Hbase的基本组件"></a>Hbase的基本组件</h1><p>HBase中有3个主要组件，<code>客户端库</code>、<code>一台maser主服务器</code>、<code>多台region服务器</code>。可以动态地增加和移除region服务器以适应不断变化的负载。master服务器主要负责利用Apache Zookeeper为region服务器分配region，Apache Zookeeper是一个可靠的、高可用的、持久化的分配协调系统。</p>
+<p>系统组件之间的结构如下图所示：</p>
+<img src="/2018/02/28/Apache-HBase/chapter1/hbase-architecture/HBase-system.png" class="" title="[HBase system]">
+
+<p>master服务器负责跨region服务器的全局region的负载均衡，将繁忙的服务其中的region移到负载较轻的服务器中。master服务器不是实际的数据存储或者检索路经的组成部分，它仅仅提供了负载均衡和集群管理，不为region服务器或者客户端提供任何数据服务，因此是轻量级服务器。此外，master服务器还提供了元数据的管理操作，例如建表和创建列族。</p>
+<p>region服务器负责为它们服务的region提供读写请求，也提供了拆分超过配置大小的region的接口。客户端则直接与region服务器通信，处理所有数据相关的操作。</p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/HBase/" rel="tag"># HBase</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-next post-nav-item">
+                <a href="/2018/02/27/Apache-HBase/chapter1/column-oriented-DBMS/" rel="next" title="列式数据库">
+                  <i class="fa fa-chevron-left"></i> 列式数据库
+                </a>
+            </div>
+
+            <span class="post-nav-divider"></span>
+
+            <div class="post-nav-prev post-nav-item">
+                <a href="/2018/03/04/Compute-Base-Knowledge/keytool/" rel="prev" title="keytool生成keystore和truststore">
+                  keytool生成keystore和truststore <i class="fa fa-chevron-right"></i>
+                </a>
+            </div>
+          </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#HBase-的表、列和单元格"><span class="nav-number">1.</span> <span class="nav-text">HBase 的表、列和单元格</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#基于时间的行的组成部分"><span class="nav-number">1.1.</span> <span class="nav-text">基于时间的行的组成部分</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#用电子表格展示行中相同的部分"><span class="nav-number">1.2.</span> <span class="nav-text">用电子表格展示行中相同的部分</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#自动分区"><span class="nav-number">2.</span> <span class="nav-text">自动分区</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#HBase的实现"><span class="nav-number">3.</span> <span class="nav-text">HBase的实现</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#更新数据"><span class="nav-number">3.1.</span> <span class="nav-text">更新数据</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#读回数据"><span class="nav-number">3.2.</span> <span class="nav-text">读回数据</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#管家机制"><span class="nav-number">3.3.</span> <span class="nav-text">管家机制</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#minor合并"><span class="nav-number">3.3.1.</span> <span class="nav-text">minor合并</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#major合并"><span class="nav-number">3.3.2.</span> <span class="nav-text">major合并</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Hbase的基本组件"><span class="nav-number">4.</span> <span class="nav-text">Hbase的基本组件</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="acronymor"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">acronymor</p>
+  <div class="site-description" itemprop="description">I am who i am, the unique fooid</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives">
+          <span class="site-state-item-count">216</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+        <span class="site-state-item-count">27</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+        <span class="site-state-item-count">35</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="feed-link motion-element">
+    <a href="/atom.xml" rel="alternate">
+      <i class="fa fa-rss"></i>RSS
+    </a>
+  </div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/acronymor" title="GitHub &amp;rarr; https:&#x2F;&#x2F;github.com&#x2F;acronymor" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yourname@acronymor.com" title="E-Mail &amp;rarr; mailto:yourname@acronymor.com"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">acronymor</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> v4.2.0
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">Theme – <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> v7.5.0
+  </div>
+
+        
+
+
+
+
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

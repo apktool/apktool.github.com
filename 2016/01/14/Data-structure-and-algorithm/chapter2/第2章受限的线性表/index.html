@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+  <link rel="alternate" href="/atom.xml" title="Acronymor's Blog" type="application/atom+xml">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Muse',
+    version: '7.5.0',
+    exturl: false,
+    sidebar: {"position":"right","display":"hide","offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: '',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    translation: {
+      copy_button: 'Copy',
+      copy_success: 'Copied',
+      copy_failure: 'Copy failed'
+    },
+    sidebarPadding: 40
+  };
+</script>
+
+  <meta name="description" content="在绪论中，我们介绍了数据结构三要素， 第1章中，讲解了逻辑结构分类中线性结构的第一个部分——一般线性表，这章开始讲解逻辑结构线性结构的第二个部分——受限的线性表。这里先巩固下逻辑结构的分类，如下图所示：">
+<meta property="og:type" content="article">
+<meta property="og:title" content="第2章受限的线性表">
+<meta property="og:url" content="http://acronymor.com/2016/01/14/Data-structure-and-algorithm/chapter2/%E7%AC%AC2%E7%AB%A0%E5%8F%97%E9%99%90%E7%9A%84%E7%BA%BF%E6%80%A7%E8%A1%A8/index.html">
+<meta property="og:site_name" content="Acronymor&#39;s Blog">
+<meta property="og:description" content="在绪论中，我们介绍了数据结构三要素， 第1章中，讲解了逻辑结构分类中线性结构的第一个部分——一般线性表，这章开始讲解逻辑结构线性结构的第二个部分——受限的线性表。这里先巩固下逻辑结构的分类，如下图所示：">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="http://img.blog.csdn.net/20160114121938555">
+<meta property="og:image" content="http://img.blog.csdn.net/20160114135758365">
+<meta property="og:image" content="http://img.blog.csdn.net/20160114140836419">
+<meta property="article:published_time" content="2016-01-13T18:09:39.000Z">
+<meta property="article:modified_time" content="2016-01-13T18:09:39.000Z">
+<meta property="article:author" content="acronymor">
+<meta property="article:tag" content="Acronymor">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://img.blog.csdn.net/20160114121938555">
+
+<link rel="canonical" href="http://acronymor.com/2016/01/14/Data-structure-and-algorithm/chapter2/%E7%AC%AC2%E7%AB%A0%E5%8F%97%E9%99%90%E7%9A%84%E7%BA%BF%E6%80%A7%E8%A1%A8/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true,
+    isPage: false,
+    isArchive: false
+  };
+</script>
+
+  <title>第2章受限的线性表 | Acronymor's Blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Acronymor's Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-movies">
+
+    <a href="/movies/" rel="section"><i class="fa fa-fw fa-film"></i>movies</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>About</a>
+
+  </li>
+  </ul>
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="en">
+    <link itemprop="mainEntityOfPage" href="http://acronymor.com/2016/01/14/Data-structure-and-algorithm/chapter2/%E7%AC%AC2%E7%AB%A0%E5%8F%97%E9%99%90%E7%9A%84%E7%BA%BF%E6%80%A7%E8%A1%A8/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="acronymor">
+      <meta itemprop="description" content="I am who i am, the unique fooid">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Acronymor's Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          第2章受限的线性表
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2016-01-14 02:09:39" itemprop="dateCreated datePublished" datetime="2016-01-14T02:09:39+08:00">2016-01-14</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E4%B8%8E%E7%AE%97%E6%B3%95/" itemprop="url" rel="index">
+                    <span itemprop="name">数据结构与算法</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>在<a href="http://blog.csdn.net/u013595419/article/details/50461536" target="_blank" rel="noopener">绪论</a>中，我们介绍了数据结构三要素， <a href="http://blog.csdn.net/u013595419/article/details/50461712" target="_blank" rel="noopener">第1章</a>中，讲解了逻辑结构分类中线性结构的第一个部分——一般线性表，这章开始讲解逻辑结构线性结构的第二个部分——受限的线性表。这里先巩固下逻辑结构的分类，如下图所示：</p>
+<p><img src="http://img.blog.csdn.net/20160114121938555" alt="逻辑结构"></p>
+<a id="more"></a>
+
+<p>受限线性表最简单直白的理解便是插入，删除，查找等操作时，不能随心所欲的进行，必须遵循一定的限制（规则）。</p>
+<h1 id="一-栈"><a href="#一-栈" class="headerlink" title="一.栈"></a>一.栈</h1><h2 id="1-1定义"><a href="#1-1定义" class="headerlink" title="1.1定义"></a>1.1定义</h2><p>栈（stack）是一种只允许在一端进行插入或删除操作的线性表。<br>一般规定，栈只能在栈顶进行插入，删除操作。因此访问元素的顺序是先进后出。<br>如下图所示：</p>
+<p><img src="http://img.blog.csdn.net/20160114135758365" alt="栈"></p>
+<p>这里介绍几个重要的概念：</p>
+<blockquote>
+<ul>
+<li>栈顶（top）：栈的操作中，仅允许插入和删除的那一端。</li>
+<li>栈底（bottom）：固定的，不允许进行插入和删除操作的那一端。</li>
+<li>空栈：不含有任何元素的空线性表。</li>
+</ul>
+</blockquote>
+<h2 id="1-2基本操作"><a href="#1-2基本操作" class="headerlink" title="1.2基本操作"></a>1.2基本操作</h2><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">InitStack(&amp;S)	<span class="comment">//初始化一个空栈S</span></span><br><span class="line">StackEmpty(S)	<span class="comment">//判断一个栈是否为空</span></span><br><span class="line">Push(&amp;S,x)		<span class="comment">//入栈，若栈未满，则将x加入使之称为新栈顶</span></span><br><span class="line">Pop(&amp;S,x)		<span class="comment">//出栈，若栈非空，则弹出栈顶元素，并用x返回</span></span><br><span class="line">GetTop(S,&amp;x)	<span class="comment">//读取栈顶元素，若栈S非空，则用x返回栈顶元素</span></span><br><span class="line">ClearStack(S)	<span class="comment">//销毁栈，并释放栈S占用的存储空间</span></span><br></pre></td></tr></table></figure>
+<h1 id="二-队列"><a href="#二-队列" class="headerlink" title="二.队列"></a>二.队列</h1><h2 id="2-1定义"><a href="#2-1定义" class="headerlink" title="2.1定义"></a>2.1定义</h2><p>队列（Queue）简称队，只允许在线性表的一端进行插入，另一端进行删除。<br>一般规定，只能在队尾进行插入操作，队头进行删除操作。因此访问时的顺序是先进先出。<br>如下图所示：</p>
+<p><img src="http://img.blog.csdn.net/20160114140836419" alt="队列"></p>
+<p>介绍几个重要的概念：</p>
+<blockquote>
+<ul>
+<li>队头：允许删除的一端，又称为队首。</li>
+<li>队尾：允许插入的一端。</li>
+<li>空队列：不含任何元素的空表。</li>
+</ul>
+</blockquote>
+<h2 id="2-2基本操作"><a href="#2-2基本操作" class="headerlink" title="2.2基本操作"></a>2.2基本操作</h2><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">InitQueue(&amp;Q)	<span class="comment">//初始化队列，构造一个空队列</span></span><br><span class="line">QueueEmpty(&amp;Q)	<span class="comment">//判断队列是否为空</span></span><br><span class="line">EnQueue(&amp;Q,x)	<span class="comment">//入队，若队列Q未满，将x加入，使之称为新的队尾</span></span><br><span class="line">DeQueue(&amp;Q,&amp;x)	<span class="comment">//出队，若队列Q非空，删除队头元素，并用x返回</span></span><br><span class="line">GetHead(Q,&amp;x)	<span class="comment">//读取队头元素，若队列非空，则将队头元素赋值给x</span></span><br></pre></td></tr></table></figure>
+<h1 id="三-串"><a href="#三-串" class="headerlink" title="三.串"></a>三.串</h1><h2 id="3-1定义"><a href="#3-1定义" class="headerlink" title="3.1定义"></a>3.1定义</h2><p>字符串（string）简称串，是由零个或多个字符组成的有穷序列。<br>介绍几个重要概念：</p>
+<blockquote>
+<ul>
+<li>串长：串中所含字符的个数</li>
+<li>子串：一个串中任意个连续字符组成的子序列(含空串,但不含串本身)</li>
+<li>主串：包含子串的串</li>
+<li>空串：含零个字符的串，通常用 $\Phi$ 表示。</li>
+</ul>
+</blockquote>
+<h2 id="3-2基本操作"><a href="#3-2基本操作" class="headerlink" title="3.2基本操作"></a>3.2基本操作</h2><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">StrAssign(&amp;T,chars)		<span class="comment">//由字符串常量chars生成字符串T的操作。</span></span><br><span class="line">StrCopy(&amp;T,S)			<span class="comment">//由串S复制生成串T的操作。</span></span><br><span class="line">StrCompare(S,T)			<span class="comment">//若S=T返回0，S&gt;T返回正数，S&lt;T返回负数。</span></span><br><span class="line">StrLength(S)			<span class="comment">//返回串S的长度。</span></span><br><span class="line">Concat(&amp;T,S1,S2)		<span class="comment">//将串S1和S2连接起来生成串T的操作。</span></span><br><span class="line">SubString(&amp;Sub,S,pos,len)<span class="comment">//以串S中pos位置开始的len个字符生成子串Sub的操作。</span></span><br><span class="line">Index(S,T,pos)			<span class="comment">//返回子串T在S中pos个字符以后出现的位置。</span></span><br><span class="line">Replace(&amp;S,T,V)			<span class="comment">//将串S中所有不重叠子串T替换为串V的操作。</span></span><br><span class="line">StrInsert(&amp;S,pos,T)		<span class="comment">//在串S中第pos个字符前插入串T的操作。</span></span><br><span class="line">StrDelete(&amp;S,pos,len)	<span class="comment">//删除串S中第pos个字符开始的len个字符的操作</span></span><br></pre></td></tr></table></figure>
+
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-next post-nav-item">
+                <a href="/2016/01/13/Data-structure-and-algorithm/chapter1/%E7%AC%AC1%E7%AB%A0%E7%AC%AC2%E8%8A%82%E7%BB%83%E4%B9%A0%E9%A2%9822%20%E6%8C%89%E7%BB%93%E7%82%B9%E8%AE%BF%E9%97%AE%E9%A2%91%E5%BA%A6%E6%8E%92%E5%BA%8F/" rel="next" title="第1章第2节练习题22 按结点访问频度排序">
+                  <i class="fa fa-chevron-left"></i> 第1章第2节练习题22 按结点访问频度排序
+                </a>
+            </div>
+
+            <span class="post-nav-divider"></span>
+
+            <div class="post-nav-prev post-nav-item">
+                <a href="/2016/01/14/Data-structure-and-algorithm/chapter2/%E7%AC%AC2%E7%AB%A0%E7%AC%AC1%E8%8A%82%20%E6%A0%88/" rel="prev" title="第2章第1节 栈">
+                  第2章第1节 栈 <i class="fa fa-chevron-right"></i>
+                </a>
+            </div>
+          </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#一-栈"><span class="nav-number">1.</span> <span class="nav-text">一.栈</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#1-1定义"><span class="nav-number">1.1.</span> <span class="nav-text">1.1定义</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-2基本操作"><span class="nav-number">1.2.</span> <span class="nav-text">1.2基本操作</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#二-队列"><span class="nav-number">2.</span> <span class="nav-text">二.队列</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#2-1定义"><span class="nav-number">2.1.</span> <span class="nav-text">2.1定义</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-2基本操作"><span class="nav-number">2.2.</span> <span class="nav-text">2.2基本操作</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#三-串"><span class="nav-number">3.</span> <span class="nav-text">三.串</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#3-1定义"><span class="nav-number">3.1.</span> <span class="nav-text">3.1定义</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-2基本操作"><span class="nav-number">3.2.</span> <span class="nav-text">3.2基本操作</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="acronymor"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">acronymor</p>
+  <div class="site-description" itemprop="description">I am who i am, the unique fooid</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives">
+          <span class="site-state-item-count">216</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+        <span class="site-state-item-count">27</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+        <span class="site-state-item-count">35</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="feed-link motion-element">
+    <a href="/atom.xml" rel="alternate">
+      <i class="fa fa-rss"></i>RSS
+    </a>
+  </div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/acronymor" title="GitHub &amp;rarr; https:&#x2F;&#x2F;github.com&#x2F;acronymor" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yourname@acronymor.com" title="E-Mail &amp;rarr; mailto:yourname@acronymor.com"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">acronymor</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> v4.2.0
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">Theme – <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> v7.5.0
+  </div>
+
+        
+
+
+
+
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

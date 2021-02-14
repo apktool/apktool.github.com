@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+  <link rel="alternate" href="/atom.xml" title="Acronymor's Blog" type="application/atom+xml">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Muse',
+    version: '7.5.0',
+    exturl: false,
+    sidebar: {"position":"right","display":"hide","offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: '',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    translation: {
+      copy_button: 'Copy',
+      copy_success: 'Copied',
+      copy_failure: 'Copy failed'
+    },
+    sidebarPadding: 40
+  };
+</script>
+
+  <meta name="description" content="Kafka核心组件也就是Kafka的核心功能模块，主要包括延迟操作组件、控制器、协调器、网络通信、日志管理器、副本管理器、动态配置管理器及心跳检测等。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Kafka核心组件">
+<meta property="og:url" content="http://acronymor.com/2019/11/09/Apache-Kafka/kafka-component/index.html">
+<meta property="og:site_name" content="Acronymor&#39;s Blog">
+<meta property="og:description" content="Kafka核心组件也就是Kafka的核心功能模块，主要包括延迟操作组件、控制器、协调器、网络通信、日志管理器、副本管理器、动态配置管理器及心跳检测等。">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="http://acronymor.com/2019/11/09/Apache-Kafka/kafka-component/delayedoperation.png">
+<meta property="og:image" content="http://acronymor.com/2019/11/09/Apache-Kafka/kafka-component/partition_state.png">
+<meta property="og:image" content="http://acronymor.com/2019/11/09/Apache-Kafka/kafka-component/replication_state.png">
+<meta property="og:image" content="http://acronymor.com/2019/11/09/Apache-Kafka/kafka-component/kafka-connect.png">
+<meta property="og:image" content="http://acronymor.com/2019/11/09/Apache-Kafka/kafka-component/network_thread_model.png">
+<meta property="og:image" content="http://acronymor.com/2019/11/09/Apache-Kafka/kafka-component/request_channel.png">
+<meta property="og:image" content="http://acronymor.com/2019/11/09/Apache-Kafka/kafka-component/fetchRequest.png">
+<meta property="og:image" content="http://acronymor.com/2019/11/09/Apache-Kafka/kafka-component/leo-hw-structure.png">
+<meta property="article:published_time" content="2019-11-09T07:12:01.955Z">
+<meta property="article:modified_time" content="2018-05-15T07:52:09.000Z">
+<meta property="article:author" content="acronymor">
+<meta property="article:tag" content="Kafka">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://acronymor.com/2019/11/09/Apache-Kafka/kafka-component/delayedoperation.png">
+
+<link rel="canonical" href="http://acronymor.com/2019/11/09/Apache-Kafka/kafka-component/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true,
+    isPage: false,
+    isArchive: false
+  };
+</script>
+
+  <title>Kafka核心组件 | Acronymor's Blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Acronymor's Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-movies">
+
+    <a href="/movies/" rel="section"><i class="fa fa-fw fa-film"></i>movies</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>About</a>
+
+  </li>
+  </ul>
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="en">
+    <link itemprop="mainEntityOfPage" href="http://acronymor.com/2019/11/09/Apache-Kafka/kafka-component/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="acronymor">
+      <meta itemprop="description" content="I am who i am, the unique fooid">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Acronymor's Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Kafka核心组件
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2019-11-09 15:12:01" itemprop="dateCreated datePublished" datetime="2019-11-09T15:12:01+08:00">2019-11-09</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                <span class="post-meta-item-text">Edited on</span>
+                <time title="Modified: 2018-05-15 15:52:09" itemprop="dateModified" datetime="2018-05-15T15:52:09+08:00">2018-05-15</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Kafka/" itemprop="url" rel="index">
+                    <span itemprop="name">Kafka</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>Kafka核心组件也就是Kafka的核心功能模块，主要包括延迟操作组件、控制器、协调器、网络通信、日志管理器、副本管理器、动态配置管理器及心跳检测等。</p>
+<a id="more"></a>
+
+<h1 id="延迟操作组件"><a href="#延迟操作组件" class="headerlink" title="延迟操作组件"></a>延迟操作组件</h1><p>该组件可以辅助Kafka其他组件完成相应的功能，如协助客户端处理创建主题操作、协助组协调器(GroupCoordinator)处理JoinGroupRequest和HeartbeatRequest请求、协助副本管理器(ReplicaManager)处理ProduceRequest和FetchRequest请求。</p>
+<h2 id="DelayedOperation"><a href="#DelayedOperation" class="headerlink" title="DelayedOperation"></a>DelayedOperation</h2><p>Kafka将一些不立即执行而要等待满足一定条件之后才触发完成的操作称为延迟操作，井将这类操作定义为一个抽象类DelayedOperation。</p>
+<p>DelayOperation方法调用流程如下图所示：</p>
+<img src="/2019/11/09/Apache-Kafka/kafka-component/delayedoperation.png" class="" title="[DelayedOperationCallprocess]">
+
+<h2 id="DelayedOperationPurgatory"><a href="#DelayedOperationPurgatory" class="headerlink" title="DelayedOperationPurgatory"></a>DelayedOperationPurgatory</h2><p>DelayedOperationPurgatory是一个对DelayedOperation管理的辅助类。</p>
+<p>Watchers是DelayedOperationPurgatory的内部类，底层是一个ConcurrentLinkedQueue，该类定义了一个ConcurrentLinkedQueue类型的operations属性，用于保存DelayedOperation。从Watchers类名可以看出，该类的作用就是对DelayedOperation进行监视。通过Watchers调用DelayedOperation相应的方法，让DelayedOperation要么在delayMs时间内完成，要么超时。</p>
+<h2 id="DelayedProduce"><a href="#DelayedProduce" class="headerlink" title="DelayedProduce"></a>DelayedProduce</h2><p>ReplicaManager的主要功能是负责将生产者发送的消息写入Leader副本、管理Follower副本与Leader副本之间的同步以及副本角色之间的转换。</p>
+<p>DelayedProduce则是协助ReplicaManager完成相应延迟操作的。当副本管理器的acks返回为-1时，DelayedProduce会延迟回调responseCallback向生产者做出响应。具体表现在当消息追加到分区Leader副本之后，该分区各Follower副本完成了与Leader副本消息同步之后再回调responseCallback给生产者。</p>
+<h2 id="DelayedFetch"><a href="#DelayedFetch" class="headerlink" title="DelayedFetch"></a>DelayedFetch</h2><p>DelayedProdue是在ProduceRequest处理中对生产者发送消息的延迟操作，自然DelayedFetch就是在FetchRequest处理时进行的延迟操作。在Kafka中只有消费者或是Follower副本会发起FetchReuqest请求。</p>
+<p>DelayedFetch若满足以下条件之一则表示可完成延迟操作执行。</p>
+<ol>
+<li>发生异常，Leader副本发生了迁移，当前的代理不再是Leader副本。</li>
+<li>发生异常，拉取消息的分区不存在。</li>
+<li>日志段发生了切割，请求拉取的消息偏移量己不在活跃段内，同时Leader副本没有处在限流处理的状态。</li>
+<li>累积拉取的消息数己超过了最小字节数限制。</li>
+</ol>
+<h2 id="DelayedJoin"><a href="#DelayedJoin" class="headerlink" title="DelayedJoin"></a>DelayedJoin</h2><p>DelayedJoin是协助组协调器在消费组准备平衡操作时进行相应的处理。当消费组的状态转换为PreparingRebalance时，即准备进行平衡操作，在组协调器的prepareRebalance()方法中会创建一个DelayedJoin对象，井交由DelayedOperationPurgatory负责监视管理。</p>
+<p>在消费组进行平衡操作时之所以需要DelayedJoin处理，是为了让组协调器等待当前消费组下所有的消费者都请求加入消费组，即发起了JoinGroupRequest请求。每次组协调器处理完JoinGroupRequest时都会检测DelayedJoin是否满足了完成执行的条件。</p>
+<h2 id="DelayedHeartbeat"><a href="#DelayedHeartbeat" class="headerlink" title="DelayedHeartbeat"></a>DelayedHeartbeat</h2><p>DelayedHeartbeat用于协助消费者与组协调器心跳检测相关的延迟操作，DelayedHeartbeat相关功能的实现是调用GroupCoordinator的相应方法来完成的。</p>
+<h1 id="DelayedCreateTopics"><a href="#DelayedCreateTopics" class="headerlink" title="DelayedCreateTopics"></a>DelayedCreateTopics</h1><p>在创建主题时，需要为主题的每个分区分配到Leader之后，才调用回调函数将创建主题结果返回给客户端。DelayedCreateTopics延迟操作等待该主题的所有分区副本分配到Leader或是等待超时后调用回调函数返回给客户端。</p>
+<h1 id="控制器"><a href="#控制器" class="headerlink" title="控制器"></a>控制器</h1><p>在启动Kafka集群时，<strong>每一个代理(Broker)都会实例化并启动一个KafkaController</strong>，并将该代理的brokerId注册到ZooKeeper的相应节点当中。Kafka集群中各代理会根据选举机制选出其中一个代理作为Leader，即Leader控制器(简称之为控制器，在没有特殊说明情况下，控制器均指Leader控制器)。当控制器发生岩机后其他代理再次竞选出新的控制器。控制器负责主题的创建与删除、分区和副本的管理以及代理故障转移处理等。当一个代理被选举成为控制器时，该代理对应的KafkaController就会注册(Register)控制器相应的操作权限，同时标记自己是Leader。当代理不再成为控制器时，就要注销掉(DeRegister)相应的权限。</p>
+<table>
+<thead>
+<tr>
+<th align="center">术语</th>
+<th align="left">含义</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">controller_epoch</td>
+<td align="left">用于记录控制器发生变更次数，即记录当前的控制器是第几代控制器(控制器轮值次数)</td>
+</tr>
+<tr>
+<td align="center">zkVersion</td>
+<td align="left">作用类似数据库乐观锁，用于更新ZooKeeper路径下相应元数据信息（如controllerepoch，JSR信息等）</td>
+</tr>
+<tr>
+<td align="center">leader_epoch</td>
+<td align="left">分区Leader更新次数。</td>
+</tr>
+<tr>
+<td align="center">assignedreplica(AR)</td>
+<td align="left">每个分区的所有副本集合被称作己分配副本</td>
+</tr>
+<tr>
+<td align="center">LeaderAndlsr</td>
+<td align="left">Kafka将Leader对应的brokerld和ISR列表封装成一个LeaderAndlsr类</td>
+</tr>
+<tr>
+<td align="center">preferredreplica</td>
+<td align="left">在AR中的第一个副本</td>
+</tr>
+</tbody></table>
+<h2 id="控制器初始化"><a href="#控制器初始化" class="headerlink" title="控制器初始化"></a>控制器初始化</h2><p>每个代理在启动时会实例化并启动一个KafkaController。Controller 是运行在 Broker 上的，任何一台 Broker 都可以作为 Controller，但是一个集群同时只能存在一个 Controller，也就意味着 Controller 与数据节点是在一起的，Controller 做的主要事情如下：</p>
+<ul>
+<li>Broker 的上线、下线处理</li>
+<li>新创建的 topic 或已有 topic 的分区扩容，处理分区副本的分配、leader 选举</li>
+<li>管理所有副本的状态机和分区的状态机，处理状态机的变化事件</li>
+<li>topic 删除、副本迁移、leader 切换等处理</li>
+</ul>
+<p>实例化用于维护和管理分区状态的状态机(PartitionStateMachine)。分区状态机会注册两个监听器，这两个监听器的作用如下。</p>
+<p>-TopicChangeListener用于监听<code>/brokers/topics</code>路径下子节点变化，当创建一个主题时，会在该路径下创建一个与该主题相同名字的子节点。当该路径下子节点发生变化即主题有变化时就会触发该监听器。<br>-DeleteTopicsListener用于监听<code>/admin/delete_topics</code>子节点的变更，当删除一个主题时，会在该路径下创建一个与待删除主题相同名字的子节点，当该路径下子节点发生变化时就会触发该监听器</p>
+<p>Kafka分区定义了4个状态，其状态以及状态迁移如下图所示：</p>
+<img src="/2019/11/09/Apache-Kafka/kafka-component/partition_state.png" class="" title="[Partitionstate]">
+
+<p>实例化一个对副本状态管理的状态机ReplicaStateMachineoKafka对副本定义了7种状态，各副本状态及以及状态迁移如下图所示：</p>
+<img src="/2019/11/09/Apache-Kafka/kafka-component/replication_state.png" class="" title="[Replicationstate]">
+
+<h2 id="控制器选举过程"><a href="#控制器选举过程" class="headerlink" title="控制器选举过程"></a>控制器选举过程</h2><p>每个代理启动时会创建一个KafkaController实例，当KafkaController启动后就会从所有代理中选择一个代理作为控制器，控制器是所有代理的Leader，因此这里也称之为Leader选举。除了在启动时会导致选举外，当控制器所在代理发生故障或ZooKeeper通过心跳机制感知控制器与自己的连接Session己过期时，也会再次从所有代理中选出一个节点作为集群的控制器。</p>
+<p>Kafka控制器的选举依赖于ZooKeeper。在集群整个运行过程中，代理在ZooKeeper不同节点上注册相应的监听器。各监昕器各司其职，当所监听的节点状态发生变化时就会触发相关函数进行处理。</p>
+<p>其实现逻辑如下：</p>
+<ol>
+<li>先获取 zk 的 /cotroller 节点的信息，获取 controller 的 broker id，如果该节点不存在（比如集群刚创建时），那么获取的 controller id 为-1；</li>
+<li>如果 controller id 不为-1，即 controller 已经存在，直接结束流程；</li>
+<li>如果 controller id 为-1，证明 controller 还不存在，这时候当前 broker 开始在 zk 注册 controller；</li>
+<li>如果注册成功，那么当前 broker 就成为了 controller，这时候开始调用 onBecomingLeader() 方法，正式初始化 controller（注意：controller 节点是临时节点，如果当前 controller 与 zk 的 session 断开，那么 controller 的临时节点会消失，会触发 controller 的重新选举）；</li>
+<li>如果注册失败（刚好 controller 被其他 broker 创建了、抛出异常等），那么直接返回。</li>
+</ol>
+<p>在这里 controller 算是成功被选举出来了，controller 选举过程实际上就是各个 Broker 抢占式注册该节点，注册成功的便为 Controller。</p>
+<h2 id="故障转移"><a href="#故障转移" class="headerlink" title="故障转移"></a>故障转移</h2><p>触发控制器进行选举有3种情况:一是在控制器启动的时候，二是当控制器发生故障转移的时候，三是当心跳检测超时的时候。</p>
+<p>因此，我们说控制器故障转移的本质是控制权的转移，而控制权的转移也就是重新选出新的控制器。在控制器实例化时创建了一个ZooKeeperLeaderElector对象，实例化该对象时需要两个回调函数，分别用于代理当选为控制器时注册相应权限的onControllerFailover()方法和不再是Leader控制器时注销相应权限的onControllerResignation()方法。</p>
+<h1 id="代理上线与下线"><a href="#代理上线与下线" class="headerlink" title="代理上线与下线"></a>代理上线与下线</h1><h2 id="代理上线"><a href="#代理上线" class="headerlink" title="代理上线"></a>代理上线</h2><p>当有新的代理上线时，在代理启动时会向 ZooKeeper 的 /brokers/ids 节点下注册该代理的 brokerId ，此时会被副本状态机在 ZooKeeper 所注册的 BrokerChangerListener 监听器监听到该节点信息的变化，通过 ZooKeeper 中记录的节点信息及 ControllerContext 缓存的节点信息，计算出新上线的节点集合，对新上线的代理节点调用 ControllerChannelManager.addBroker() 方法完成新上线代理网络层相关初始化处理。然后调用 KafkaController.onBrokerStartup() 方法进行处理。</p>
+<h2 id="代理下线"><a href="#代理下线" class="headerlink" title="代理下线"></a>代理下线</h2><p>当代理下线时，该代理在ZooKeeper的/brokers/ids节点注册的与该代理对应的节点将被删除，此时BrokerChangeListener的handleChildChange()方法将被触发。</p>
+<h1 id="主题管理"><a href="#主题管理" class="headerlink" title="主题管理"></a>主题管理</h1><h2 id="创建主题"><a href="#创建主题" class="headerlink" title="创建主题"></a>创建主题</h2><p>当创建一个主题时会在ZooKeeper的/brokers/topics目录下创建一个与主题同名的节点，在该节点下会记录该主题的分区副本分配方案。</p>
+<h2 id="删除主题"><a href="#删除主题" class="headerlink" title="删除主题"></a>删除主题</h2><p>客户端执行删除主题操作时仅是在ZooKeeper的/admin/deletetopics路径下创建一个与待删除主题同名的节点，返回该主题被标记为删除，保证本步操作成功执行的前提是配置项delete.topic.enable值被设置为true。</p>
+<h2 id="分区管理"><a href="#分区管理" class="headerlink" title="分区管理"></a>分区管理</h2><p>Kafka控制器对分区的管理包括对分区创建及删除的管理，分区Leader选举的管理，分区自动平衡、分区副本重分配的管理等。</p>
+<h1 id="协调器"><a href="#协调器" class="headerlink" title="协调器"></a>协调器</h1><p>Kafka提供了消费者协调器(ConsumerCoordinator)、组协调器(GroupCoordinator)和任务管理协调器(WorkCoordinator)3种协调器(coordinator)。其中任务管理协调器被KafkaConnect用于对works的管理。</p>
+<p>Kafka的高级消费者即通过ZooKeeperConsumerConnector实现的消费者是强依赖于ZooKeeper的，每一个消费者启动时都会在ZooKeeper的/consumers/${group.id}/ids上注册消费者的客户端id，即${client.id}，会在该路径以及/brokers/ids路径下注册监昕器，用于当代理或是消费者发生变化时，消费者进行平衡操作。由于这种方式是每一个消费者对ZooKeeper路径分别进行监听，当发生平衡操作时，一个消费组下的所有消费者同时会触发平衡操作，而消费者之间井不知道其他消费者平衡操作的结果，这样就可能导致Kafka工作在一个不正确的状态。同时这种方式完全依赖于ZooKeeper，以监听的方式来管理消费者，存在以下两个缺陷。</p>
+<ul>
+<li>羊群效应(herd effect)<br>任何代理或是消费者的增、减都会触发所有的消费者同时进行平衡操作，每个消费者都对ZooKeeper同一个路径进行操作，这样就有可能发生类似死锁的情况，从而导致平衡操作失败。</li>
+<li>脑裂问题(split brain)<br>消费者进行平衡操作时每个消费者都与ZooKeeper进行通信，以判断消费者或是代理变化情况，由于ZooKeeper本身的特性可能导致在同一时候各消费者所获取的状态不一致，这样就会导致Kafka运行在一个不正确状态之下。</li>
+</ul>
+<p>为了解决消费者依赖ZooKeeper所带来的问题，<strong>Kafka在服务端引入了组协调器(GroupCoordinator)</strong>，每个KafkaServer启动时都会创建一个GroupCoordinator实例，用于管理部分消费组和该消费组下每个消费者的消费偏移量。同时在<strong>客户端引入了消费者协调器(ConsumerCoordinator)</strong>，每个KafkaConsumer实例化时会实例化一个ConsumerCoordinator对象，消费者协调器负责同一个消费组下各消费者与服务端组协调器之间的通信。</p>
+<h2 id="消费者协调器"><a href="#消费者协调器" class="headerlink" title="消费者协调器"></a>消费者协调器</h2><p>消费者协调器(ConsumerCoordinator)是KafkaConsumer的一个成员变量，该KafkaConsumer通过消费者协调器与服务端的组协调器进行通信。由于消费者协调器是KafkaConsumer私有的，因此消费者协调器中存储的信息也只有与之对应的消费者可见，不同消费者之间是看不到彼此的消费者协调器中的信息的。</p>
+<p>Leader消费者的消费者协调器还负责执行分区的分配，当消费者协调器向组协调器请求加入消费组后，组协调器会为同一个组下的消费者选出一个Leader，成为Leader的消费者其ConsumerCoordinator收到的信息与其他消费者有所不同。</p>
+<p>Leader消费者的ConsumerCoordinator负责消费者与分区的分配，会在请求SyncGroupRequest时将分配结果发送给GroupCoordinator，而非Leader消费者(这里我们将其简称为Follower消费者)，Follower消费者向GroupCoordinator发送SyncGroupRequest请求时分区分配结果参数为空，GroupCoordinator会将Leader副本发送过来的分区分配结果再返回给Follower消费者的ConsumerCoodinator。这种处理方式，将分区分配的职责交由客户端自己处理，从而减轻了服务端的负担。</p>
+<p>简而言之，<strong>消费者通过消费者协调器与组协调器之间的通信，向组协调器提交加入消费组、离开消费组以及提交消费偏移量等请求，并进行相应的处理</strong>。</p>
+<h2 id="组协调器"><a href="#组协调器" class="headerlink" title="组协调器"></a>组协调器</h2><p><strong>组协调器(GroupCoordinator)负责对其管理的组员提交的相关请求进行处理</strong>，这里的组员即消费者。它负责管理与消费者之间建立连接，并从与之连接的消费者之中选出一个消费者作为Leader消费者，Leader消费者负责消费者分区的分配，在SyncGroupRequest请求时发送给组协调器，组协调器会在请求处理后返回响应时下发给其管理的所有消费者。同时，组协调器还管理与之连接的消费者的消费偏移量的提交，将每个消费者消费偏移量保存到Kafka的内部主题当中，并通过心跳检测来检测消费者与自己的连接状态。</p>
+<p>每一个KafkaServer启动时都会实例化并启动一个组协调器，每个组协调器负责一部分消费组的管理。</p>
+<h3 id="消费者加入组"><a href="#消费者加入组" class="headerlink" title="消费者加入组"></a>消费者加入组</h3><ul>
+<li>寻找消费者组<br>消费者被创建后通过消费者协调器选择一个负载最小的节点，然后向该节点发送查找组协调器的请求，KafkaApis 会对请求进行处理。</li>
+<li>申请加入消费组<br>消费者找到组协调器之后就可以申请加入该消费组，即发送 JoinGroupRequest 请求，KafkaApis 最终会调用 Group.handleJoinGroup()处理 。<br>Group.handleJoinGroup()首先根据 groupId 信息获取或构造该消费组的 GroupMetadata 信息，然后将消费者的 clientld 值与一个 UUID 值拼接成一个字符串作为该消费者在消费组的 memberld 值，并构造 MemberMetadata 信息，再将该 MemberMetadata 信息注册到 GroupMetadata中。<blockquote>
+<p>GroupMetadata 对象中维护了一个 Map 用于保存当前消费组的成员元数据信息。</p>
+</blockquote>
+</li>
+<li>选举Leader<br>在消费者注册到消费组时，若该消费组的 Leader 不存在，则将当前消费者选作当前消费组的 Leader 消费者，井将该消费者的 memberld 作为 leaderld，同时消费组中的各个消费者通过投票选出各消费者都支持的协议，这里的协议指分区分配策略。</li>
+<li>发送SyncGroupRequest<br>在选出 Leader 消费者后，消费组各成员继续发送 SyncGroupRequest 请求。（Leader 消费者会根据同组消费者都支持的分区分配策略，为消费者分配分区，在构造 SyncGroupRequest 请求时会上传分区分配结果，而 Follower 消费者在构造 SyncGroupRequest 请求时该参数为空。）</li>
+<li>组协调器处理<br>组协调器收到请求后一直等 Leader 消费者的请求处理完毕后再进行回调处理，向该消费组的所有消费者做出响应，在返回响应时会将分区分配结果发送给各消费者。</li>
+<li>写入关系<br>最后将消费者与分区的对应关系写入 Kafka 内部主题中。</li>
+</ul>
+<h2 id="消费偏移量管理"><a href="#消费偏移量管理" class="headerlink" title="消费偏移量管理"></a>消费偏移量管理</h2><p>新版的KafkaConsumer将消费偏移量保存到Kafka一个内部主题中，当消费者正常运行或者进行平衡操作时都要向组协调器提交当前的消费偏移量。组协调器负责消费组的管理及消费偏移量的管理，但客户端可以仅选择让组协调器管理消费偏移量。</p>
+<h1 id="网络通信服务"><a href="#网络通信服务" class="headerlink" title="网络通信服务"></a>网络通信服务</h1><p>kafka的网络通信过程如下图所示</p>
+<img src="/2019/11/09/Apache-Kafka/kafka-component/kafka-connect.png" class="" title="[kafka connection]">
+
+<p>kafka的网络层线程模型如下图所示</p>
+<img src="/2019/11/09/Apache-Kafka/kafka-component/network_thread_model.png" class="" title="[network thread model]">
+
+<h2 id="Acceptor"><a href="#Acceptor" class="headerlink" title="Acceptor"></a>Acceptor</h2><p>Acceptor的主要职责是监昕并接受客户端(统指请求发起方)的请求，建立和客户端的数据传输通道ServerSocketChannel，然后为客户端指定一个Processor。</p>
+<h2 id="Processor"><a href="#Processor" class="headerlink" title="Processor"></a>Processor</h2><p>Processor也是一个线程类，继承AbstractServerThread类，主要用于从客户端读取请求数据和将相应的响应结果返回给客户端。</p>
+<h2 id="RequestChannel"><a href="#RequestChannel" class="headerlink" title="RequestChannel"></a>RequestChannel</h2><p>RequestChannel是为了给Processor线程与Handler线程之间通信提供数据缓冲，是通信过程中Request与Response缓存的通道，是Processor线程与Handler线程交换数据的地方。</p>
+<p>RequestChannel缓冲处理逻辑如下图所示：</p>
+<img src="/2019/11/09/Apache-Kafka/kafka-component/request_channel.png" class="" title="[request channel]">
+
+<h1 id="日志管理器"><a href="#日志管理器" class="headerlink" title="日志管理器"></a>日志管理器</h1><p>日志管理器(LogManager)是Kafka用来管理所有日志的，也称为日志管理子系统(LogManagementSubsystem)。它负责管理日志的创建与删除、日志检索、日志加载和恢复、检查点及日志文件刷写磁盘以及日志清理等。</p>
+<p>Kafka消息是以主题为基本单位进行组织的，各个主题之间相互独立。每个主题在逻辑结构上又由一个或多个分区构成，分区数可以在创建主题时指定，也可以在主题创建后再修改。可以通过Kafka自带的用于主题管理操作的脚本kafka-topics.sh来修改某个主题的分区数，但只能增加一个主题的分区数而不能减少其分区数。每个分区可以有一个或多个副本，从副本中会选出一个副本作为Leader，Leader负责与客户端进行读写操作，其他副本作为Follower。生产者将消息发送到Leader副本的代理节点，而Follower副本从Leader副本同步数据。</p>
+<p>在存储结构上分区的每个副本在逻辑上对应一个Log对象，每个Log又划分为多个LogSegment，每个LogSegment包括一个日志文件和两个索引文件，其中两个索引文件分别为偏移量索引文件和时间戳索引文件。Log负责对LogSegment的管理，在Log对象中维护了一个ConcurrentSkipListMap，</p>
+<p>Kafka将日志文件封装为一个FileMessageSet对象，将两个索引文件封装为Offsetlndex和Timelndex对象。Log和LogSegment都是逻辑上的概念，Log是对副本在代理上存储文件的逻辑抽象，LogSegrnnent是对副本存储文件下每个日志片段的抽象，日志文件和索引文件才与磁盘上的物理存储相对应。</p>
+<h2 id="数据文件"><a href="#数据文件" class="headerlink" title="数据文件"></a>数据文件</h2><p>在数据文件中我怕会看到相邻两条消息的position值之差减去34，即为上一条消息实际长度。若parser.key=true，则相邻两条消息position之差减去34为消息Key和消息体的总长度。</p>
+<h2 id="偏移量索引文件"><a href="#偏移量索引文件" class="headerlink" title="偏移量索引文件"></a>偏移量索引文件</h2><p>Kafka将消息分段保存在不同的文件中，同时每条消息都有唯一标识的偏移量，数据文件以该文件基准偏移量左补0命名，并将每个日志段以基准偏移量为Key保存到ConeurrentSkipListMap集合中。这样查找指定偏移量的消息时，用二分查找算法就能够快速定位到消息所在的段文件。为了进一步提高查找效率，Kafka为每个数据文件创建了一个基于偏移量的索引文件，该索引文件的文件名与数据文件相同，文件名后缀为.index，为了与另一个基于时间戳的索引区分开，我们在这里将基于偏移量的索引文件称为偏移量索引文件。</p>
+<h2 id="时间戳索引文件"><a href="#时间戳索引文件" class="headerlink" title="时间戳索引文件"></a>时间戳索引文件</h2><p>Kafka从0.10.1.1版本开始引入了一个基于时间戳的索引文件，即每个日志段在物理上还对应一个时间戳索引文件，该索引文件文件名和与之对应的数据文件文件名相同，但以.timeindex为文件名话缀，我们称之为时间戳索引文件。</p>
+<h1 id="副本管理器"><a href="#副本管理器" class="headerlink" title="副本管理器"></a>副本管理器</h1><p>在Kafka0.8版本中引入了副本机制，引入副本机制使得Kafka能够在整个集群中只要保证至少有一个代理存活就不会影响整个集群的工作，从而大大提高了Kafka集群的可靠性和稳定性。这里提到代理存活的概念，同其他分布式系统一样，Kafka对代理是否存活(alive)也有明确的定义，Kafka存活要满足两个条件。</p>
+<p>副本管理器(ReplicaManager)负责对副本管理，主要包括对控制器发送的LeaderAndlsrRequest指令、StopReplicaRequest指令以及UpdateMetadataRequest指令进行处理，维护副本ISR变化，以及Follower与Leader数据同步的管理。</p>
+<p>在ZooKeeper中元数据信息以JSON串的格式存储，其中version表示版本标识，固定值为1，partitions之后的JSON字符串表示每个分区对应的ISR列表，格式为<code>分区编号:AR</code>，多个分区信息满足JSON格式。</p>
+<p>例如</p>
+<blockquote>
+<p>get /brokers/topics/test<br>{“version”:1,”partitions”:{“2”:[3,l],”1”:[2,3],”0”:[1,2]}}<br>“2”:[1,3]表示分区编号为2的分区副本分布在brokerId为1和3的两个节点上。在AR信息中，第一个副本称为优先副本，通常情况下优先副本即为分区的Leader。</p>
+</blockquote>
+<blockquote>
+<p>get /brokers/topics/test/partitions/2/state<br>{“controller_epoch”:”10”,”leader”:3,”version”:l,”leader_epoch”:0,”isr”:[3,l]}</p>
+<ul>
+<li>其中分区状态信息表达式中，字段controller_epoch表示集群的控制器选举次数，初始值为0，当一个代理当选为控制器后，该字段值加1，每次控制器变更该字段值都增1。该字段值与/controller_epoch节点存储的控制器变化次数值一致</li>
+<li>字段leader表示该分区的Leader副本所在代理的唯一编号brokerld</li>
+<li>字段version表示版本编号，默认值为1</li>
+<li>leader_epoch表示该分区Leader选举次数，初始值为0</li>
+<li>isr即为同步副本的代理编号列表。</li>
+</ul>
+</blockquote>
+<ol>
+<li>一个存活的节点必须与ZooKeeper保持连接，维护与ZooKeeper的Session(这是通过ZooKeeper的心跳机制来实现的)。</li>
+<li>如果一个节点作为Follower副本，该节点必须能及时与分区的Leader副本保持消息同步，不能落后太久。</li>
+</ol>
+<p>在所有的副本节点中，有一个节点作为Leader负责接收客户端的读写操作，其他副本节点作为Follower从Leader节点复制数据进行数据同步。这里的复制机制既不是同步复制，也不是单纯的异步复制。Kafka采用维护一种同步列表的方式很好地均衡了确保数据不丢失以及吞吐率的问题。</p>
+<h2 id="拉取消息"><a href="#拉取消息" class="headerlink" title="拉取消息"></a>拉取消息</h2><p>副本管理器除了负责将消息写入 Leader 副本外,同时还负责处理 KafkaApis 的 FetchRequest请求,通过 ReplicaManager.fetchMessages()方法从分区 Leader 副本获取消息</p>
+<p>在Kafka中拉取消息的角色有两个，一个是Kafka的普通消费者(相对Follower副本而言)，另一个就是Follower副本，副本管理器是通过FetchRequest请求的replicald来区分拉取请求的角色。因为每个副本有replicald属性，即副本的replicald总是非负数，而消费者的replicald为-1。</p>
+<p>副本管理器对FetchRequest处理的基本流程如下图所示：</p>
+<img src="/2019/11/09/Apache-Kafka/kafka-component/fetchRequest.png" class="" title="[Fetch Request]">
+
+<h2 id="副本"><a href="#副本" class="headerlink" title="副本"></a>副本</h2><p>一个分区可以有一个或多个副本，副本根据是否接受读写请求，又分为Leader副本和Follower副本，一个分区有1个Leader副本，有0个或多个Follower副本。Leader副本处理分区的所有读写请求并维护自身及Follower副本的状态信息，如LEO、HW等，Follower副本作为消费者从Leader副本拉取消息进行同步。当Leader失效时，通过分区Leader选举器从副本列表中选出一个副本作为新的Leader。</p>
+<p>Kafka将副本抽象为一个Replica对象，由于副本是属于某个主题的某个分区，分布在特定代理之上，因此Replica对象的基本属性包括主题(topic)、分区编号(partionld)和代理编号(brokerld)。当副本的brokerld与当前代理的brokerId相同时，我们将该副本称为当前代理的本地副本，否则称为远程副本。</p>
+<img src="/2019/11/09/Apache-Kafka/kafka-component/leo-hw-structure.png" class="" title="[LEO and HW]">
+
+<h1 id="Handler"><a href="#Handler" class="headerlink" title="Handler"></a>Handler</h1><p>Handler其实是KafkaR.equestHandler的简称。KafkaR.equestHandler是一个线程类，负责从RequestChannel中读取请求然后交由KafkaApis处理。</p>
+<p>在底层实现时，Kafka实现了一个KafkaR.equestHandlerPool，其作用类似线程池，用于管理Hander，在KafkaServer启动时会实例化一个KafkaR.equestHandlerPool对象。在KafkaR.equestHanderPool实例化时会创建${num.io.threads}个Hander线程，并以守护线程的方式运行在后台。在Hander的run()方法中会循环从RequestChannel中读取Request，若Request为空，则线程最长会阻塞300ms以等待新的Request，之后再继续去读取Request，当读取到Request后交由KafkaApis进行处理。</p>
+<h1 id="动态配置管理器"><a href="#动态配置管理器" class="headerlink" title="动态配置管理器"></a>动态配置管理器</h1><p>动态配置管理器(DynamicConfigManager)主要用来对相关配置的变化进行处理，Kafka将可以通过ZooKeeper进行管理的配置划分为4个类型，称为配置类型(ConfigType)或配置级别，每个配置类型称为一个实体(entity)，这4个类型分别为Topic(主题级别)、Client(客户端级别)、User(用户级别〉和Broker(代理级别〉。用entity句归来指定所属级别，4个级别的entity句pe依次为topics，clients，users和brokers))</p>
+<p>Kafka集群依赖于ZooKeeper进行管理，每个代理启动时都向ZooKeeper进行一系列元数据的注册，即在ZooKeeper相应目录下创建一个临时节点，当代理与ZooKeeper连接断开后相应的临时节点也会被删除。Kafka对代理健康状态检测实现方案较简单，每个代理启动时会在ZooKeeper的/brokers/ids/路径下注册自己的brokerId，并注册一个SessionExpireListener监听器，该监听器用来监听代理与ZooKeeper连接是否会话Session超时，若发生Session超时，则与该代理相关的临时节点也会被清除，此时ZooKeeper会与当前代理重新创建一条连接，Kafka健康检测机制就需要重新在ZooKeeper上进行注册，创建临时节点井写入相应的元数据信息。</p>
+<h1 id="Kafka内部监控"><a href="#Kafka内部监控" class="headerlink" title="Kafka内部监控"></a>Kafka内部监控</h1><p>Kafka使用YammerMetrics进行内部状态的监控，用来收集报告KafkaServer端和客户端的metrics信息，YammerMetrics是由Yammer提供的一个Java库，用于检测口币4上相关服务运行的状态。Metrics能够很好地与Ganlia和Graphite结合，提供相关的metrics图形化接口，可以将metrics信息通过几仅CJavaManagementExtension)、控制台(Console)、csv、日志等形式发布出来。Kafka默认是通过几1X来报告metrics信息的，将metrics指标信息注册成JMX的MBeans，这样就可以通过JDK自带的JConsole或者VisualVM来查看metrics信息。</p>
+<hr>
+<h1 id="Reference"><a href="#Reference" class="headerlink" title="Reference"></a>Reference</h1><p><a href="http://matt33.com/tags/kafka/" target="_blank" rel="noopener">Matt’s Blog|Kafka</a></p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Kafka/" rel="tag"># Kafka</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-next post-nav-item">
+                <a href="/2019/07/26/Compute-Base-Knowledge/yum-update-vs-upgrade/" rel="next" title="yum update VS yum upgrade">
+                  <i class="fa fa-chevron-left"></i> yum update VS yum upgrade
+                </a>
+            </div>
+
+            <span class="post-nav-divider"></span>
+
+            <div class="post-nav-prev post-nav-item">
+                <a href="/2019/12/06/Apache-Spark/Spark-Shell/" rel="prev" title="Spark-Shell">
+                  Spark-Shell <i class="fa fa-chevron-right"></i>
+                </a>
+            </div>
+          </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#延迟操作组件"><span class="nav-number">1.</span> <span class="nav-text">延迟操作组件</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#DelayedOperation"><span class="nav-number">1.1.</span> <span class="nav-text">DelayedOperation</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#DelayedOperationPurgatory"><span class="nav-number">1.2.</span> <span class="nav-text">DelayedOperationPurgatory</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#DelayedProduce"><span class="nav-number">1.3.</span> <span class="nav-text">DelayedProduce</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#DelayedFetch"><span class="nav-number">1.4.</span> <span class="nav-text">DelayedFetch</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#DelayedJoin"><span class="nav-number">1.5.</span> <span class="nav-text">DelayedJoin</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#DelayedHeartbeat"><span class="nav-number">1.6.</span> <span class="nav-text">DelayedHeartbeat</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#DelayedCreateTopics"><span class="nav-number">2.</span> <span class="nav-text">DelayedCreateTopics</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#控制器"><span class="nav-number">3.</span> <span class="nav-text">控制器</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#控制器初始化"><span class="nav-number">3.1.</span> <span class="nav-text">控制器初始化</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#控制器选举过程"><span class="nav-number">3.2.</span> <span class="nav-text">控制器选举过程</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#故障转移"><span class="nav-number">3.3.</span> <span class="nav-text">故障转移</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#代理上线与下线"><span class="nav-number">4.</span> <span class="nav-text">代理上线与下线</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#代理上线"><span class="nav-number">4.1.</span> <span class="nav-text">代理上线</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#代理下线"><span class="nav-number">4.2.</span> <span class="nav-text">代理下线</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#主题管理"><span class="nav-number">5.</span> <span class="nav-text">主题管理</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#创建主题"><span class="nav-number">5.1.</span> <span class="nav-text">创建主题</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#删除主题"><span class="nav-number">5.2.</span> <span class="nav-text">删除主题</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#分区管理"><span class="nav-number">5.3.</span> <span class="nav-text">分区管理</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#协调器"><span class="nav-number">6.</span> <span class="nav-text">协调器</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#消费者协调器"><span class="nav-number">6.1.</span> <span class="nav-text">消费者协调器</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#组协调器"><span class="nav-number">6.2.</span> <span class="nav-text">组协调器</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#消费者加入组"><span class="nav-number">6.2.1.</span> <span class="nav-text">消费者加入组</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#消费偏移量管理"><span class="nav-number">6.3.</span> <span class="nav-text">消费偏移量管理</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#网络通信服务"><span class="nav-number">7.</span> <span class="nav-text">网络通信服务</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Acceptor"><span class="nav-number">7.1.</span> <span class="nav-text">Acceptor</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Processor"><span class="nav-number">7.2.</span> <span class="nav-text">Processor</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#RequestChannel"><span class="nav-number">7.3.</span> <span class="nav-text">RequestChannel</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#日志管理器"><span class="nav-number">8.</span> <span class="nav-text">日志管理器</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#数据文件"><span class="nav-number">8.1.</span> <span class="nav-text">数据文件</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#偏移量索引文件"><span class="nav-number">8.2.</span> <span class="nav-text">偏移量索引文件</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#时间戳索引文件"><span class="nav-number">8.3.</span> <span class="nav-text">时间戳索引文件</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#副本管理器"><span class="nav-number">9.</span> <span class="nav-text">副本管理器</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#拉取消息"><span class="nav-number">9.1.</span> <span class="nav-text">拉取消息</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#副本"><span class="nav-number">9.2.</span> <span class="nav-text">副本</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Handler"><span class="nav-number">10.</span> <span class="nav-text">Handler</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#动态配置管理器"><span class="nav-number">11.</span> <span class="nav-text">动态配置管理器</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Kafka内部监控"><span class="nav-number">12.</span> <span class="nav-text">Kafka内部监控</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Reference"><span class="nav-number">13.</span> <span class="nav-text">Reference</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="acronymor"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">acronymor</p>
+  <div class="site-description" itemprop="description">I am who i am, the unique fooid</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives">
+          <span class="site-state-item-count">216</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+        <span class="site-state-item-count">27</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+        <span class="site-state-item-count">35</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="feed-link motion-element">
+    <a href="/atom.xml" rel="alternate">
+      <i class="fa fa-rss"></i>RSS
+    </a>
+  </div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/acronymor" title="GitHub &amp;rarr; https:&#x2F;&#x2F;github.com&#x2F;acronymor" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yourname@acronymor.com" title="E-Mail &amp;rarr; mailto:yourname@acronymor.com"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">acronymor</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> v4.2.0
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">Theme – <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> v7.5.0
+  </div>
+
+        
+
+
+
+
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>
