@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Categories on acronymor&#39;s blog</title>
+    <link>http://acronymor:80/categories/</link>
+    <description>Recent content in Categories on acronymor&#39;s blog</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <lastBuildDate>Sat, 01 May 2021 08:46:00 +0800</lastBuildDate><atom:link href="http://acronymor:80/categories/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Elasticsearch基础</title>
+      <link>http://acronymor:80/categories/elasticsearch%E5%9F%BA%E7%A1%80/</link>
+      <pubDate>Sat, 01 May 2021 08:46:00 +0800</pubDate>
+      
+      <guid>http://acronymor:80/categories/elasticsearch%E5%9F%BA%E7%A1%80/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>HBase进阶</title>
+      <link>http://acronymor:80/categories/hbase%E8%BF%9B%E9%98%B6/</link>
+      <pubDate>Thu, 15 Apr 2021 22:47:00 +0800</pubDate>
+      
+      <guid>http://acronymor:80/categories/hbase%E8%BF%9B%E9%98%B6/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>HBase基础</title>
+      <link>http://acronymor:80/categories/hbase%E5%9F%BA%E7%A1%80/</link>
+      <pubDate>Mon, 15 Feb 2021 11:41:00 +0800</pubDate>
+      
+      <guid>http://acronymor:80/categories/hbase%E5%9F%BA%E7%A1%80/</guid>
+      <description></description>
+    </item>
+    
+  </channel>
+</rss>

@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Language" content="en">
+    
+      <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests; block-all-mixed-content; default-src 'self'; child-src 'self'; font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net/; form-action 'self'; frame-src 'self'; img-src 'self'; object-src 'none'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com/ https://cdn.jsdelivr.net/; script-src 'self' 'unsafe-inline' https://www.google-analytics.com; prefetch-src 'self';">
+    
+
+    <meta name="author" content="Acronymor">
+    <meta name="description" content="HBase Procedure v2之Procedure    Procedure类型       名称 说明     Meta Procedure execute(), rollback()   Server Procedure 唯一的一种类型为ServerCrashProcedure，用来负责RegionServer进程故障后的处理   Peer Procedure 与Replication相关，如AddPeerProcedure, RemovePeerProcedure等等   Table Procedure 类型最为丰富，如CreateTableProcedure, DisableTableProcedure, EnableTableProcedure, AssignProcedure, SplitTableRegionProcedure, &hellip;涵盖表级别、Region级别的各类操作。    在ProcedureScheduler中，需要同时调度这几种类型的Procedure，调度的优先级顺序(由高到低)为：
+ Meta -&gt; Server -&gt; Peer -&gt; Table。
+ Procedure状态       名称 说明     INITIALIZING Procedure in construction, not yet added to the executor   RUNNABLE Procedure added to the executor, and ready to be executed   WAITING The procedure is waiting on children to be completed   WAITING_TIMEOUT The procedure is waiting a timout or an external event   ROLLEDBACK The procedure failed and was rolledback   SUCCESS The procedure execution is completed successfully.">
+    <meta name="keywords" content="blog,developer,personal">
+
+    <meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="HBase Procedure v2 原理说明"/>
+<meta name="twitter:description" content="HBase Procedure v2之Procedure    Procedure类型       名称 说明     Meta Procedure execute(), rollback()   Server Procedure 唯一的一种类型为ServerCrashProcedure，用来负责RegionServer进程故障后的处理   Peer Procedure 与Replication相关，如AddPeerProcedure, RemovePeerProcedure等等   Table Procedure 类型最为丰富，如CreateTableProcedure, DisableTableProcedure, EnableTableProcedure, AssignProcedure, SplitTableRegionProcedure, &hellip;涵盖表级别、Region级别的各类操作。    在ProcedureScheduler中，需要同时调度这几种类型的Procedure，调度的优先级顺序(由高到低)为：
+ Meta -&gt; Server -&gt; Peer -&gt; Table。
+ Procedure状态       名称 说明     INITIALIZING Procedure in construction, not yet added to the executor   RUNNABLE Procedure added to the executor, and ready to be executed   WAITING The procedure is waiting on children to be completed   WAITING_TIMEOUT The procedure is waiting a timout or an external event   ROLLEDBACK The procedure failed and was rolledback   SUCCESS The procedure execution is completed successfully."/>
+
+    <meta property="og:title" content="HBase Procedure v2 原理说明" />
+<meta property="og:description" content="HBase Procedure v2之Procedure    Procedure类型       名称 说明     Meta Procedure execute(), rollback()   Server Procedure 唯一的一种类型为ServerCrashProcedure，用来负责RegionServer进程故障后的处理   Peer Procedure 与Replication相关，如AddPeerProcedure, RemovePeerProcedure等等   Table Procedure 类型最为丰富，如CreateTableProcedure, DisableTableProcedure, EnableTableProcedure, AssignProcedure, SplitTableRegionProcedure, &hellip;涵盖表级别、Region级别的各类操作。    在ProcedureScheduler中，需要同时调度这几种类型的Procedure，调度的优先级顺序(由高到低)为：
+ Meta -&gt; Server -&gt; Peer -&gt; Table。
+ Procedure状态       名称 说明     INITIALIZING Procedure in construction, not yet added to the executor   RUNNABLE Procedure added to the executor, and ready to be executed   WAITING The procedure is waiting on children to be completed   WAITING_TIMEOUT The procedure is waiting a timout or an external event   ROLLEDBACK The procedure failed and was rolledback   SUCCESS The procedure execution is completed successfully." />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="http://acronymor:80/posts/hbase/chapter2/procedurev2-02/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2021-03-08T21:01:00+08:00" />
+<meta property="article:modified_time" content="2021-03-08T21:01:00+08:00" />
+
+
+
+    <title>
+  HBase Procedure v2 原理说明 · acronymor&#39;s blog
+</title>
+
+    
+      <link rel="canonical" href="http://acronymor:80/posts/hbase/chapter2/procedurev2-02/">
+    
+
+    <link rel="preload" href="/fonts/forkawesome-webfont.woff2?v=1.1.7" as="font" type="font/woff2" crossorigin>
+
+    
+      
+      
+      <link rel="stylesheet" href="/css/coder.min.7845183269a9eb35f70d63bb7521ad5e9470a140d020e12172e0b5d3ed3ec9a3.css" integrity="sha256-eEUYMmmp6zX3DWO7dSGtXpRwoUDQIOEhcuC10&#43;0&#43;yaM=" crossorigin="anonymous" media="screen" />
+    
+
+    
+
+    
+      
+        
+        
+        <link rel="stylesheet" href="/css/coder-dark.min.89c82b6022b96f77aeb521b240daec4f87ea029d84d1c78b8acd0735b91b3c92.css" integrity="sha256-icgrYCK5b3eutSGyQNrsT4fqAp2E0ceLis0HNbkbPJI=" crossorigin="anonymous" media="screen" />
+      
+    
+
+    
+
+    
+
+    <link rel="icon" type="image/png" href="/images/favicon-32x32.png" sizes="32x32">
+    <link rel="icon" type="image/png" href="/images/favicon-16x16.png" sizes="16x16">
+
+    <link rel="apple-touch-icon" href="/images/apple-touch-icon.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+
+    
+
+    <meta name="generator" content="Hugo 0.93.2" />
+  </head>
+
+  
+  
+    
+  
+  <body class="colorscheme-auto"
+        onload=""
+  >
+    
+<div class="float-container">
+    <a id="dark-mode-toggle" class="colorscheme-toggle">
+        <i class="fa fa-adjust fa-fw" aria-hidden="true"></i>
+    </a>
+</div>
+
+
+    <main class="wrapper">
+      <nav class="navigation">
+  <section class="container">
+    <a class="navigation-title" href="/">
+      acronymor&#39;s blog
+    </a>
+    
+      <input type="checkbox" id="menu-toggle" />
+      <label class="menu-button float-right" for="menu-toggle">
+        <i class="fa fa-bars fa-fw" aria-hidden="true"></i>
+      </label>
+      <ul class="navigation-list">
+        
+          
+            <li class="navigation-item">
+              <a class="navigation-link" href="/posts/">Blog</a>
+            </li>
+          
+            <li class="navigation-item">
+              <a class="navigation-link" href="/categories/">Category</a>
+            </li>
+          
+            <li class="navigation-item">
+              <a class="navigation-link" href="/tags/">Tag</a>
+            </li>
+          
+            <li class="navigation-item">
+              <a class="navigation-link" href="/about/">About</a>
+            </li>
+          
+        
+        
+      </ul>
+    
+  </section>
+</nav>
+
+
+      <div class="content">
+        
+  <section class="container post">
+    <article>
+      <header>
+        <div class="post-title">
+          <h1 class="title">
+            <a class="title-link" href="http://acronymor:80/posts/hbase/chapter2/procedurev2-02/">
+              HBase Procedure v2 原理说明
+            </a>
+          </h1>
+        </div>
+        <div class="post-meta">
+          <div class="date">
+            <span class="posted-on">
+              <i class="fa fa-calendar" aria-hidden="true"></i>
+              <time datetime='2021-03-08T21:01:00&#43;08:00'>
+                March 8, 2021
+              </time>
+            </span>
+            <span class="reading-time">
+              <i class="fa fa-clock-o" aria-hidden="true"></i>
+              3-minute read
+            </span>
+          </div>
+          
+          <div class="categories">
+  <i class="fa fa-folder" aria-hidden="true"></i>
+    <a href="/categories/hbase%E8%BF%9B%E9%98%B6/">HBase进阶</a></div>
+
+          <div class="tags">
+  <i class="fa fa-tag" aria-hidden="true"></i>
+    <a href="/tags/hbase/">HBase</a></div>
+
+        </div>
+      </header>
+
+      <div>
+        
+        
+          <aside>
+            <nav id="TableOfContents">
+  <ul>
+    <li><a href="#hbase-procedure-v2之procedure">HBase Procedure v2之Procedure</a>
+      <ul>
+        <li><a href="#procedure类型">Procedure类型</a></li>
+        <li><a href="#procedure状态">Procedure状态</a></li>
+        <li><a href="#procedure的实现">Procedure的实现</a>
+          <ul>
+            <li><a href="#procedure的实现体系">Procedure的实现体系</a></li>
+            <li><a href="#procedure的主要实现方法">Procedure的主要实现方法</a></li>
+          </ul>
+        </li>
+      </ul>
+    </li>
+    <li><a href="#hbase-procedure-v2之procedureexecutor">HBase Procedure v2之ProcedureExecutor</a>
+      <ul>
+        <li><a href="#procedureexecutor的实现">ProcedureExecutor的实现</a></li>
+      </ul>
+    </li>
+    <li><a href="#hbase-procedure-v2之procedurestore">HBase Procedure v2之ProcedureStore</a>
+      <ul>
+        <li><a href="#procedurestore的实现">ProcedureStore的实现</a>
+          <ul>
+            <li><a href="#procedurestore的实现体系">ProcedureStore的实现体系</a></li>
+            <li><a href="#procedurestore的主要实现方法">ProcedureStore的主要实现方法</a></li>
+          </ul>
+        </li>
+      </ul>
+    </li>
+    <li><a href="#hbase-procedure-v2之scheduler">HBase Procedure v2之Scheduler</a>
+      <ul>
+        <li><a href="#scheduler的实现体系">Scheduler的实现体系</a></li>
+      </ul>
+    </li>
+    <li><a href="#hbase-procedure-的执行流程">HBase Procedure 的执行流程</a></li>
+    <li><a href="#reference">Reference</a></li>
+  </ul>
+</nav>
+          </aside>
+        
+        <h1 id="hbase-procedure-v2之procedure">
+  HBase Procedure v2之Procedure
+  <a class="heading-link" href="#hbase-procedure-v2%e4%b9%8bprocedure">
+    <i class="fa fa-link" aria-hidden="true"></i>
+  </a>
+</h1>
+<h2 id="procedure类型">
+  Procedure类型
+  <a class="heading-link" href="#procedure%e7%b1%bb%e5%9e%8b">
+    <i class="fa fa-link" aria-hidden="true"></i>
+  </a>
+</h2>
+<table>
+<thead>
+<tr>
+<th style="text-align:left">名称</th>
+<th style="text-align:left">说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left">Meta Procedure</td>
+<td style="text-align:left">execute(), rollback()</td>
+</tr>
+<tr>
+<td style="text-align:left">Server Procedure</td>
+<td style="text-align:left">唯一的一种类型为ServerCrashProcedure，用来负责RegionServer进程故障后的处理</td>
+</tr>
+<tr>
+<td style="text-align:left">Peer Procedure</td>
+<td style="text-align:left">与Replication相关，如AddPeerProcedure, RemovePeerProcedure等等</td>
+</tr>
+<tr>
+<td style="text-align:left">Table Procedure</td>
+<td style="text-align:left">类型最为丰富，如CreateTableProcedure, DisableTableProcedure, EnableTableProcedure, AssignProcedure, SplitTableRegionProcedure, &hellip;涵盖表级别、Region级别的各类操作。</td>
+</tr>
+</tbody>
+</table>
+<p>在ProcedureScheduler中，需要同时调度这几种类型的Procedure，调度的优先级顺序(由高到低)为：</p>
+<blockquote>
+<p>Meta -&gt; Server -&gt; Peer -&gt; Table。</p>
+</blockquote>
+<h2 id="procedure状态">
+  Procedure状态
+  <a class="heading-link" href="#procedure%e7%8a%b6%e6%80%81">
+    <i class="fa fa-link" aria-hidden="true"></i>
+  </a>
+</h2>
+<table>
+<thead>
+<tr>
+<th style="text-align:left">名称</th>
+<th style="text-align:left">说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left">INITIALIZING</td>
+<td style="text-align:left">Procedure in construction, not yet added to the executor</td>
+</tr>
+<tr>
+<td style="text-align:left">RUNNABLE</td>
+<td style="text-align:left">Procedure added to the executor, and ready to be executed</td>
+</tr>
+<tr>
+<td style="text-align:left">WAITING</td>
+<td style="text-align:left">The procedure is waiting on children to be completed</td>
+</tr>
+<tr>
+<td style="text-align:left">WAITING_TIMEOUT</td>
+<td style="text-align:left">The procedure is waiting a timout or an external event</td>
+</tr>
+<tr>
+<td style="text-align:left">ROLLEDBACK</td>
+<td style="text-align:left">The procedure failed and was rolledback</td>
+</tr>
+<tr>
+<td style="text-align:left">SUCCESS</td>
+<td style="text-align:left">The procedure execution is completed successfully.</td>
+</tr>
+<tr>
+<td style="text-align:left">FAILED</td>
+<td style="text-align:left">The procedure execution is failed, may need to rollback</td>
+</tr>
+</tbody>
+</table>
+<p>根据Procedure的生命周期，整个状态切换大概如下图所示。</p>
+<p><img src="procedurev2-simple-lifecycle.png" alt="procedure v2 simple lifecycle"></p>
+<h2 id="procedure的实现">
+  Procedure的实现
+  <a class="heading-link" href="#procedure%e7%9a%84%e5%ae%9e%e7%8e%b0">
+    <i class="fa fa-link" aria-hidden="true"></i>
+  </a>
+</h2>
+<h3 id="procedure的实现体系">
+  Procedure的实现体系
+  <a class="heading-link" href="#procedure%e7%9a%84%e5%ae%9e%e7%8e%b0%e4%bd%93%e7%b3%bb">
+    <i class="fa fa-link" aria-hidden="true"></i>
+  </a>
+</h3>
+<p>Procedure的实现非常丰富，这里仅仅举出几个常见的Procedure的继承关系。</p>
+<p><img src="procedurev2-class.png" alt="procedure v2 class"></p>
+<p>其中最常见的就是 StateMachineProcedure ，对于所有执行存在先后顺序，且存在状态切换的 Procedure 实现都会继承此类，同时这些 Procedure 也会定义一些自己的状态，比如MasterProcedure.proto中定义了CreateTableState，CreateTableState又进一步定义了该Procedure在调度中会存在下述定义的状态。</p>
+<div class="highlight"><div style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;">
+<table style="border-spacing:0;padding:0;margin:0;border:0;"><tr><td style="vertical-align:top;padding:0;margin:0;border:0;">
+<pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">1
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">2
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">3
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">4
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">5
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">6
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">7
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">8
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">9
+</span></code></pre></td>
+<td style="vertical-align:top;padding:0;margin:0;border:0;;width:100%">
+<pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-proto" data-lang="proto"><span style="display:flex;"><span><span style="color:#000;font-weight:bold">enum</span> CreateTableState<span style="color:#a61717;background-color:#e3d2d2">
+</span></span></span><span style="display:flex;"><span><span style="color:#a61717;background-color:#e3d2d2"></span>{<span style="color:#a61717;background-color:#e3d2d2">
+</span></span></span><span style="display:flex;"><span><span style="color:#a61717;background-color:#e3d2d2"></span>    CREATE_TABLE_PRE_OPERATION <span style="color:#000;font-weight:bold">=</span> <span style="color:#099">1</span>;<span style="color:#a61717;background-color:#e3d2d2">
+</span></span></span><span style="display:flex;"><span><span style="color:#a61717;background-color:#e3d2d2"></span>    CREATE_TABLE_WRITE_FS_LAYOUT <span style="color:#000;font-weight:bold">=</span> <span style="color:#099">2</span>;<span style="color:#a61717;background-color:#e3d2d2">
+</span></span></span><span style="display:flex;"><span><span style="color:#a61717;background-color:#e3d2d2"></span>    CREATE_TABLE_ADD_TO_META <span style="color:#000;font-weight:bold">=</span> <span style="color:#099">3</span>;<span style="color:#a61717;background-color:#e3d2d2">
+</span></span></span><span style="display:flex;"><span><span style="color:#a61717;background-color:#e3d2d2"></span>    CREATE_TABLE_ASSIGN_REGIONS <span style="color:#000;font-weight:bold">=</span> <span style="color:#099">4</span>;<span style="color:#a61717;background-color:#e3d2d2">
+</span></span></span><span style="display:flex;"><span><span style="color:#a61717;background-color:#e3d2d2"></span>    CREATE_TABLE_UPDATE_DESC_CACHE <span style="color:#000;font-weight:bold">=</span> <span style="color:#099">5</span>;<span style="color:#a61717;background-color:#e3d2d2">
+</span></span></span><span style="display:flex;"><span><span style="color:#a61717;background-color:#e3d2d2"></span>    CREATE_TABLE_POST_OPERATION <span style="color:#000;font-weight:bold">=</span> <span style="color:#099">6</span>;<span style="color:#a61717;background-color:#e3d2d2">
+</span></span></span><span style="display:flex;"><span><span style="color:#a61717;background-color:#e3d2d2"></span>}<span style="color:#a61717;background-color:#e3d2d2">
+</span></span></span></code></pre></td></tr></table>
+</div>
+</div><p>StateMachineProcedure使用 int[] states 数组来存储本次Procedure中所涉及到的 Procedure 状态的编号（即上面的1,2&hellip;等数字），stateCount 用来存储 states 的下标。这里有个细节提下，即便是多个 Procedure 也一定是从前往后执行，所以 states 中的最后一个表示的一定是当前 Procedure 的状态。</p>
+<h3 id="procedure的主要实现方法">
+  Procedure的主要实现方法
+  <a class="heading-link" href="#procedure%e7%9a%84%e4%b8%bb%e8%a6%81%e5%ae%9e%e7%8e%b0%e6%96%b9%e6%b3%95">
+    <i class="fa fa-link" aria-hidden="true"></i>
+  </a>
+</h3>
+<p>最简单的Procedure可以采用如下的方式（取自TestProcedureToString.java）实现。其中execute()和rollback()分别定义如何执行和回滚该Procedure操作。而serializeStateData()和descrializeStateData()则定义了如何序列化和反序列化该Procedure。</p>
+<div class="highlight"><div style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;">
+<table style="border-spacing:0;padding:0;margin:0;border:0;"><tr><td style="vertical-align:top;padding:0;margin:0;border:0;">
+<pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 1
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 2
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 3
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 4
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 5
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 6
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 7
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 8
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 9
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">10
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">11
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">12
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">13
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">14
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">15
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">16
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">17
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">18
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">19
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">20
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">21
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">22
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">23
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">24
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">25
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">26
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">27
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">28
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">29
+</span></code></pre></td>
+<td style="vertical-align:top;padding:0;margin:0;border:0;;width:100%">
+<pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-java" data-lang="java"><span style="display:flex;"><span> <span style="color:#998;font-style:italic">/**
+</span></span></span><span style="display:flex;"><span><span style="color:#998;font-style:italic">   * A do-nothing basic procedure just for testing toString.
+</span></span></span><span style="display:flex;"><span><span style="color:#998;font-style:italic">   */</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#000;font-weight:bold">static</span> <span style="color:#000;font-weight:bold">class</span> <span style="color:#458;font-weight:bold">BasicProcedure</span> <span style="color:#000;font-weight:bold">extends</span> Procedure<span style="color:#000;font-weight:bold">&lt;</span>BasicProcedureEnv<span style="color:#000;font-weight:bold">&gt;</span> <span style="color:#000;font-weight:bold">{</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#3c5d5d;font-weight:bold">@Override</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#000;font-weight:bold">protected</span> Procedure<span style="color:#000;font-weight:bold">&lt;</span>BasicProcedureEnv<span style="color:#000;font-weight:bold">&gt;[]</span> <span style="color:#900;font-weight:bold">execute</span><span style="color:#000;font-weight:bold">(</span>BasicProcedureEnv env<span style="color:#000;font-weight:bold">)</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#000;font-weight:bold">throws</span> ProcedureYieldException<span style="color:#000;font-weight:bold">,</span> InterruptedException <span style="color:#000;font-weight:bold">{</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#000;font-weight:bold">return</span> <span style="color:#000;font-weight:bold">new</span> Procedure <span style="color:#000;font-weight:bold">[]</span> <span style="color:#000;font-weight:bold">{</span><span style="color:#000;font-weight:bold">this</span><span style="color:#000;font-weight:bold">};</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#000;font-weight:bold">}</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#3c5d5d;font-weight:bold">@Override</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#000;font-weight:bold">protected</span> <span style="color:#458;font-weight:bold">void</span> <span style="color:#900;font-weight:bold">rollback</span><span style="color:#000;font-weight:bold">(</span>BasicProcedureEnv env<span style="color:#000;font-weight:bold">)</span> <span style="color:#000;font-weight:bold">throws</span> IOException<span style="color:#000;font-weight:bold">,</span> InterruptedException <span style="color:#000;font-weight:bold">{</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#000;font-weight:bold">}</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#3c5d5d;font-weight:bold">@Override</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#000;font-weight:bold">protected</span> <span style="color:#458;font-weight:bold">boolean</span> <span style="color:#900;font-weight:bold">abort</span><span style="color:#000;font-weight:bold">(</span>BasicProcedureEnv env<span style="color:#000;font-weight:bold">)</span> <span style="color:#000;font-weight:bold">{</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#000;font-weight:bold">return</span> <span style="color:#000;font-weight:bold">false</span><span style="color:#000;font-weight:bold">;</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#000;font-weight:bold">}</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#3c5d5d;font-weight:bold">@Override</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#000;font-weight:bold">protected</span> <span style="color:#458;font-weight:bold">void</span> <span style="color:#900;font-weight:bold">serializeStateData</span><span style="color:#000;font-weight:bold">(</span>ProcedureStateSerializer serializer<span style="color:#000;font-weight:bold">)</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#000;font-weight:bold">throws</span> IOException <span style="color:#000;font-weight:bold">{</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#000;font-weight:bold">}</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#3c5d5d;font-weight:bold">@Override</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#000;font-weight:bold">protected</span> <span style="color:#458;font-weight:bold">void</span> <span style="color:#900;font-weight:bold">deserializeStateData</span><span style="color:#000;font-weight:bold">(</span>ProcedureStateSerializer serializer<span style="color:#000;font-weight:bold">)</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#000;font-weight:bold">throws</span> IOException <span style="color:#000;font-weight:bold">{</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#000;font-weight:bold">}</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#000;font-weight:bold">}</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h1 id="hbase-procedure-v2之procedureexecutor">
+  HBase Procedure v2之ProcedureExecutor
+  <a class="heading-link" href="#hbase-procedure-v2%e4%b9%8bprocedureexecutor">
+    <i class="fa fa-link" aria-hidden="true"></i>
+  </a>
+</h1>
+<h2 id="procedureexecutor的实现">
+  ProcedureExecutor的实现
+  <a class="heading-link" href="#procedureexecutor%e7%9a%84%e5%ae%9e%e7%8e%b0">
+    <i class="fa fa-link" aria-hidden="true"></i>
+  </a>
+</h2>
+<p>ProcedureExecutor功能是比较单一的，实现上面也仅仅只有一个ProcedureExecutor类而已。ProcedureExecutor最核心的方法大概有init()，submitProcedure()，bypassProcedure()。init()方法主要负责完成ProcedureExecutor的初始化，并且接着将ProcedureExecutor启动起来；submitProcedure完成的功能顾名思义是将Procedure提交到ProcedureExecutor，交由其执行。bypassProcedure()并不是一个非常常规的方法，会绕过Procedure的execute()和rollback()，直接持久化Procedure。</p>
+<h1 id="hbase-procedure-v2之procedurestore">
+  HBase Procedure v2之ProcedureStore
+  <a class="heading-link" href="#hbase-procedure-v2%e4%b9%8bprocedurestore">
+    <i class="fa fa-link" aria-hidden="true"></i>
+  </a>
+</h1>
+<h2 id="procedurestore的实现">
+  ProcedureStore的实现
+  <a class="heading-link" href="#procedurestore%e7%9a%84%e5%ae%9e%e7%8e%b0">
+    <i class="fa fa-link" aria-hidden="true"></i>
+  </a>
+</h2>
+<h3 id="procedurestore的实现体系">
+  ProcedureStore的实现体系
+  <a class="heading-link" href="#procedurestore%e7%9a%84%e5%ae%9e%e7%8e%b0%e4%bd%93%e7%b3%bb">
+    <i class="fa fa-link" aria-hidden="true"></i>
+  </a>
+</h3>
+<p>ProcedureStore的实现就只有如下两种，一种是存储在内存的NoopProcedureStore，另一种是存储到HDFS的RegionProcedureStore。</p>
+<blockquote>
+<p>注意：
+NoopProcedureStore说存储在内存表述也不恰当，因为它没有使用任何数据结构去承载Procedure。
+RegionProcedureStore则是借用Master的自有Flush逻辑，将Procedure持久化到HDFS的MasterData目录，有点类似于Master特有的table。</p>
+</blockquote>
+<p><img src="procedurev2-procedurestore.png" alt="procedurev2 procedurestore"></p>
+<h3 id="procedurestore的主要实现方法">
+  ProcedureStore的主要实现方法
+  <a class="heading-link" href="#procedurestore%e7%9a%84%e4%b8%bb%e8%a6%81%e5%ae%9e%e7%8e%b0%e6%96%b9%e6%b3%95">
+    <i class="fa fa-link" aria-hidden="true"></i>
+  </a>
+</h3>
+<p>最简单的Procedure可以采用如下的方式（取自NoopProcedureStore.java）实现。其中start()和stop()定义了如何打开ProcedureStore，insert(), delete(), update(), load()则定义了ProcedureStore的增删改查。</p>
+<div class="highlight"><div style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;">
+<table style="border-spacing:0;padding:0;margin:0;border:0;"><tr><td style="vertical-align:top;padding:0;margin:0;border:0;">
+<pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 1
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 2
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 3
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 4
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 5
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 6
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 7
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 8
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 9
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">10
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">11
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">12
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">13
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">14
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">15
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">16
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">17
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">18
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">19
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">20
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">21
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">22
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">23
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">24
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">25
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">26
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">27
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">28
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">29
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">30
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">31
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">32
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">33
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">34
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">35
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">36
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">37
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">38
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">39
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">40
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">41
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">42
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">43
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">44
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">45
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">46
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">47
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">48
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">49
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">50
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">51
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">52
+</span></code></pre></td>
+<td style="vertical-align:top;padding:0;margin:0;border:0;;width:100%">
+<pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-java" data-lang="java"><span style="display:flex;"><span><span style="color:#000;font-weight:bold">public</span> <span style="color:#000;font-weight:bold">class</span> <span style="color:#458;font-weight:bold">NoopProcedureStore</span> <span style="color:#000;font-weight:bold">extends</span> ProcedureStoreBase <span style="color:#000;font-weight:bold">{</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#000;font-weight:bold">private</span> <span style="color:#458;font-weight:bold">int</span> numThreads<span style="color:#000;font-weight:bold">;</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  <span style="color:#3c5d5d;font-weight:bold">@Override</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#000;font-weight:bold">public</span> <span style="color:#458;font-weight:bold">void</span> <span style="color:#900;font-weight:bold">start</span><span style="color:#000;font-weight:bold">(</span><span style="color:#458;font-weight:bold">int</span> numThreads<span style="color:#000;font-weight:bold">)</span> <span style="color:#000;font-weight:bold">throws</span> IOException <span style="color:#000;font-weight:bold">{</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#000;font-weight:bold">if</span> <span style="color:#000;font-weight:bold">(!</span>setRunning<span style="color:#000;font-weight:bold">(</span><span style="color:#000;font-weight:bold">true</span><span style="color:#000;font-weight:bold">))</span> <span style="color:#000;font-weight:bold">{</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#000;font-weight:bold">return</span><span style="color:#000;font-weight:bold">;</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#000;font-weight:bold">}</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#000;font-weight:bold">this</span><span style="color:#000;font-weight:bold">.</span><span style="color:#008080">numThreads</span> <span style="color:#000;font-weight:bold">=</span> numThreads<span style="color:#000;font-weight:bold">;</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#000;font-weight:bold">}</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  <span style="color:#3c5d5d;font-weight:bold">@Override</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#000;font-weight:bold">public</span> <span style="color:#458;font-weight:bold">void</span> <span style="color:#900;font-weight:bold">stop</span><span style="color:#000;font-weight:bold">(</span><span style="color:#458;font-weight:bold">boolean</span> abort<span style="color:#000;font-weight:bold">)</span> <span style="color:#000;font-weight:bold">{</span>
+</span></span><span style="display:flex;"><span>    setRunning<span style="color:#000;font-weight:bold">(</span><span style="color:#000;font-weight:bold">false</span><span style="color:#000;font-weight:bold">);</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#000;font-weight:bold">}</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  <span style="color:#3c5d5d;font-weight:bold">@Override</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#000;font-weight:bold">public</span> <span style="color:#458;font-weight:bold">void</span> <span style="color:#900;font-weight:bold">recoverLease</span><span style="color:#000;font-weight:bold">()</span> <span style="color:#000;font-weight:bold">throws</span> IOException <span style="color:#000;font-weight:bold">{</span> <span style="color:#000;font-weight:bold">}</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  <span style="color:#3c5d5d;font-weight:bold">@Override</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#000;font-weight:bold">public</span> <span style="color:#458;font-weight:bold">int</span> <span style="color:#900;font-weight:bold">getNumThreads</span><span style="color:#000;font-weight:bold">()</span> <span style="color:#000;font-weight:bold">{</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#000;font-weight:bold">return</span> numThreads<span style="color:#000;font-weight:bold">;</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#000;font-weight:bold">}</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  <span style="color:#3c5d5d;font-weight:bold">@Override</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#000;font-weight:bold">public</span> <span style="color:#458;font-weight:bold">int</span> <span style="color:#900;font-weight:bold">setRunningProcedureCount</span><span style="color:#000;font-weight:bold">(</span><span style="color:#000;font-weight:bold">final</span> <span style="color:#458;font-weight:bold">int</span> count<span style="color:#000;font-weight:bold">)</span> <span style="color:#000;font-weight:bold">{</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#000;font-weight:bold">return</span> count<span style="color:#000;font-weight:bold">;</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#000;font-weight:bold">}</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  <span style="color:#3c5d5d;font-weight:bold">@Override</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#000;font-weight:bold">public</span> <span style="color:#458;font-weight:bold">void</span> <span style="color:#900;font-weight:bold">load</span><span style="color:#000;font-weight:bold">(</span><span style="color:#000;font-weight:bold">final</span> ProcedureLoader loader<span style="color:#000;font-weight:bold">)</span> <span style="color:#000;font-weight:bold">throws</span> IOException <span style="color:#000;font-weight:bold">{</span>
+</span></span><span style="display:flex;"><span>    loader<span style="color:#000;font-weight:bold">.</span><span style="color:#008080">setMaxProcId</span><span style="color:#000;font-weight:bold">(</span>0<span style="color:#000;font-weight:bold">);</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#000;font-weight:bold">}</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  <span style="color:#3c5d5d;font-weight:bold">@Override</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#000;font-weight:bold">public</span> <span style="color:#458;font-weight:bold">void</span> <span style="color:#900;font-weight:bold">insert</span><span style="color:#000;font-weight:bold">(</span>Procedure<span style="color:#000;font-weight:bold">&lt;?&gt;</span> proc<span style="color:#000;font-weight:bold">,</span> Procedure<span style="color:#000;font-weight:bold">&lt;?&gt;[]</span> subprocs<span style="color:#000;font-weight:bold">)</span> <span style="color:#000;font-weight:bold">{</span> <span style="color:#000;font-weight:bold">}</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  <span style="color:#3c5d5d;font-weight:bold">@Override</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#000;font-weight:bold">public</span> <span style="color:#458;font-weight:bold">void</span> <span style="color:#900;font-weight:bold">insert</span><span style="color:#000;font-weight:bold">(</span>Procedure<span style="color:#000;font-weight:bold">&lt;?&gt;[]</span> proc<span style="color:#000;font-weight:bold">)</span> <span style="color:#000;font-weight:bold">{</span> <span style="color:#000;font-weight:bold">}</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  <span style="color:#3c5d5d;font-weight:bold">@Override</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#000;font-weight:bold">public</span> <span style="color:#458;font-weight:bold">void</span> <span style="color:#900;font-weight:bold">update</span><span style="color:#000;font-weight:bold">(</span>Procedure<span style="color:#000;font-weight:bold">&lt;?&gt;</span> proc<span style="color:#000;font-weight:bold">)</span> <span style="color:#000;font-weight:bold">{</span> <span style="color:#000;font-weight:bold">}</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  <span style="color:#3c5d5d;font-weight:bold">@Override</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#000;font-weight:bold">public</span> <span style="color:#458;font-weight:bold">void</span> <span style="color:#900;font-weight:bold">delete</span><span style="color:#000;font-weight:bold">(</span><span style="color:#458;font-weight:bold">long</span> procId<span style="color:#000;font-weight:bold">)</span> <span style="color:#000;font-weight:bold">{</span> <span style="color:#000;font-weight:bold">}</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  <span style="color:#3c5d5d;font-weight:bold">@Override</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#000;font-weight:bold">public</span> <span style="color:#458;font-weight:bold">void</span> <span style="color:#900;font-weight:bold">delete</span><span style="color:#000;font-weight:bold">(</span>Procedure<span style="color:#000;font-weight:bold">&lt;?&gt;</span> proc<span style="color:#000;font-weight:bold">,</span> <span style="color:#458;font-weight:bold">long</span><span style="color:#000;font-weight:bold">[]</span> subprocs<span style="color:#000;font-weight:bold">)</span> <span style="color:#000;font-weight:bold">{</span> <span style="color:#000;font-weight:bold">}</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  <span style="color:#3c5d5d;font-weight:bold">@Override</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#000;font-weight:bold">public</span> <span style="color:#458;font-weight:bold">void</span> <span style="color:#900;font-weight:bold">delete</span><span style="color:#000;font-weight:bold">(</span><span style="color:#458;font-weight:bold">long</span><span style="color:#000;font-weight:bold">[]</span> procIds<span style="color:#000;font-weight:bold">,</span> <span style="color:#458;font-weight:bold">int</span> offset<span style="color:#000;font-weight:bold">,</span> <span style="color:#458;font-weight:bold">int</span> count<span style="color:#000;font-weight:bold">)</span> <span style="color:#000;font-weight:bold">{</span> <span style="color:#000;font-weight:bold">}</span>
+</span></span><span style="display:flex;"><span><span style="color:#000;font-weight:bold">}</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h1 id="hbase-procedure-v2之scheduler">
+  HBase Procedure v2之Scheduler
+  <a class="heading-link" href="#hbase-procedure-v2%e4%b9%8bscheduler">
+    <i class="fa fa-link" aria-hidden="true"></i>
+  </a>
+</h1>
+<h2 id="scheduler的实现体系">
+  Scheduler的实现体系
+  <a class="heading-link" href="#scheduler%e7%9a%84%e5%ae%9e%e7%8e%b0%e4%bd%93%e7%b3%bb">
+    <i class="fa fa-link" aria-hidden="true"></i>
+  </a>
+</h2>
+<p>Scheduler的实现总共两种，而SimpleProcedureScheduler几乎处于废弃的状态。 MasterProcedureScheduler 与其说调度，倒不如说是维护四种与Procedure类型对应的的队列入队与出队。
+注意，这个队列本质上是个完全平衡二叉树，而不是个普通的链表。而且这些队列自身并没有任何并发访问控制，在入队和出队的时候，需要先获取schedulerLock（使用ReentrantLock实现），然后才能进行操作。</p>
+<p><img src="procedurev2-scheduler.png" alt="procedurev2 scheduler"></p>
+<p>每种Procedure被提交时，最终都会存储到对应的Procedure的队列中。</p>
+<div class="highlight"><div style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;">
+<table style="border-spacing:0;padding:0;margin:0;border:0;"><tr><td style="vertical-align:top;padding:0;margin:0;border:0;">
+<pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">1
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">2
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">3
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">4
+</span></code></pre></td>
+<td style="vertical-align:top;padding:0;margin:0;border:0;;width:100%">
+<pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-java" data-lang="java"><span style="display:flex;"><span>  <span style="color:#000;font-weight:bold">private</span> <span style="color:#000;font-weight:bold">final</span> FairQueue<span style="color:#000;font-weight:bold">&lt;</span>ServerName<span style="color:#000;font-weight:bold">&gt;</span> serverRunQueue <span style="color:#000;font-weight:bold">=</span> <span style="color:#000;font-weight:bold">new</span> FairQueue<span style="color:#000;font-weight:bold">&lt;&gt;();</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#000;font-weight:bold">private</span> <span style="color:#000;font-weight:bold">final</span> FairQueue<span style="color:#000;font-weight:bold">&lt;</span>TableName<span style="color:#000;font-weight:bold">&gt;</span> tableRunQueue <span style="color:#000;font-weight:bold">=</span> <span style="color:#000;font-weight:bold">new</span> FairQueue<span style="color:#000;font-weight:bold">&lt;&gt;();</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#000;font-weight:bold">private</span> <span style="color:#000;font-weight:bold">final</span> FairQueue<span style="color:#000;font-weight:bold">&lt;</span>String<span style="color:#000;font-weight:bold">&gt;</span> peerRunQueue <span style="color:#000;font-weight:bold">=</span> <span style="color:#000;font-weight:bold">new</span> FairQueue<span style="color:#000;font-weight:bold">&lt;&gt;();</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#000;font-weight:bold">private</span> <span style="color:#000;font-weight:bold">final</span> FairQueue<span style="color:#000;font-weight:bold">&lt;</span>TableName<span style="color:#000;font-weight:bold">&gt;</span> metaRunQueue <span style="color:#000;font-weight:bold">=</span> <span style="color:#000;font-weight:bold">new</span> FairQueue<span style="color:#000;font-weight:bold">&lt;&gt;();</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p><img src="procedurev2-scheduler-queue.png" alt="procedurev2 scheduler queue"></p>
+<h1 id="hbase-procedure-的执行流程">
+  HBase Procedure 的执行流程
+  <a class="heading-link" href="#hbase-procedure-%e7%9a%84%e6%89%a7%e8%a1%8c%e6%b5%81%e7%a8%8b">
+    <i class="fa fa-link" aria-hidden="true"></i>
+  </a>
+</h1>
+<p><img src="procedurev2-process.png" alt="procedurev2 process"></p>
+<p>Procedure的执行流程还是比较清晰的，以建表为例，当在客户端输入 <code>create 't', 'f1'</code>的时候，接着该请求会被发送到HMaster，HMaster接收到请求后，通过该请求参数构造成对应的Procedure(CreateTableProcedure)，然后借助MasterProcedureUtil工具将其提交到ProcedureExecutor，ProcedureExecutor接收到该Procedure之后，将其提交到MasterProcedureScheduler，接着由MasterProcedureScheduler将其插入CreateTableProcedure对应的队列(tableRunQueue)中。
+因为ProcedureExecutor维护了一个WorkerThread线程池，该线程池在HMaster启动的时候，完成初始化并将其启动，当向由MasterProcedureScheduler中的队列插入Procedure后，该线程池中的WorkerThread发现（while循环不断尝试发现）队列中插入了Procedure，会将其取出来（因为获取队列Procedure之前，会先尝试获取chedulerLock，所以完全不用担心多个线程同时获取到同一个Procedure），根据Procedure中定义的execute()方法执行具体步骤。</p>
+<h1 id="reference">
+  Reference
+  <a class="heading-link" href="#reference">
+    <i class="fa fa-link" aria-hidden="true"></i>
+  </a>
+</h1>
+<p><a href="https://issues.apache.org/jira/browse/HBASE-12439">HBASE-12439</a></p>
+
+      </div>
+
+
+      <footer>
+        
+
+
+        
+        
+        
+      </footer>
+    </article>
+
+    
+  </section>
+
+      </div>
+
+      
+  <footer class="footer">
+    <section class="container">
+      
+        <p>I am who i am, the unique fooid</p>
+      
+      
+        ©
+        
+          2021 -
+        
+        2022
+         Acronymor 
+      
+      
+         · 
+        Powered by <a href="https://gohugo.io/">Hugo</a> & <a href="https://github.com/luizdepra/hugo-coder/">Coder</a>.
+      
+      
+    </section>
+  </footer>
+
+
+    </main>
+
+    
+      
+        
+        <script src="/js/dark-mode.min.1d139a81392167c6a37135df59f9fd95747abba988ba33c1a557c573776cb197.js"></script>
+      
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+  </body>
+
+</html>

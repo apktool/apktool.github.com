@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Language" content="en">
+    
+      <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests; block-all-mixed-content; default-src 'self'; child-src 'self'; font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net/; form-action 'self'; frame-src 'self'; img-src 'self'; object-src 'none'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com/ https://cdn.jsdelivr.net/; script-src 'self' 'unsafe-inline' https://www.google-analytics.com; prefetch-src 'self';">
+    
+
+    <meta name="author" content="Acronymor">
+    <meta name="description" content="环境说明       参数 说明     OS Ubuntu 20.04.2 LTS   CPU Intel(R) Core(TM) i5-4210H CPU @ 2.90GHz   MEM 12177392 KB    下载准备    下载源码    这里使用的是 HBase v2.4.1
+HBase Download
+下载JDK    这里使用的是 Jdk 11
+JDK Download
+下载Maven    这里使用的是 Maven 3.6.3
+Maven Download
+下载Zookeeper    这里使用的是 Zookeeper 3.">
+    <meta name="keywords" content="blog,developer,personal">
+
+    <meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="HBase 源码调试"/>
+<meta name="twitter:description" content="环境说明       参数 说明     OS Ubuntu 20.04.2 LTS   CPU Intel(R) Core(TM) i5-4210H CPU @ 2.90GHz   MEM 12177392 KB    下载准备    下载源码    这里使用的是 HBase v2.4.1
+HBase Download
+下载JDK    这里使用的是 Jdk 11
+JDK Download
+下载Maven    这里使用的是 Maven 3.6.3
+Maven Download
+下载Zookeeper    这里使用的是 Zookeeper 3."/>
+
+    <meta property="og:title" content="HBase 源码调试" />
+<meta property="og:description" content="环境说明       参数 说明     OS Ubuntu 20.04.2 LTS   CPU Intel(R) Core(TM) i5-4210H CPU @ 2.90GHz   MEM 12177392 KB    下载准备    下载源码    这里使用的是 HBase v2.4.1
+HBase Download
+下载JDK    这里使用的是 Jdk 11
+JDK Download
+下载Maven    这里使用的是 Maven 3.6.3
+Maven Download
+下载Zookeeper    这里使用的是 Zookeeper 3." />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="http://acronymor:80/posts/hbase/chapter1/debug/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2021-02-15T11:41:00+08:00" />
+<meta property="article:modified_time" content="2021-02-15T11:41:00+08:00" />
+
+
+
+    <title>
+  HBase 源码调试 · acronymor&#39;s blog
+</title>
+
+    
+      <link rel="canonical" href="http://acronymor:80/posts/hbase/chapter1/debug/">
+    
+
+    <link rel="preload" href="/fonts/forkawesome-webfont.woff2?v=1.1.7" as="font" type="font/woff2" crossorigin>
+
+    
+      
+      
+      <link rel="stylesheet" href="/css/coder.min.7845183269a9eb35f70d63bb7521ad5e9470a140d020e12172e0b5d3ed3ec9a3.css" integrity="sha256-eEUYMmmp6zX3DWO7dSGtXpRwoUDQIOEhcuC10&#43;0&#43;yaM=" crossorigin="anonymous" media="screen" />
+    
+
+    
+
+    
+      
+        
+        
+        <link rel="stylesheet" href="/css/coder-dark.min.89c82b6022b96f77aeb521b240daec4f87ea029d84d1c78b8acd0735b91b3c92.css" integrity="sha256-icgrYCK5b3eutSGyQNrsT4fqAp2E0ceLis0HNbkbPJI=" crossorigin="anonymous" media="screen" />
+      
+    
+
+    
+
+    
+
+    <link rel="icon" type="image/png" href="/images/favicon-32x32.png" sizes="32x32">
+    <link rel="icon" type="image/png" href="/images/favicon-16x16.png" sizes="16x16">
+
+    <link rel="apple-touch-icon" href="/images/apple-touch-icon.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+
+    
+
+    <meta name="generator" content="Hugo 0.93.2" />
+  </head>
+
+  
+  
+    
+  
+  <body class="colorscheme-auto"
+        onload=""
+  >
+    
+<div class="float-container">
+    <a id="dark-mode-toggle" class="colorscheme-toggle">
+        <i class="fa fa-adjust fa-fw" aria-hidden="true"></i>
+    </a>
+</div>
+
+
+    <main class="wrapper">
+      <nav class="navigation">
+  <section class="container">
+    <a class="navigation-title" href="/">
+      acronymor&#39;s blog
+    </a>
+    
+      <input type="checkbox" id="menu-toggle" />
+      <label class="menu-button float-right" for="menu-toggle">
+        <i class="fa fa-bars fa-fw" aria-hidden="true"></i>
+      </label>
+      <ul class="navigation-list">
+        
+          
+            <li class="navigation-item">
+              <a class="navigation-link" href="/posts/">Blog</a>
+            </li>
+          
+            <li class="navigation-item">
+              <a class="navigation-link" href="/categories/">Category</a>
+            </li>
+          
+            <li class="navigation-item">
+              <a class="navigation-link" href="/tags/">Tag</a>
+            </li>
+          
+            <li class="navigation-item">
+              <a class="navigation-link" href="/about/">About</a>
+            </li>
+          
+        
+        
+      </ul>
+    
+  </section>
+</nav>
+
+
+      <div class="content">
+        
+  <section class="container post">
+    <article>
+      <header>
+        <div class="post-title">
+          <h1 class="title">
+            <a class="title-link" href="http://acronymor:80/posts/hbase/chapter1/debug/">
+              HBase 源码调试
+            </a>
+          </h1>
+        </div>
+        <div class="post-meta">
+          <div class="date">
+            <span class="posted-on">
+              <i class="fa fa-calendar" aria-hidden="true"></i>
+              <time datetime='2021-02-15T11:41:00&#43;08:00'>
+                February 15, 2021
+              </time>
+            </span>
+            <span class="reading-time">
+              <i class="fa fa-clock-o" aria-hidden="true"></i>
+              2-minute read
+            </span>
+          </div>
+          
+          <div class="categories">
+  <i class="fa fa-folder" aria-hidden="true"></i>
+    <a href="/categories/hbase%E5%9F%BA%E7%A1%80/">HBase基础</a></div>
+
+          <div class="tags">
+  <i class="fa fa-tag" aria-hidden="true"></i>
+    <a href="/tags/hbase/">HBase</a></div>
+
+        </div>
+      </header>
+
+      <div>
+        
+        
+          <aside>
+            <nav id="TableOfContents">
+  <ul>
+    <li><a href="#环境说明">环境说明</a></li>
+    <li><a href="#下载准备">下载准备</a>
+      <ul>
+        <li><a href="#下载源码">下载源码</a></li>
+        <li><a href="#下载jdk">下载JDK</a></li>
+        <li><a href="#下载maven">下载Maven</a></li>
+        <li><a href="#下载zookeeper">下载Zookeeper</a></li>
+        <li><a href="#下载hadoop">下载Hadoop</a></li>
+      </ul>
+    </li>
+    <li><a href="#环境准备">环境准备</a>
+      <ul>
+        <li><a href="#配置环境变量">配置环境变量</a></li>
+        <li><a href="#配置并启动-zookeeper">配置并启动 Zookeeper</a>
+          <ul>
+            <li><a href="#配置-zookeeper">配置 Zookeeper</a></li>
+            <li><a href="#启动-zookeeper">启动 Zookeeper</a></li>
+          </ul>
+        </li>
+        <li><a href="#配置并启动-hadoop">配置并启动 Hadoop</a>
+          <ul>
+            <li><a href="#配置-hadoop">配置 Hadoop</a></li>
+            <li><a href="#启动-hadoop">启动 Hadoop</a></li>
+          </ul>
+        </li>
+      </ul>
+    </li>
+    <li><a href="#编译-hbase">编译 HBase</a></li>
+    <li><a href="#idea-导入">IDEA 导入</a>
+      <ul>
+        <li><a href="#配置-hbase">配置 HBase</a>
+          <ul>
+            <li><a href="#hbase-sitexml">hbase-site.xml</a></li>
+          </ul>
+        </li>
+        <li><a href="#运行-hmaster">运行 HMaster</a>
+          <ul>
+            <li><a href="#参数">参数</a></li>
+          </ul>
+        </li>
+        <li><a href="#运行-hregionserver">运行 HRegionServer</a>
+          <ul>
+            <li><a href="#参数-1">参数</a></li>
+          </ul>
+        </li>
+        <li><a href="#运行-hbase-client">运行 HBase Client</a>
+          <ul>
+            <li><a href="#参数-2">参数</a></li>
+          </ul>
+        </li>
+      </ul>
+    </li>
+    <li><a href="#遇到的问题">遇到的问题</a>
+      <ul>
+        <li><a href="#问题1">问题1</a>
+          <ul>
+            <li><a href="#解决办法">解决办法</a></li>
+          </ul>
+        </li>
+        <li><a href="#问题2">问题2</a>
+          <ul>
+            <li><a href="#解决办法-1">解决办法</a></li>
+          </ul>
+        </li>
+        <li><a href="#问题3">问题3</a>
+          <ul>
+            <li><a href="#解决办法-2">解决办法</a></li>
+          </ul>
+        </li>
+      </ul>
+    </li>
+    <li><a href="#reference">Reference</a></li>
+  </ul>
+</nav>
+          </aside>
+        
+        <h1 id="环境说明">
+  环境说明
+  <a class="heading-link" href="#%e7%8e%af%e5%a2%83%e8%af%b4%e6%98%8e">
+    <i class="fa fa-link" aria-hidden="true"></i>
+  </a>
+</h1>
+<table>
+<thead>
+<tr>
+<th style="text-align:center">参数</th>
+<th style="text-align:left">说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:center">OS</td>
+<td style="text-align:left">Ubuntu 20.04.2 LTS</td>
+</tr>
+<tr>
+<td style="text-align:center">CPU</td>
+<td style="text-align:left">Intel(R) Core(TM) i5-4210H CPU @ 2.90GHz</td>
+</tr>
+<tr>
+<td style="text-align:center">MEM</td>
+<td style="text-align:left">12177392 KB</td>
+</tr>
+</tbody>
+</table>
+<h1 id="下载准备">
+  下载准备
+  <a class="heading-link" href="#%e4%b8%8b%e8%bd%bd%e5%87%86%e5%a4%87">
+    <i class="fa fa-link" aria-hidden="true"></i>
+  </a>
+</h1>
+<h2 id="下载源码">
+  下载源码
+  <a class="heading-link" href="#%e4%b8%8b%e8%bd%bd%e6%ba%90%e7%a0%81">
+    <i class="fa fa-link" aria-hidden="true"></i>
+  </a>
+</h2>
+<p>这里使用的是 HBase v2.4.1</p>
+<p><a href="https://hbase.apache.org/downloads.html">HBase Download</a></p>
+<h2 id="下载jdk">
+  下载JDK
+  <a class="heading-link" href="#%e4%b8%8b%e8%bd%bdjdk">
+    <i class="fa fa-link" aria-hidden="true"></i>
+  </a>
+</h2>
+<p>这里使用的是 Jdk 11</p>
+<p><a href="https://jdk.java.net/">JDK Download</a></p>
+<h2 id="下载maven">
+  下载Maven
+  <a class="heading-link" href="#%e4%b8%8b%e8%bd%bdmaven">
+    <i class="fa fa-link" aria-hidden="true"></i>
+  </a>
+</h2>
+<p>这里使用的是 Maven 3.6.3</p>
+<p><a href="https://maven.apache.org/download.cgi">Maven Download</a></p>
+<h2 id="下载zookeeper">
+  下载Zookeeper
+  <a class="heading-link" href="#%e4%b8%8b%e8%bd%bdzookeeper">
+    <i class="fa fa-link" aria-hidden="true"></i>
+  </a>
+</h2>
+<p>这里使用的是 Zookeeper 3.6.2</p>
+<p><a href="https://zookeeper.apache.org/releases.html">Zookeeper Download</a></p>
+<h2 id="下载hadoop">
+  下载Hadoop
+  <a class="heading-link" href="#%e4%b8%8b%e8%bd%bdhadoop">
+    <i class="fa fa-link" aria-hidden="true"></i>
+  </a>
+</h2>
+<p>这里使用的是 Hadoop 3.2.2</p>
+<p><a href="https://hadoop.apache.org/releases.html">Hadoop Download</a></p>
+<h1 id="环境准备">
+  环境准备
+  <a class="heading-link" href="#%e7%8e%af%e5%a2%83%e5%87%86%e5%a4%87">
+    <i class="fa fa-link" aria-hidden="true"></i>
+  </a>
+</h1>
+<h2 id="配置环境变量">
+  配置环境变量
+  <a class="heading-link" href="#%e9%85%8d%e7%bd%ae%e7%8e%af%e5%a2%83%e5%8f%98%e9%87%8f">
+    <i class="fa fa-link" aria-hidden="true"></i>
+  </a>
+</h2>
+<div class="highlight"><div style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;">
+<table style="border-spacing:0;padding:0;margin:0;border:0;"><tr><td style="vertical-align:top;padding:0;margin:0;border:0;">
+<pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">1
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">2
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">3
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">4
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">5
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">6
+</span></code></pre></td>
+<td style="vertical-align:top;padding:0;margin:0;border:0;;width:100%">
+<pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span><span style="color:#008080">JAVA_HOME</span><span style="color:#000;font-weight:bold">=</span>/home/li/Software/openjdk-11
+</span></span><span style="display:flex;"><span><span style="color:#008080">MAVEN_HOME</span><span style="color:#000;font-weight:bold">=</span>/home/li/Software/apache-maven-3.6.3
+</span></span><span style="display:flex;"><span><span style="color:#008080">HADOOP_HOME</span><span style="color:#000;font-weight:bold">=</span>/home/li/Software/apache-hadoop-3.2.2
+</span></span><span style="display:flex;"><span><span style="color:#008080">ZOOKEEPER_HOME</span><span style="color:#000;font-weight:bold">=</span>/home/li/Software/apache-zookeeper-3.6.2
+</span></span><span style="display:flex;"><span><span style="color:#008080">HBASE_HOME</span><span style="color:#000;font-weight:bold">=</span>/home/li/Software/apache-hbase-2.4.1
+</span></span><span style="display:flex;"><span><span style="color:#008080">PATH</span><span style="color:#000;font-weight:bold">=</span><span style="color:#008080">$PATH</span>:<span style="color:#008080">$JAVA_HOME</span>/bin:<span style="color:#008080">$MAVEN_HOME</span>/bin:<span style="color:#008080">$HADOOP_HOME</span>/bin:<span style="color:#008080">$ZOOKEEPER_HOME</span>/bin:<span style="color:#008080">$HBASE_HOME</span>/bin
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h2 id="配置并启动-zookeeper">
+  配置并启动 Zookeeper
+  <a class="heading-link" href="#%e9%85%8d%e7%bd%ae%e5%b9%b6%e5%90%af%e5%8a%a8-zookeeper">
+    <i class="fa fa-link" aria-hidden="true"></i>
+  </a>
+</h2>
+<h3 id="配置-zookeeper">
+  配置 Zookeeper
+  <a class="heading-link" href="#%e9%85%8d%e7%bd%ae-zookeeper">
+    <i class="fa fa-link" aria-hidden="true"></i>
+  </a>
+</h3>
+<div class="highlight"><div style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;">
+<table style="border-spacing:0;padding:0;margin:0;border:0;"><tr><td style="vertical-align:top;padding:0;margin:0;border:0;">
+<pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">1
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">2
+</span></code></pre></td>
+<td style="vertical-align:top;padding:0;margin:0;border:0;;width:100%">
+<pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span><span style="color:#0086b3">cd</span> /home/li/Software/apache-zookeeper-3.6.2/
+</span></span><span style="display:flex;"><span>cp conf/zoo_sample.cfg conf/zoo.cfg
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h3 id="启动-zookeeper">
+  启动 Zookeeper
+  <a class="heading-link" href="#%e5%90%af%e5%8a%a8-zookeeper">
+    <i class="fa fa-link" aria-hidden="true"></i>
+  </a>
+</h3>
+<div class="highlight"><div style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;">
+<table style="border-spacing:0;padding:0;margin:0;border:0;"><tr><td style="vertical-align:top;padding:0;margin:0;border:0;">
+<pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">1
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">2
+</span></code></pre></td>
+<td style="vertical-align:top;padding:0;margin:0;border:0;;width:100%">
+<pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span><span style="color:#0086b3">cd</span> /home/li/Software/apache-zookeeper-3.6.2/
+</span></span><span style="display:flex;"><span>bash bin/zkServer.sh start
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h2 id="配置并启动-hadoop">
+  配置并启动 Hadoop
+  <a class="heading-link" href="#%e9%85%8d%e7%bd%ae%e5%b9%b6%e5%90%af%e5%8a%a8-hadoop">
+    <i class="fa fa-link" aria-hidden="true"></i>
+  </a>
+</h2>
+<h3 id="配置-hadoop">
+  配置 Hadoop
+  <a class="heading-link" href="#%e9%85%8d%e7%bd%ae-hadoop">
+    <i class="fa fa-link" aria-hidden="true"></i>
+  </a>
+</h3>
+<h4 id="hdfs-sitexml">
+  hdfs-site.xml
+  <a class="heading-link" href="#hdfs-sitexml">
+    <i class="fa fa-link" aria-hidden="true"></i>
+  </a>
+</h4>
+<div class="highlight"><div style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;">
+<table style="border-spacing:0;padding:0;margin:0;border:0;"><tr><td style="vertical-align:top;padding:0;margin:0;border:0;">
+<pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">1
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">2
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">3
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">4
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">5
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">6
+</span></code></pre></td>
+<td style="vertical-align:top;padding:0;margin:0;border:0;;width:100%">
+<pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-xml" data-lang="xml"><span style="display:flex;"><span><span style="color:#000080">&lt;configuration&gt;</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#000080">&lt;property&gt;</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#000080">&lt;name&gt;</span>dfs.replication<span style="color:#000080">&lt;/name&gt;</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#000080">&lt;value&gt;</span>1<span style="color:#000080">&lt;/value&gt;</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#000080">&lt;/property&gt;</span>
+</span></span><span style="display:flex;"><span><span style="color:#000080">&lt;/configuration&gt;</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h4 id="core-sitexml">
+  core-site.xml
+  <a class="heading-link" href="#core-sitexml">
+    <i class="fa fa-link" aria-hidden="true"></i>
+  </a>
+</h4>
+<div class="highlight"><div style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;">
+<table style="border-spacing:0;padding:0;margin:0;border:0;"><tr><td style="vertical-align:top;padding:0;margin:0;border:0;">
+<pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">1
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">2
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">3
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">4
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">5
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">6
+</span></code></pre></td>
+<td style="vertical-align:top;padding:0;margin:0;border:0;;width:100%">
+<pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-xml" data-lang="xml"><span style="display:flex;"><span><span style="color:#000080">&lt;configuration&gt;</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#000080">&lt;property&gt;</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#000080">&lt;name&gt;</span>fs.defaultFS<span style="color:#000080">&lt;/name&gt;</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#000080">&lt;value&gt;</span>hdfs://localhost:9000<span style="color:#000080">&lt;/value&gt;</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#000080">&lt;/property&gt;</span>
+</span></span><span style="display:flex;"><span><span style="color:#000080">&lt;/configuration&gt;</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h4 id="hadoop-envsh">
+  hadoop-env.sh
+  <a class="heading-link" href="#hadoop-envsh">
+    <i class="fa fa-link" aria-hidden="true"></i>
+  </a>
+</h4>
+<div class="highlight"><div style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;">
+<table style="border-spacing:0;padding:0;margin:0;border:0;"><tr><td style="vertical-align:top;padding:0;margin:0;border:0;">
+<pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">1
+</span></code></pre></td>
+<td style="vertical-align:top;padding:0;margin:0;border:0;;width:100%">
+<pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span><span style="color:#0086b3">export</span> <span style="color:#008080">JAVA_HOME</span><span style="color:#000;font-weight:bold">=</span>/home/li/Software/openjdk-11
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h3 id="启动-hadoop">
+  启动 Hadoop
+  <a class="heading-link" href="#%e5%90%af%e5%8a%a8-hadoop">
+    <i class="fa fa-link" aria-hidden="true"></i>
+  </a>
+</h3>
+<div class="highlight"><div style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;">
+<table style="border-spacing:0;padding:0;margin:0;border:0;"><tr><td style="vertical-align:top;padding:0;margin:0;border:0;">
+<pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">1
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">2
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">3
+</span></code></pre></td>
+<td style="vertical-align:top;padding:0;margin:0;border:0;;width:100%">
+<pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span><span style="color:#0086b3">cd</span> /home/li/Software/apache-hadoop-3.2.2
+</span></span><span style="display:flex;"><span>bin/hdfs namenode -format
+</span></span><span style="display:flex;"><span>sbin/start-dfs.sh
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h1 id="编译-hbase">
+  编译 HBase
+  <a class="heading-link" href="#%e7%bc%96%e8%af%91-hbase">
+    <i class="fa fa-link" aria-hidden="true"></i>
+  </a>
+</h1>
+<div class="highlight"><div style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;">
+<table style="border-spacing:0;padding:0;margin:0;border:0;"><tr><td style="vertical-align:top;padding:0;margin:0;border:0;">
+<pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">1
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">2
+</span></code></pre></td>
+<td style="vertical-align:top;padding:0;margin:0;border:0;;width:100%">
+<pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span><span style="color:#0086b3">cd</span> /home/li/Workspace/hbase-2.4.1
+</span></span><span style="display:flex;"><span>mvn clean package -DskipTests -Dhadoop.profile<span style="color:#000;font-weight:bold">=</span>3.0
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p><img src="hbase-compile.png" alt="hbase compile success"></p>
+<h1 id="idea-导入">
+  IDEA 导入
+  <a class="heading-link" href="#idea-%e5%af%bc%e5%85%a5">
+    <i class="fa fa-link" aria-hidden="true"></i>
+  </a>
+</h1>
+<h2 id="配置-hbase">
+  配置 HBase
+  <a class="heading-link" href="#%e9%85%8d%e7%bd%ae-hbase">
+    <i class="fa fa-link" aria-hidden="true"></i>
+  </a>
+</h2>
+<h3 id="hbase-sitexml">
+  hbase-site.xml
+  <a class="heading-link" href="#hbase-sitexml">
+    <i class="fa fa-link" aria-hidden="true"></i>
+  </a>
+</h3>
+<div class="highlight"><div style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;">
+<table style="border-spacing:0;padding:0;margin:0;border:0;"><tr><td style="vertical-align:top;padding:0;margin:0;border:0;">
+<pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 1
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 2
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 3
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 4
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 5
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 6
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 7
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 8
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 9
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">10
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">11
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">12
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">13
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">14
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">15
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">16
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">17
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">18
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">19
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">20
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">21
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">22
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">23
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">24
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">25
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">26
+</span></code></pre></td>
+<td style="vertical-align:top;padding:0;margin:0;border:0;;width:100%">
+<pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-xml" data-lang="xml"><span style="display:flex;"><span><span style="color:#000080">&lt;configuration&gt;</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#000080">&lt;property&gt;</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#000080">&lt;name&gt;</span>hbase.cluster.distributed<span style="color:#000080">&lt;/name&gt;</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#000080">&lt;value&gt;</span>true<span style="color:#000080">&lt;/value&gt;</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#000080">&lt;/property&gt;</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#000080">&lt;property&gt;</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#000080">&lt;name&gt;</span>hbase.zookeeper.quorum<span style="color:#000080">&lt;/name&gt;</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#000080">&lt;value&gt;</span>localhost:2181<span style="color:#000080">&lt;/value&gt;</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#000080">&lt;/property&gt;</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#000080">&lt;property&gt;</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#000080">&lt;name&gt;</span>hbase.rootdir<span style="color:#000080">&lt;/name&gt;</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#000080">&lt;value&gt;</span>hdfs://localhost:9000/hbase<span style="color:#000080">&lt;/value&gt;</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#000080">&lt;/property&gt;</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#000080">&lt;property&gt;</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#000080">&lt;name&gt;</span>hbase.tmp.dir<span style="color:#000080">&lt;/name&gt;</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#000080">&lt;value&gt;</span>/tmp/hbase<span style="color:#000080">&lt;/value&gt;</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#000080">&lt;/property&gt;</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#000080">&lt;property&gt;</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#000080">&lt;name&gt;</span>hbase.unsafe.stream.capability.enforce<span style="color:#000080">&lt;/name&gt;</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#000080">&lt;value&gt;</span>false<span style="color:#000080">&lt;/value&gt;</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#000080">&lt;/property&gt;</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#000080">&lt;property&gt;</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#000080">&lt;name&gt;</span>hbase.defaults.for.version.skip<span style="color:#000080">&lt;/name&gt;</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#000080">&lt;value&gt;</span>true<span style="color:#000080">&lt;/value&gt;</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#000080">&lt;/property&gt;</span>
+</span></span><span style="display:flex;"><span><span style="color:#000080">&lt;/configuration&gt;</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h2 id="运行-hmaster">
+  运行 HMaster
+  <a class="heading-link" href="#%e8%bf%90%e8%a1%8c-hmaster">
+    <i class="fa fa-link" aria-hidden="true"></i>
+  </a>
+</h2>
+<p><img src="idea-master-run.png" alt="idea master"></p>
+<p>浏览器打开 <a href="http://localhost:16010/">Master UI</a> 查看状态</p>
+<h3 id="参数">
+  参数
+  <a class="heading-link" href="#%e5%8f%82%e6%95%b0">
+    <i class="fa fa-link" aria-hidden="true"></i>
+  </a>
+</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align:center">参数名称</th>
+<th style="text-align:left">参数值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:center">vm</td>
+<td style="text-align:left">-Dlog4j.configuration=file:///home/li/Workspace/hbase-2.4.1/conf/log4j.properties</td>
+</tr>
+<tr>
+<td style="text-align:center">main</td>
+<td style="text-align:left">org.apache.hadoop.hbase.master.HMaster</td>
+</tr>
+<tr>
+<td style="text-align:center">param</td>
+<td style="text-align:left">start</td>
+</tr>
+</tbody>
+</table>
+<h2 id="运行-hregionserver">
+  运行 HRegionServer
+  <a class="heading-link" href="#%e8%bf%90%e8%a1%8c-hregionserver">
+    <i class="fa fa-link" aria-hidden="true"></i>
+  </a>
+</h2>
+<p><img src="idea-regionserver-run.png" alt="idea regionserver"></p>
+<p>浏览器打开 <a href="http://localhost:16030/">Master UI</a> 查看状态</p>
+<h3 id="参数-1">
+  参数
+  <a class="heading-link" href="#%e5%8f%82%e6%95%b0-1">
+    <i class="fa fa-link" aria-hidden="true"></i>
+  </a>
+</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align:center">参数名称</th>
+<th style="text-align:left">参数值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:center">vm</td>
+<td style="text-align:left">-Dlog4j.configuration=file:///home/li/Workspace/hbase-2.4.1/conf/log4j.properties</td>
+</tr>
+<tr>
+<td style="text-align:center">main</td>
+<td style="text-align:left">org.apache.hadoop.hbase.regionserver.HRegionServer</td>
+</tr>
+<tr>
+<td style="text-align:center">param</td>
+<td style="text-align:left">start</td>
+</tr>
+</tbody>
+</table>
+<h2 id="运行-hbase-client">
+  运行 HBase Client
+  <a class="heading-link" href="#%e8%bf%90%e8%a1%8c-hbase-client">
+    <i class="fa fa-link" aria-hidden="true"></i>
+  </a>
+</h2>
+<p><img src="idea-client-run.png" alt="idea client"></p>
+<p>控制台查看状态</p>
+<h3 id="参数-2">
+  参数
+  <a class="heading-link" href="#%e5%8f%82%e6%95%b0-2">
+    <i class="fa fa-link" aria-hidden="true"></i>
+  </a>
+</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align:center">参数名称</th>
+<th style="text-align:left">参数值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:center">vm</td>
+<td style="text-align:left">-Dlog4j.configuration=file:///home/li/Workspace/hbase-2.4.1/conf/log4j.properties</td>
+</tr>
+<tr>
+<td style="text-align:center">vm</td>
+<td style="text-align:left">-Dhbase.ruby.sources=file:///home/li/Workspace/hbase-2.4.1/hbase-shell/src/main/ruby</td>
+</tr>
+<tr>
+<td style="text-align:center">main</td>
+<td style="text-align:left">org.jruby.Main</td>
+</tr>
+<tr>
+<td style="text-align:center">param</td>
+<td style="text-align:left">/home/li/Workspace/hbase-2.4.1/hbase-shell/src/main/ruby/jar-bootstrap.rb</td>
+</tr>
+</tbody>
+</table>
+<h1 id="遇到的问题">
+  遇到的问题
+  <a class="heading-link" href="#%e9%81%87%e5%88%b0%e7%9a%84%e9%97%ae%e9%a2%98">
+    <i class="fa fa-link" aria-hidden="true"></i>
+  </a>
+</h1>
+<h2 id="问题1">
+  问题1
+  <a class="heading-link" href="#%e9%97%ae%e9%a2%981">
+    <i class="fa fa-link" aria-hidden="true"></i>
+  </a>
+</h2>
+<div class="highlight"><div style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;">
+<table style="border-spacing:0;padding:0;margin:0;border:0;"><tr><td style="vertical-align:top;padding:0;margin:0;border:0;">
+<pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">1
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">2
+</span></code></pre></td>
+<td style="vertical-align:top;padding:0;margin:0;border:0;;width:100%">
+<pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>/home/li/Workspace/hbase-2.4.1/hbase-common/src/main/java/org/apache/hadoop/hbase/util/Bytes.java:50:16
+</span></span><span style="display:flex;"><span>java: package sun.misc does not exist
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h3 id="解决办法">
+  解决办法
+  <a class="heading-link" href="#%e8%a7%a3%e5%86%b3%e5%8a%9e%e6%b3%95">
+    <i class="fa fa-link" aria-hidden="true"></i>
+  </a>
+</h3>
+<p><img src="idea-javac.png" alt="idea javac config"></p>
+<h2 id="问题2">
+  问题2
+  <a class="heading-link" href="#%e9%97%ae%e9%a2%982">
+    <i class="fa fa-link" aria-hidden="true"></i>
+  </a>
+</h2>
+<div class="highlight"><div style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;">
+<table style="border-spacing:0;padding:0;margin:0;border:0;"><tr><td style="vertical-align:top;padding:0;margin:0;border:0;">
+<pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">1
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">2
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">3
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">4
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">5
+</span></code></pre></td>
+<td style="vertical-align:top;padding:0;margin:0;border:0;;width:100%">
+<pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>SLF4J: Failed to load class &#34;org.slf4j.impl.StaticLoggerBinder&#34;.
+</span></span><span style="display:flex;"><span>SLF4J: Defaulting to no-operation (NOP) logger implementation
+</span></span><span style="display:flex;"><span>SLF4J: See http://www.slf4j.org/codes.html#StaticLoggerBinder for further details.
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>Process finished with exit code 255
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h3 id="解决办法-1">
+  解决办法
+  <a class="heading-link" href="#%e8%a7%a3%e5%86%b3%e5%8a%9e%e6%b3%95-1">
+    <i class="fa fa-link" aria-hidden="true"></i>
+  </a>
+</h3>
+<p><code>hbase-server/pom.xml</code></p>
+<div class="highlight"><div style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;">
+<table style="border-spacing:0;padding:0;margin:0;border:0;"><tr><td style="vertical-align:top;padding:0;margin:0;border:0;">
+<pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 1
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 2
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 3
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 4
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 5
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 6
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 7
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 8
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 9
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">10
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">11
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">12
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">13
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">14
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">15
+</span></code></pre></td>
+<td style="vertical-align:top;padding:0;margin:0;border:0;;width:100%">
+<pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-xml" data-lang="xml"><span style="display:flex;"><span>    ...
+</span></span><span style="display:flex;"><span>    <span style="color:#000080">&lt;dependency&gt;</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#000080">&lt;groupId&gt;</span>log4j<span style="color:#000080">&lt;/groupId&gt;</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#000080">&lt;artifactId&gt;</span>log4j<span style="color:#000080">&lt;/artifactId&gt;</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#000080">&lt;/dependency&gt;</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#000080">&lt;dependency&gt;</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#000080">&lt;groupId&gt;</span>org.slf4j<span style="color:#000080">&lt;/groupId&gt;</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#000080">&lt;artifactId&gt;</span>slf4j-api<span style="color:#000080">&lt;/artifactId&gt;</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#000080">&lt;/dependency&gt;</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#000080">&lt;dependency&gt;</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#000080">&lt;groupId&gt;</span>org.slf4j<span style="color:#000080">&lt;/groupId&gt;</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#000080">&lt;artifactId&gt;</span>slf4j-simple<span style="color:#000080">&lt;/artifactId&gt;</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#000080">&lt;version&gt;</span>${slf4j.version}<span style="color:#000080">&lt;/version&gt;</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#000080">&lt;/dependency&gt;</span>
+</span></span><span style="display:flex;"><span>    ...
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p><code>hbase-shell/pom.xml</code></p>
+<div class="highlight"><div style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;">
+<table style="border-spacing:0;padding:0;margin:0;border:0;"><tr><td style="vertical-align:top;padding:0;margin:0;border:0;">
+<pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">1
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">2
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">3
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">4
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">5
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">6
+</span></code></pre></td>
+<td style="vertical-align:top;padding:0;margin:0;border:0;;width:100%">
+<pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-xml" data-lang="xml"><span style="display:flex;"><span>    ...
+</span></span><span style="display:flex;"><span>    <span style="color:#000080">&lt;dependency&gt;</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#000080">&lt;groupId&gt;</span>log4j<span style="color:#000080">&lt;/groupId&gt;</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#000080">&lt;artifactId&gt;</span>log4j<span style="color:#000080">&lt;/artifactId&gt;</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#000080">&lt;/dependency&gt;</span>
+</span></span><span style="display:flex;"><span>    ...
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h2 id="问题3">
+  问题3
+  <a class="heading-link" href="#%e9%97%ae%e9%a2%983">
+    <i class="fa fa-link" aria-hidden="true"></i>
+  </a>
+</h2>
+<div class="highlight"><div style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;">
+<table style="border-spacing:0;padding:0;margin:0;border:0;"><tr><td style="vertical-align:top;padding:0;margin:0;border:0;">
+<pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">1
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">2
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">3
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">4
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">5
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">6
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">7
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">8
+</span></code></pre></td>
+<td style="vertical-align:top;padding:0;margin:0;border:0;;width:100%">
+<pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>[main] INFO org.apache.hadoop.hbase.util.VersionInfo - From source with checksum b1816e628623b4b488f538edc0dbaa5b17e5bde4157c65e1c7d4846f68e85570b4e5a3142a633dce153db005883f3d9e5f4363dcb653984e8ae6fb8d692d1cf5
+</span></span><span style="display:flex;"><span>[main] ERROR org.apache.hadoop.hbase.util.ServerCommandLine - Failed to run
+</span></span><span style="display:flex;"><span>java.lang.RuntimeException: hbase-default.xml file seems to be for an older version of HBase (@@@VERSION@@@), this version is 2.4.1
+</span></span><span style="display:flex;"><span>	at org.apache.hadoop.hbase.HBaseConfiguration.checkDefaultsVersion(HBaseConfiguration.java:74)
+</span></span><span style="display:flex;"><span>	at org.apache.hadoop.hbase.HBaseConfiguration.addHbaseResources(HBaseConfiguration.java:84)
+</span></span><span style="display:flex;"><span>	at org.apache.hadoop.hbase.HBaseConfiguration.create(HBaseConfiguration.java:98)
+</span></span><span style="display:flex;"><span>	at org.apache.hadoop.hbase.util.ServerCommandLine.doMain(ServerCommandLine.java:149)
+</span></span><span style="display:flex;"><span>	at org.apache.hadoop.hbase.master.HMaster.main(HMaster.java:2863)
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h3 id="解决办法-2">
+  解决办法
+  <a class="heading-link" href="#%e8%a7%a3%e5%86%b3%e5%8a%9e%e6%b3%95-2">
+    <i class="fa fa-link" aria-hidden="true"></i>
+  </a>
+</h3>
+<div class="highlight"><div style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;">
+<table style="border-spacing:0;padding:0;margin:0;border:0;"><tr><td style="vertical-align:top;padding:0;margin:0;border:0;">
+<pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">1
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">2
+</span></code></pre></td>
+<td style="vertical-align:top;padding:0;margin:0;border:0;;width:100%">
+<pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span><span style="color:#0086b3">cd</span> /home/li/Workspace/hbase-2.4.1
+</span></span><span style="display:flex;"><span>cp conf/hbase-site.xml hbase-server/target/classes
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h1 id="reference">
+  Reference
+  <a class="heading-link" href="#reference">
+    <i class="fa fa-link" aria-hidden="true"></i>
+  </a>
+</h1>
+<p><a href="https://lihuimintu.github.io/2019/03/19/hbase-src-debug/">HBase 源码调试</a></p>
+
+      </div>
+
+
+      <footer>
+        
+
+
+        
+        
+        
+      </footer>
+    </article>
+
+    
+  </section>
+
+      </div>
+
+      
+  <footer class="footer">
+    <section class="container">
+      
+        <p>I am who i am, the unique fooid</p>
+      
+      
+        ©
+        
+          2021 -
+        
+        2022
+         Acronymor 
+      
+      
+         · 
+        Powered by <a href="https://gohugo.io/">Hugo</a> & <a href="https://github.com/luizdepra/hugo-coder/">Coder</a>.
+      
+      
+    </section>
+  </footer>
+
+
+    </main>
+
+    
+      
+        
+        <script src="/js/dark-mode.min.1d139a81392167c6a37135df59f9fd95747abba988ba33c1a557c573776cb197.js"></script>
+      
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+  </body>
+
+</html>

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Elasticsearch on acronymor&#39;s blog</title>
+    <link>http://acronymor:80/tags/elasticsearch/</link>
+    <description>Recent content in Elasticsearch on acronymor&#39;s blog</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <lastBuildDate>Sat, 01 May 2021 08:46:00 +0800</lastBuildDate><atom:link href="http://acronymor:80/tags/elasticsearch/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Elasticsearch 源码调试</title>
+      <link>http://acronymor:80/posts/elasticsearch/chapter1/debug/</link>
+      <pubDate>Sat, 01 May 2021 08:46:00 +0800</pubDate>
+      
+      <guid>http://acronymor:80/posts/elasticsearch/chapter1/debug/</guid>
+      <description>环境说明       参数 说明     OS Ubuntu 20.04.2 LTS   CPU Intel(R) Core(TM) i5-4210H CPU @ 2.90GHz   MEM 12177392 KB    下载准备    下载源码    这里使用的是 Elasticsearch 7.12.1
+Elasticsearch Download
+下载JDK    这里使用的是 Jdk 15.0.2
+JDK Download
+环境准备    配置 gradle    在用户根目录创建目录 .gradle，并在其中创建 init.gradle 文件，然后填写下述内容
+1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33  allprojects{  repositories {  def ALIYUN_REPOSITORY_URL = &amp;#39;https://maven.</description>
+    </item>
+    
+  </channel>
+</rss>

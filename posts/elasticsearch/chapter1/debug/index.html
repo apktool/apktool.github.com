@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Language" content="en">
+    
+      <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests; block-all-mixed-content; default-src 'self'; child-src 'self'; font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net/; form-action 'self'; frame-src 'self'; img-src 'self'; object-src 'none'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com/ https://cdn.jsdelivr.net/; script-src 'self' 'unsafe-inline' https://www.google-analytics.com; prefetch-src 'self';">
+    
+
+    <meta name="author" content="Acronymor">
+    <meta name="description" content="环境说明       参数 说明     OS Ubuntu 20.04.2 LTS   CPU Intel(R) Core(TM) i5-4210H CPU @ 2.90GHz   MEM 12177392 KB    下载准备    下载源码    这里使用的是 Elasticsearch 7.12.1
+Elasticsearch Download
+下载JDK    这里使用的是 Jdk 15.0.2
+JDK Download
+环境准备    配置 gradle    在用户根目录创建目录 .gradle，并在其中创建 init.gradle 文件，然后填写下述内容
+1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33  allprojects{  repositories {  def ALIYUN_REPOSITORY_URL = &#39;https://maven.">
+    <meta name="keywords" content="blog,developer,personal">
+
+    <meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Elasticsearch 源码调试"/>
+<meta name="twitter:description" content="环境说明       参数 说明     OS Ubuntu 20.04.2 LTS   CPU Intel(R) Core(TM) i5-4210H CPU @ 2.90GHz   MEM 12177392 KB    下载准备    下载源码    这里使用的是 Elasticsearch 7.12.1
+Elasticsearch Download
+下载JDK    这里使用的是 Jdk 15.0.2
+JDK Download
+环境准备    配置 gradle    在用户根目录创建目录 .gradle，并在其中创建 init.gradle 文件，然后填写下述内容
+1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33  allprojects{  repositories {  def ALIYUN_REPOSITORY_URL = &#39;https://maven."/>
+
+    <meta property="og:title" content="Elasticsearch 源码调试" />
+<meta property="og:description" content="环境说明       参数 说明     OS Ubuntu 20.04.2 LTS   CPU Intel(R) Core(TM) i5-4210H CPU @ 2.90GHz   MEM 12177392 KB    下载准备    下载源码    这里使用的是 Elasticsearch 7.12.1
+Elasticsearch Download
+下载JDK    这里使用的是 Jdk 15.0.2
+JDK Download
+环境准备    配置 gradle    在用户根目录创建目录 .gradle，并在其中创建 init.gradle 文件，然后填写下述内容
+1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33  allprojects{  repositories {  def ALIYUN_REPOSITORY_URL = &#39;https://maven." />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="http://acronymor:80/posts/elasticsearch/chapter1/debug/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2021-05-01T08:46:00+08:00" />
+<meta property="article:modified_time" content="2021-05-01T08:46:00+08:00" />
+
+
+
+    <title>
+  Elasticsearch 源码调试 · acronymor&#39;s blog
+</title>
+
+    
+      <link rel="canonical" href="http://acronymor:80/posts/elasticsearch/chapter1/debug/">
+    
+
+    <link rel="preload" href="/fonts/forkawesome-webfont.woff2?v=1.1.7" as="font" type="font/woff2" crossorigin>
+
+    
+      
+      
+      <link rel="stylesheet" href="/css/coder.min.7845183269a9eb35f70d63bb7521ad5e9470a140d020e12172e0b5d3ed3ec9a3.css" integrity="sha256-eEUYMmmp6zX3DWO7dSGtXpRwoUDQIOEhcuC10&#43;0&#43;yaM=" crossorigin="anonymous" media="screen" />
+    
+
+    
+
+    
+      
+        
+        
+        <link rel="stylesheet" href="/css/coder-dark.min.89c82b6022b96f77aeb521b240daec4f87ea029d84d1c78b8acd0735b91b3c92.css" integrity="sha256-icgrYCK5b3eutSGyQNrsT4fqAp2E0ceLis0HNbkbPJI=" crossorigin="anonymous" media="screen" />
+      
+    
+
+    
+
+    
+
+    <link rel="icon" type="image/png" href="/images/favicon-32x32.png" sizes="32x32">
+    <link rel="icon" type="image/png" href="/images/favicon-16x16.png" sizes="16x16">
+
+    <link rel="apple-touch-icon" href="/images/apple-touch-icon.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+
+    
+
+    <meta name="generator" content="Hugo 0.93.2" />
+  </head>
+
+  
+  
+    
+  
+  <body class="colorscheme-auto"
+        onload=""
+  >
+    
+<div class="float-container">
+    <a id="dark-mode-toggle" class="colorscheme-toggle">
+        <i class="fa fa-adjust fa-fw" aria-hidden="true"></i>
+    </a>
+</div>
+
+
+    <main class="wrapper">
+      <nav class="navigation">
+  <section class="container">
+    <a class="navigation-title" href="/">
+      acronymor&#39;s blog
+    </a>
+    
+      <input type="checkbox" id="menu-toggle" />
+      <label class="menu-button float-right" for="menu-toggle">
+        <i class="fa fa-bars fa-fw" aria-hidden="true"></i>
+      </label>
+      <ul class="navigation-list">
+        
+          
+            <li class="navigation-item">
+              <a class="navigation-link" href="/posts/">Blog</a>
+            </li>
+          
+            <li class="navigation-item">
+              <a class="navigation-link" href="/categories/">Category</a>
+            </li>
+          
+            <li class="navigation-item">
+              <a class="navigation-link" href="/tags/">Tag</a>
+            </li>
+          
+            <li class="navigation-item">
+              <a class="navigation-link" href="/about/">About</a>
+            </li>
+          
+        
+        
+      </ul>
+    
+  </section>
+</nav>
+
+
+      <div class="content">
+        
+  <section class="container post">
+    <article>
+      <header>
+        <div class="post-title">
+          <h1 class="title">
+            <a class="title-link" href="http://acronymor:80/posts/elasticsearch/chapter1/debug/">
+              Elasticsearch 源码调试
+            </a>
+          </h1>
+        </div>
+        <div class="post-meta">
+          <div class="date">
+            <span class="posted-on">
+              <i class="fa fa-calendar" aria-hidden="true"></i>
+              <time datetime='2021-05-01T08:46:00&#43;08:00'>
+                May 1, 2021
+              </time>
+            </span>
+            <span class="reading-time">
+              <i class="fa fa-clock-o" aria-hidden="true"></i>
+              2-minute read
+            </span>
+          </div>
+          
+          <div class="categories">
+  <i class="fa fa-folder" aria-hidden="true"></i>
+    <a href="/categories/elasticsearch%E5%9F%BA%E7%A1%80/">Elasticsearch基础</a></div>
+
+          <div class="tags">
+  <i class="fa fa-tag" aria-hidden="true"></i>
+    <a href="/tags/elasticsearch/">Elasticsearch</a></div>
+
+        </div>
+      </header>
+
+      <div>
+        
+        
+          <aside>
+            <nav id="TableOfContents">
+  <ul>
+    <li><a href="#环境说明">环境说明</a></li>
+    <li><a href="#下载准备">下载准备</a>
+      <ul>
+        <li><a href="#下载源码">下载源码</a></li>
+        <li><a href="#下载jdk">下载JDK</a></li>
+      </ul>
+    </li>
+    <li><a href="#环境准备">环境准备</a>
+      <ul>
+        <li><a href="#配置-gradle">配置 gradle</a></li>
+        <li><a href="#配置环境变量">配置环境变量</a></li>
+      </ul>
+    </li>
+    <li><a href="#编译-elasticsearch">编译 Elasticsearch</a></li>
+    <li><a href="#idea-导入">IDEA 导入</a>
+      <ul>
+        <li><a href="#配置-gradle-1">配置 gradle</a></li>
+        <li><a href="#配置-elasticsearch">配置 Elasticsearch</a>
+          <ul>
+            <li><a href="#创建-es-home-目录">创建 es-home 目录</a></li>
+            <li><a href="#创建-elasticsearchpolicy-文件">创建 elasticsearch.policy 文件</a></li>
+            <li><a href="#配置-vm-options">配置 VM options</a></li>
+            <li><a href="#选择启动类启动">选择启动类启动</a></li>
+            <li><a href="#启动成功">启动成功</a></li>
+          </ul>
+        </li>
+      </ul>
+    </li>
+    <li><a href="#遇到的问题">遇到的问题</a>
+      <ul>
+        <li><a href="#unknown-codebases">Unknown codebases</a></li>
+      </ul>
+    </li>
+  </ul>
+</nav>
+          </aside>
+        
+        <h1 id="环境说明">
+  环境说明
+  <a class="heading-link" href="#%e7%8e%af%e5%a2%83%e8%af%b4%e6%98%8e">
+    <i class="fa fa-link" aria-hidden="true"></i>
+  </a>
+</h1>
+<table>
+<thead>
+<tr>
+<th style="text-align:center">参数</th>
+<th style="text-align:left">说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:center">OS</td>
+<td style="text-align:left">Ubuntu 20.04.2 LTS</td>
+</tr>
+<tr>
+<td style="text-align:center">CPU</td>
+<td style="text-align:left">Intel(R) Core(TM) i5-4210H CPU @ 2.90GHz</td>
+</tr>
+<tr>
+<td style="text-align:center">MEM</td>
+<td style="text-align:left">12177392 KB</td>
+</tr>
+</tbody>
+</table>
+<h1 id="下载准备">
+  下载准备
+  <a class="heading-link" href="#%e4%b8%8b%e8%bd%bd%e5%87%86%e5%a4%87">
+    <i class="fa fa-link" aria-hidden="true"></i>
+  </a>
+</h1>
+<h2 id="下载源码">
+  下载源码
+  <a class="heading-link" href="#%e4%b8%8b%e8%bd%bd%e6%ba%90%e7%a0%81">
+    <i class="fa fa-link" aria-hidden="true"></i>
+  </a>
+</h2>
+<p>这里使用的是 Elasticsearch 7.12.1</p>
+<p><a href="https://github.com/elastic/elasticsearch/releases">Elasticsearch Download</a></p>
+<h2 id="下载jdk">
+  下载JDK
+  <a class="heading-link" href="#%e4%b8%8b%e8%bd%bdjdk">
+    <i class="fa fa-link" aria-hidden="true"></i>
+  </a>
+</h2>
+<p>这里使用的是 Jdk 15.0.2</p>
+<p><a href="https://jdk.java.net/archive/">JDK Download</a></p>
+<h1 id="环境准备">
+  环境准备
+  <a class="heading-link" href="#%e7%8e%af%e5%a2%83%e5%87%86%e5%a4%87">
+    <i class="fa fa-link" aria-hidden="true"></i>
+  </a>
+</h1>
+<h2 id="配置-gradle">
+  配置 gradle
+  <a class="heading-link" href="#%e9%85%8d%e7%bd%ae-gradle">
+    <i class="fa fa-link" aria-hidden="true"></i>
+  </a>
+</h2>
+<p>在用户根目录创建目录 .gradle，并在其中创建 init.gradle 文件，然后填写下述内容</p>
+<div class="highlight"><div style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;">
+<table style="border-spacing:0;padding:0;margin:0;border:0;"><tr><td style="vertical-align:top;padding:0;margin:0;border:0;">
+<pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 1
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 2
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 3
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 4
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 5
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 6
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 7
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 8
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 9
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">10
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">11
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">12
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">13
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">14
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">15
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">16
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">17
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">18
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">19
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">20
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">21
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">22
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">23
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">24
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">25
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">26
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">27
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">28
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">29
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">30
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">31
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">32
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">33
+</span></code></pre></td>
+<td style="vertical-align:top;padding:0;margin:0;border:0;;width:100%">
+<pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-gradle" data-lang="gradle"><span style="display:flex;"><span>allprojects<span style="color:#000;font-weight:bold">{</span>
+</span></span><span style="display:flex;"><span>    repositories <span style="color:#000;font-weight:bold">{</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#458;font-weight:bold">def</span> ALIYUN_REPOSITORY_URL <span style="color:#000;font-weight:bold">=</span> <span style="color:#d14">&#39;https://maven.aliyun.com/repository/public/&#39;</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#458;font-weight:bold">def</span> ALIYUN_JCENTER_URL <span style="color:#000;font-weight:bold">=</span> <span style="color:#d14">&#39;https://maven.aliyun.com/repository/jcenter/&#39;</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#458;font-weight:bold">def</span> ALIYUN_GOOGLE_URL <span style="color:#000;font-weight:bold">=</span> <span style="color:#d14">&#39;https://maven.aliyun.com/repository/google/&#39;</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#458;font-weight:bold">def</span> ALIYUN_GRADLE_PLUGIN_URL <span style="color:#000;font-weight:bold">=</span> <span style="color:#d14">&#39;https://maven.aliyun.com/repository/gradle-plugin/&#39;</span>
+</span></span><span style="display:flex;"><span>        all <span style="color:#000;font-weight:bold">{</span> ArtifactRepository repo <span style="color:#000;font-weight:bold">-&gt;</span>
+</span></span><span style="display:flex;"><span>            <span style="color:#000;font-weight:bold">if</span><span style="color:#000;font-weight:bold">(</span>repo <span style="color:#000;font-weight:bold">instanceof</span> MavenArtifactRepository<span style="color:#000;font-weight:bold">){</span>
+</span></span><span style="display:flex;"><span>                <span style="color:#458;font-weight:bold">def</span> url <span style="color:#000;font-weight:bold">=</span> repo<span style="color:#000;font-weight:bold">.</span><span style="color:#008080">url</span><span style="color:#000;font-weight:bold">.</span><span style="color:#008080">toString</span><span style="color:#000;font-weight:bold">()</span>
+</span></span><span style="display:flex;"><span>                <span style="color:#000;font-weight:bold">if</span> <span style="color:#000;font-weight:bold">(</span>url<span style="color:#000;font-weight:bold">.</span><span style="color:#008080">startsWith</span><span style="color:#000;font-weight:bold">(</span><span style="color:#d14">&#39;https://repo1.maven.org/maven2/&#39;</span><span style="color:#000;font-weight:bold">))</span> <span style="color:#000;font-weight:bold">{</span>
+</span></span><span style="display:flex;"><span>                    project<span style="color:#000;font-weight:bold">.</span><span style="color:#008080">logger</span><span style="color:#000;font-weight:bold">.</span><span style="color:#008080">lifecycle</span> <span style="color:#d14">&#34;Repository ${repo.url} replaced by $ALIYUN_REPOSITORY_URL.&#34;</span>
+</span></span><span style="display:flex;"><span>                    remove repo
+</span></span><span style="display:flex;"><span>                <span style="color:#000;font-weight:bold">}</span>
+</span></span><span style="display:flex;"><span>                <span style="color:#000;font-weight:bold">if</span> <span style="color:#000;font-weight:bold">(</span>url<span style="color:#000;font-weight:bold">.</span><span style="color:#008080">startsWith</span><span style="color:#000;font-weight:bold">(</span><span style="color:#d14">&#39;https://jcenter.bintray.com/&#39;</span><span style="color:#000;font-weight:bold">))</span> <span style="color:#000;font-weight:bold">{</span>
+</span></span><span style="display:flex;"><span>                    project<span style="color:#000;font-weight:bold">.</span><span style="color:#008080">logger</span><span style="color:#000;font-weight:bold">.</span><span style="color:#008080">lifecycle</span> <span style="color:#d14">&#34;Repository ${repo.url} replaced by $ALIYUN_JCENTER_URL.&#34;</span>
+</span></span><span style="display:flex;"><span>                    remove repo
+</span></span><span style="display:flex;"><span>                <span style="color:#000;font-weight:bold">}</span>
+</span></span><span style="display:flex;"><span>                <span style="color:#000;font-weight:bold">if</span> <span style="color:#000;font-weight:bold">(</span>url<span style="color:#000;font-weight:bold">.</span><span style="color:#008080">startsWith</span><span style="color:#000;font-weight:bold">(</span><span style="color:#d14">&#39;https://dl.google.com/dl/android/maven2/&#39;</span><span style="color:#000;font-weight:bold">))</span> <span style="color:#000;font-weight:bold">{</span>
+</span></span><span style="display:flex;"><span>                    project<span style="color:#000;font-weight:bold">.</span><span style="color:#008080">logger</span><span style="color:#000;font-weight:bold">.</span><span style="color:#008080">lifecycle</span> <span style="color:#d14">&#34;Repository ${repo.url} replaced by $ALIYUN_GOOGLE_URL.&#34;</span>
+</span></span><span style="display:flex;"><span>                    remove repo
+</span></span><span style="display:flex;"><span>                <span style="color:#000;font-weight:bold">}</span>
+</span></span><span style="display:flex;"><span>                <span style="color:#000;font-weight:bold">if</span> <span style="color:#000;font-weight:bold">(</span>url<span style="color:#000;font-weight:bold">.</span><span style="color:#008080">startsWith</span><span style="color:#000;font-weight:bold">(</span><span style="color:#d14">&#39;https://plugins.gradle.org/m2/&#39;</span><span style="color:#000;font-weight:bold">))</span> <span style="color:#000;font-weight:bold">{</span>
+</span></span><span style="display:flex;"><span>                    project<span style="color:#000;font-weight:bold">.</span><span style="color:#008080">logger</span><span style="color:#000;font-weight:bold">.</span><span style="color:#008080">lifecycle</span> <span style="color:#d14">&#34;Repository ${repo.url} replaced by $ALIYUN_GRADLE_PLUGIN_URL.&#34;</span>
+</span></span><span style="display:flex;"><span>                    remove repo
+</span></span><span style="display:flex;"><span>                <span style="color:#000;font-weight:bold">}</span>
+</span></span><span style="display:flex;"><span>            <span style="color:#000;font-weight:bold">}</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#000;font-weight:bold">}</span>
+</span></span><span style="display:flex;"><span>        maven <span style="color:#000;font-weight:bold">{</span> url ALIYUN_REPOSITORY_URL <span style="color:#000;font-weight:bold">}</span>
+</span></span><span style="display:flex;"><span>        maven <span style="color:#000;font-weight:bold">{</span> url ALIYUN_JCENTER_URL <span style="color:#000;font-weight:bold">}</span>
+</span></span><span style="display:flex;"><span>        maven <span style="color:#000;font-weight:bold">{</span> url ALIYUN_GOOGLE_URL <span style="color:#000;font-weight:bold">}</span>
+</span></span><span style="display:flex;"><span>        maven <span style="color:#000;font-weight:bold">{</span> url ALIYUN_GRADLE_PLUGIN_URL <span style="color:#000;font-weight:bold">}</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#000;font-weight:bold">}</span>
+</span></span><span style="display:flex;"><span><span style="color:#000;font-weight:bold">}</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h2 id="配置环境变量">
+  配置环境变量
+  <a class="heading-link" href="#%e9%85%8d%e7%bd%ae%e7%8e%af%e5%a2%83%e5%8f%98%e9%87%8f">
+    <i class="fa fa-link" aria-hidden="true"></i>
+  </a>
+</h2>
+<div class="highlight"><div style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;">
+<table style="border-spacing:0;padding:0;margin:0;border:0;"><tr><td style="vertical-align:top;padding:0;margin:0;border:0;">
+<pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">1
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">2
+</span></code></pre></td>
+<td style="vertical-align:top;padding:0;margin:0;border:0;;width:100%">
+<pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span><span style="color:#008080">JAVA_HOME</span><span style="color:#000;font-weight:bold">=</span>/home/li/Software/jdk-15.0.2
+</span></span><span style="display:flex;"><span><span style="color:#008080">PATH</span><span style="color:#000;font-weight:bold">=</span><span style="color:#008080">$PATH</span>:<span style="color:#008080">$JAVA_HOME</span>/bin
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h1 id="编译-elasticsearch">
+  编译 Elasticsearch
+  <a class="heading-link" href="#%e7%bc%96%e8%af%91-elasticsearch">
+    <i class="fa fa-link" aria-hidden="true"></i>
+  </a>
+</h1>
+<div class="highlight"><div style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;">
+<table style="border-spacing:0;padding:0;margin:0;border:0;"><tr><td style="vertical-align:top;padding:0;margin:0;border:0;">
+<pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">1
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">2
+</span></code></pre></td>
+<td style="vertical-align:top;padding:0;margin:0;border:0;;width:100%">
+<pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span><span style="color:#0086b3">cd</span> /home/li/Workspace/elasticsearch-7.12.1
+</span></span><span style="display:flex;"><span>./gradlew clean :distribution:archives:oss-no-jdk-linux-tar:assemble
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p><img src="es-package.png" alt="es-package"></p>
+<h1 id="idea-导入">
+  IDEA 导入
+  <a class="heading-link" href="#idea-%e5%af%bc%e5%85%a5">
+    <i class="fa fa-link" aria-hidden="true"></i>
+  </a>
+</h1>
+<h2 id="配置-gradle-1">
+  配置 gradle
+  <a class="heading-link" href="#%e9%85%8d%e7%bd%ae-gradle-1">
+    <i class="fa fa-link" aria-hidden="true"></i>
+  </a>
+</h2>
+<p><img src="idea-jdk15-gradle.png" alt="idea-jdk15">
+<img src="idea-jdk15-compile.png" alt="idea-jdk15"></p>
+<h2 id="配置-elasticsearch">
+  配置 Elasticsearch
+  <a class="heading-link" href="#%e9%85%8d%e7%bd%ae-elasticsearch">
+    <i class="fa fa-link" aria-hidden="true"></i>
+  </a>
+</h2>
+<p>这里，所有将 elasticsearch 的代码放置在 <code>/home/li/Workspace/elasticsearch-7.12.1</code></p>
+<h3 id="创建-es-home-目录">
+  创建 es-home 目录
+  <a class="heading-link" href="#%e5%88%9b%e5%bb%ba-es-home-%e7%9b%ae%e5%bd%95">
+    <i class="fa fa-link" aria-hidden="true"></i>
+  </a>
+</h3>
+<p>名称不一定是 es-home ，但是需要与下文保持一致</p>
+<div class="highlight"><div style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;">
+<table style="border-spacing:0;padding:0;margin:0;border:0;"><tr><td style="vertical-align:top;padding:0;margin:0;border:0;">
+<pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">1
+</span></code></pre></td>
+<td style="vertical-align:top;padding:0;margin:0;border:0;;width:100%">
+<pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>mkdir -p /home/li/Workspace/elasticsearch-7.12.1/es-home
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>将前面编译出来的elasticsearch-oss-7.12.1-SNAPSHOT-no-jdk-linux-x86_64.tar.gz解压出来的 config 和 modules 两个目录拷贝到 es-home下面。</p>
+<h3 id="创建-elasticsearchpolicy-文件">
+  创建 elasticsearch.policy 文件
+  <a class="heading-link" href="#%e5%88%9b%e5%bb%ba-elasticsearchpolicy-%e6%96%87%e4%bb%b6">
+    <i class="fa fa-link" aria-hidden="true"></i>
+  </a>
+</h3>
+<div class="highlight"><div style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;">
+<table style="border-spacing:0;padding:0;margin:0;border:0;"><tr><td style="vertical-align:top;padding:0;margin:0;border:0;">
+<pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">1
+</span></code></pre></td>
+<td style="vertical-align:top;padding:0;margin:0;border:0;;width:100%">
+<pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>touch /home/li/WorkSpace/elasticsearch-7.12.1/es-home/config/elasticsearch.policy
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>并写入以下内容</p>
+<div class="highlight"><div style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;">
+<table style="border-spacing:0;padding:0;margin:0;border:0;"><tr><td style="vertical-align:top;padding:0;margin:0;border:0;">
+<pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">1
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">2
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">3
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">4
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">5
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">6
+</span></code></pre></td>
+<td style="vertical-align:top;padding:0;margin:0;border:0;;width:100%">
+<pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-zed" data-lang="zed"><span style="display:flex;"><span>grant{<span style="color:#bbb">
+</span></span></span><span style="display:flex;"><span><span style="color:#bbb">    </span><span style="color:#000;font-weight:bold">permission</span><span style="color:#bbb"> </span>java.lang.RuntimePermission<span style="color:#bbb"> </span><span style="color:#a61717;background-color:#e3d2d2">&#34;</span>createClassLoader<span style="color:#a61717;background-color:#e3d2d2">&#34;</span>;<span style="color:#bbb">
+</span></span></span><span style="display:flex;"><span><span style="color:#bbb">    </span><span style="color:#000;font-weight:bold">permission</span><span style="color:#bbb"> </span>java.lang.RuntimePermission<span style="color:#bbb"> </span><span style="color:#a61717;background-color:#e3d2d2">&#34;</span>getClassLoader<span style="color:#a61717;background-color:#e3d2d2">&#34;</span>;<span style="color:#bbb">
+</span></span></span><span style="display:flex;"><span><span style="color:#bbb">    </span><span style="color:#000;font-weight:bold">permission</span><span style="color:#bbb"> </span>java.lang.RuntimePermission<span style="color:#bbb"> </span><span style="color:#a61717;background-color:#e3d2d2">&#34;</span>accessDeclaredMembers<span style="color:#a61717;background-color:#e3d2d2">&#34;</span>;<span style="color:#bbb">
+</span></span></span><span style="display:flex;"><span><span style="color:#bbb">    </span><span style="color:#000;font-weight:bold">permission</span><span style="color:#bbb"> </span>java.lang.RuntimePermission<span style="color:#bbb"> </span><span style="color:#a61717;background-color:#e3d2d2">&#34;</span>setContextClassLoader<span style="color:#a61717;background-color:#e3d2d2">&#34;</span>;<span style="color:#bbb">
+</span></span></span><span style="display:flex;"><span><span style="color:#bbb"></span>};<span style="color:#bbb">
+</span></span></span></code></pre></td></tr></table>
+</div>
+</div><h3 id="配置-vm-options">
+  配置 VM options
+  <a class="heading-link" href="#%e9%85%8d%e7%bd%ae-vm-options">
+    <i class="fa fa-link" aria-hidden="true"></i>
+  </a>
+</h3>
+<div class="highlight"><div style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;">
+<table style="border-spacing:0;padding:0;margin:0;border:0;"><tr><td style="vertical-align:top;padding:0;margin:0;border:0;">
+<pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">1
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">2
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">3
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">4
+</span></code></pre></td>
+<td style="vertical-align:top;padding:0;margin:0;border:0;;width:100%">
+<pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-fallback" data-lang="fallback"><span style="display:flex;"><span>-Des.path.home=/home/li/Workspace/elasticsearch-7.12.1/es-home/
+</span></span><span style="display:flex;"><span>-Des.path.conf=/home/li/Workspace/elasticsearch-7.12.1/es-home/config
+</span></span><span style="display:flex;"><span>-Djava.security.policy=/home/li/Workspace/elasticsearch-7.12.1/es-home/config/elasticsearch.policy
+</span></span><span style="display:flex;"><span>-Dlog4j2.disable.jmx=true
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h3 id="选择启动类启动">
+  选择启动类启动
+  <a class="heading-link" href="#%e9%80%89%e6%8b%a9%e5%90%af%e5%8a%a8%e7%b1%bb%e5%90%af%e5%8a%a8">
+    <i class="fa fa-link" aria-hidden="true"></i>
+  </a>
+</h3>
+<p><img src="es-start.png" alt="es-start"></p>
+<h3 id="启动成功">
+  启动成功
+  <a class="heading-link" href="#%e5%90%af%e5%8a%a8%e6%88%90%e5%8a%9f">
+    <i class="fa fa-link" aria-hidden="true"></i>
+  </a>
+</h3>
+<p><img src="es-started.png" alt="es-started"></p>
+<p><img src="es-test.png" alt="es-test"></p>
+<h1 id="遇到的问题">
+  遇到的问题
+  <a class="heading-link" href="#%e9%81%87%e5%88%b0%e7%9a%84%e9%97%ae%e9%a2%98">
+    <i class="fa fa-link" aria-hidden="true"></i>
+  </a>
+</h1>
+<h2 id="unknown-codebases">
+  Unknown codebases
+  <a class="heading-link" href="#unknown-codebases">
+    <i class="fa fa-link" aria-hidden="true"></i>
+  </a>
+</h2>
+<p><img src="unknown-codebases.png" alt="unknow codebases"></p>
+<p>注释掉 <code>elasticsearch-7.12.1/server/src/main/resources/org/elasticsearch/bootstrap/security.policy</code>中的下述语句</p>
+<div class="highlight"><div style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;">
+<table style="border-spacing:0;padding:0;margin:0;border:0;"><tr><td style="vertical-align:top;padding:0;margin:0;border:0;">
+<pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 1
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 2
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 3
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 4
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 5
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 6
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 7
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 8
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 9
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">10
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">11
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">12
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">13
+</span></code></pre></td>
+<td style="vertical-align:top;padding:0;margin:0;border:0;;width:100%">
+<pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-zed" data-lang="zed"><span style="display:flex;"><span>grant<span style="color:#bbb"> </span>codeBase<span style="color:#bbb"> </span><span style="color:#a61717;background-color:#e3d2d2">&#34;$</span>{codebase.elasticsearch<span style="color:#000;font-weight:bold">-</span>secure<span style="color:#000;font-weight:bold">-</span>sm}<span style="color:#a61717;background-color:#e3d2d2">&#34;</span><span style="color:#bbb"> </span>{<span style="color:#bbb">
+</span></span></span><span style="display:flex;"><span><span style="color:#bbb">  </span><span style="color:#000;font-weight:bold">permission</span><span style="color:#bbb"> </span>java.security.AllPermission;<span style="color:#bbb">
+</span></span></span><span style="display:flex;"><span><span style="color:#bbb"></span>};<span style="color:#bbb">
+</span></span></span><span style="display:flex;"><span><span style="color:#bbb">
+</span></span></span><span style="display:flex;"><span><span style="color:#bbb"></span>grant<span style="color:#bbb"> </span>codeBase<span style="color:#bbb"> </span><span style="color:#a61717;background-color:#e3d2d2">&#34;$</span>{codebase.elasticsearch}<span style="color:#a61717;background-color:#e3d2d2">&#34;</span><span style="color:#bbb"> </span>{<span style="color:#bbb">
+</span></span></span><span style="display:flex;"><span><span style="color:#bbb">  </span><span style="color:#998;font-style:italic">// needed for loading plugins which may expect the context class loader to be set
+</span></span></span><span style="display:flex;"><span><span style="color:#998;font-style:italic"></span><span style="color:#bbb">  </span><span style="color:#000;font-weight:bold">permission</span><span style="color:#bbb"> </span>java.lang.RuntimePermission<span style="color:#bbb"> </span><span style="color:#a61717;background-color:#e3d2d2">&#34;</span>setContextClassLoader<span style="color:#a61717;background-color:#e3d2d2">&#34;</span>;<span style="color:#bbb">
+</span></span></span><span style="display:flex;"><span><span style="color:#bbb"></span>};<span style="color:#bbb">
+</span></span></span><span style="display:flex;"><span><span style="color:#bbb">
+</span></span></span><span style="display:flex;"><span><span style="color:#bbb"></span>grant<span style="color:#bbb"> </span>codeBase<span style="color:#bbb"> </span><span style="color:#a61717;background-color:#e3d2d2">&#34;$</span>{codebase.elasticsearch<span style="color:#000;font-weight:bold">-</span>plugin<span style="color:#000;font-weight:bold">-</span>classloader}<span style="color:#a61717;background-color:#e3d2d2">&#34;</span><span style="color:#bbb"> </span>{<span style="color:#bbb">
+</span></span></span><span style="display:flex;"><span><span style="color:#bbb">  </span><span style="color:#998;font-style:italic">// needed to create the classloader which allows plugins to extend other plugins
+</span></span></span><span style="display:flex;"><span><span style="color:#998;font-style:italic"></span><span style="color:#bbb">  </span><span style="color:#000;font-weight:bold">permission</span><span style="color:#bbb"> </span>java.lang.RuntimePermission<span style="color:#bbb"> </span><span style="color:#a61717;background-color:#e3d2d2">&#34;</span>createClassLoader<span style="color:#a61717;background-color:#e3d2d2">&#34;</span>;<span style="color:#bbb">
+</span></span></span><span style="display:flex;"><span><span style="color:#bbb"></span>};<span style="color:#bbb">
+</span></span></span></code></pre></td></tr></table>
+</div>
+</div>
+      </div>
+
+
+      <footer>
+        
+
+
+        
+        
+        
+      </footer>
+    </article>
+
+    
+  </section>
+
+      </div>
+
+      
+  <footer class="footer">
+    <section class="container">
+      
+        <p>I am who i am, the unique fooid</p>
+      
+      
+        ©
+        
+          2021 -
+        
+        2022
+         Acronymor 
+      
+      
+         · 
+        Powered by <a href="https://gohugo.io/">Hugo</a> & <a href="https://github.com/luizdepra/hugo-coder/">Coder</a>.
+      
+      
+    </section>
+  </footer>
+
+
+    </main>
+
+    
+      
+        
+        <script src="/js/dark-mode.min.1d139a81392167c6a37135df59f9fd95747abba988ba33c1a557c573776cb197.js"></script>
+      
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+  </body>
+
+</html>

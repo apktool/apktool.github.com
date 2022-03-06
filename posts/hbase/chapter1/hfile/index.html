@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Language" content="en">
+    
+      <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests; block-all-mixed-content; default-src 'self'; child-src 'self'; font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net/; form-action 'self'; frame-src 'self'; img-src 'self'; object-src 'none'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com/ https://cdn.jsdelivr.net/; script-src 'self' 'unsafe-inline' https://www.google-analytics.com; prefetch-src 'self';">
+    
+
+    <meta name="author" content="Acronymor">
+    <meta name="description" content="HFile介绍    HFile是HBase存储数据的文件组织形式，参考BigTable的SSTable和Hadoop的TFile实现。从HBase开始到现在，HFile经历了三个版本，其中V2在0.92引入，V3在0.98引入。HFileV1版本的在实际使用过程中发现它占用内存多，HFile V2版本针对此进行了优化，HFile V3版本基本和V2版本相同，只是在cell层面添加了Tag数组的支持。
+HFile V2逻辑结构    文件主要分为四个部分：Scanned block section，Non-scanned block section，Opening-time data section和Trailer。如下图所示：
+其中每个部分的作用如下
+   名称 说明     Scanned block section 表示顺序扫描HFile时所有的数据块将会被读取，包括DataBlock，Leaf Index Block，Bloom Block   Non-scanned block section 表示在HFile顺序扫描的时候数据不会被读取，主要包括Meta Block(用来兼容v1，v2后就不再存储数据了)和Intermediate Level Data Index Blocks两部分   Load-on-open-section 该部分数据在HBase的region server启动时，会被加载到内存中。其中包括FileInfo、Bloom filter block、Data block index和Meta block index。   Trailer 记录了HFile的基本信息、各个部分的偏移值和寻址信息。    HFile V2物理结构    如上图所示， HFile会被切分为多个大小相等的block块，每个block的大小可以在创建表列簇的时候通过参数blocksize ＝&gt; &#39;65535&#39;进行指定，默认为64k，大号的Block有利于顺序Scan，小号Block利于随机查询，因而需要权衡。">
+    <meta name="keywords" content="blog,developer,personal">
+
+    <meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="HBase HFile 介绍"/>
+<meta name="twitter:description" content="HFile介绍    HFile是HBase存储数据的文件组织形式，参考BigTable的SSTable和Hadoop的TFile实现。从HBase开始到现在，HFile经历了三个版本，其中V2在0.92引入，V3在0.98引入。HFileV1版本的在实际使用过程中发现它占用内存多，HFile V2版本针对此进行了优化，HFile V3版本基本和V2版本相同，只是在cell层面添加了Tag数组的支持。
+HFile V2逻辑结构    文件主要分为四个部分：Scanned block section，Non-scanned block section，Opening-time data section和Trailer。如下图所示：
+其中每个部分的作用如下
+   名称 说明     Scanned block section 表示顺序扫描HFile时所有的数据块将会被读取，包括DataBlock，Leaf Index Block，Bloom Block   Non-scanned block section 表示在HFile顺序扫描的时候数据不会被读取，主要包括Meta Block(用来兼容v1，v2后就不再存储数据了)和Intermediate Level Data Index Blocks两部分   Load-on-open-section 该部分数据在HBase的region server启动时，会被加载到内存中。其中包括FileInfo、Bloom filter block、Data block index和Meta block index。   Trailer 记录了HFile的基本信息、各个部分的偏移值和寻址信息。    HFile V2物理结构    如上图所示， HFile会被切分为多个大小相等的block块，每个block的大小可以在创建表列簇的时候通过参数blocksize ＝&gt; &#39;65535&#39;进行指定，默认为64k，大号的Block有利于顺序Scan，小号Block利于随机查询，因而需要权衡。"/>
+
+    <meta property="og:title" content="HBase HFile 介绍" />
+<meta property="og:description" content="HFile介绍    HFile是HBase存储数据的文件组织形式，参考BigTable的SSTable和Hadoop的TFile实现。从HBase开始到现在，HFile经历了三个版本，其中V2在0.92引入，V3在0.98引入。HFileV1版本的在实际使用过程中发现它占用内存多，HFile V2版本针对此进行了优化，HFile V3版本基本和V2版本相同，只是在cell层面添加了Tag数组的支持。
+HFile V2逻辑结构    文件主要分为四个部分：Scanned block section，Non-scanned block section，Opening-time data section和Trailer。如下图所示：
+其中每个部分的作用如下
+   名称 说明     Scanned block section 表示顺序扫描HFile时所有的数据块将会被读取，包括DataBlock，Leaf Index Block，Bloom Block   Non-scanned block section 表示在HFile顺序扫描的时候数据不会被读取，主要包括Meta Block(用来兼容v1，v2后就不再存储数据了)和Intermediate Level Data Index Blocks两部分   Load-on-open-section 该部分数据在HBase的region server启动时，会被加载到内存中。其中包括FileInfo、Bloom filter block、Data block index和Meta block index。   Trailer 记录了HFile的基本信息、各个部分的偏移值和寻址信息。    HFile V2物理结构    如上图所示， HFile会被切分为多个大小相等的block块，每个block的大小可以在创建表列簇的时候通过参数blocksize ＝&gt; &#39;65535&#39;进行指定，默认为64k，大号的Block有利于顺序Scan，小号Block利于随机查询，因而需要权衡。" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="http://acronymor:80/posts/hbase/chapter1/hfile/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2021-01-10T21:01:00+08:00" />
+<meta property="article:modified_time" content="2021-01-10T21:01:00+08:00" />
+
+
+
+    <title>
+  HBase HFile 介绍 · acronymor&#39;s blog
+</title>
+
+    
+      <link rel="canonical" href="http://acronymor:80/posts/hbase/chapter1/hfile/">
+    
+
+    <link rel="preload" href="/fonts/forkawesome-webfont.woff2?v=1.1.7" as="font" type="font/woff2" crossorigin>
+
+    
+      
+      
+      <link rel="stylesheet" href="/css/coder.min.7845183269a9eb35f70d63bb7521ad5e9470a140d020e12172e0b5d3ed3ec9a3.css" integrity="sha256-eEUYMmmp6zX3DWO7dSGtXpRwoUDQIOEhcuC10&#43;0&#43;yaM=" crossorigin="anonymous" media="screen" />
+    
+
+    
+
+    
+      
+        
+        
+        <link rel="stylesheet" href="/css/coder-dark.min.89c82b6022b96f77aeb521b240daec4f87ea029d84d1c78b8acd0735b91b3c92.css" integrity="sha256-icgrYCK5b3eutSGyQNrsT4fqAp2E0ceLis0HNbkbPJI=" crossorigin="anonymous" media="screen" />
+      
+    
+
+    
+
+    
+
+    <link rel="icon" type="image/png" href="/images/favicon-32x32.png" sizes="32x32">
+    <link rel="icon" type="image/png" href="/images/favicon-16x16.png" sizes="16x16">
+
+    <link rel="apple-touch-icon" href="/images/apple-touch-icon.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+
+    
+
+    <meta name="generator" content="Hugo 0.93.2" />
+  </head>
+
+  
+  
+    
+  
+  <body class="colorscheme-auto"
+        onload=""
+  >
+    
+<div class="float-container">
+    <a id="dark-mode-toggle" class="colorscheme-toggle">
+        <i class="fa fa-adjust fa-fw" aria-hidden="true"></i>
+    </a>
+</div>
+
+
+    <main class="wrapper">
+      <nav class="navigation">
+  <section class="container">
+    <a class="navigation-title" href="/">
+      acronymor&#39;s blog
+    </a>
+    
+      <input type="checkbox" id="menu-toggle" />
+      <label class="menu-button float-right" for="menu-toggle">
+        <i class="fa fa-bars fa-fw" aria-hidden="true"></i>
+      </label>
+      <ul class="navigation-list">
+        
+          
+            <li class="navigation-item">
+              <a class="navigation-link" href="/posts/">Blog</a>
+            </li>
+          
+            <li class="navigation-item">
+              <a class="navigation-link" href="/categories/">Category</a>
+            </li>
+          
+            <li class="navigation-item">
+              <a class="navigation-link" href="/tags/">Tag</a>
+            </li>
+          
+            <li class="navigation-item">
+              <a class="navigation-link" href="/about/">About</a>
+            </li>
+          
+        
+        
+      </ul>
+    
+  </section>
+</nav>
+
+
+      <div class="content">
+        
+  <section class="container post">
+    <article>
+      <header>
+        <div class="post-title">
+          <h1 class="title">
+            <a class="title-link" href="http://acronymor:80/posts/hbase/chapter1/hfile/">
+              HBase HFile 介绍
+            </a>
+          </h1>
+        </div>
+        <div class="post-meta">
+          <div class="date">
+            <span class="posted-on">
+              <i class="fa fa-calendar" aria-hidden="true"></i>
+              <time datetime='2021-01-10T21:01:00&#43;08:00'>
+                January 10, 2021
+              </time>
+            </span>
+            <span class="reading-time">
+              <i class="fa fa-clock-o" aria-hidden="true"></i>
+              3-minute read
+            </span>
+          </div>
+          
+          <div class="categories">
+  <i class="fa fa-folder" aria-hidden="true"></i>
+    <a href="/categories/hbase%E5%9F%BA%E7%A1%80/">HBase基础</a></div>
+
+          <div class="tags">
+  <i class="fa fa-tag" aria-hidden="true"></i>
+    <a href="/tags/hbase/">HBase</a></div>
+
+        </div>
+      </header>
+
+      <div>
+        
+        
+          <aside>
+            <nav id="TableOfContents">
+  <ul>
+    <li><a href="#hfile介绍">HFile介绍</a>
+      <ul>
+        <li><a href="#hfile-v2逻辑结构">HFile V2逻辑结构</a></li>
+        <li><a href="#hfile-v2物理结构">HFile V2物理结构</a></li>
+      </ul>
+    </li>
+    <li><a href="#hfileblock介绍">HFileBlock介绍</a>
+      <ul>
+        <li><a href="#data">DATA</a></li>
+        <li><a href="#root_index--leaf_index--intermediate_index">ROOT_INDEX | LEAF_INDEX | INTERMEDIATE_INDEX</a>
+          <ul>
+            <li><a href="#root_index">ROOT_INDEX</a></li>
+            <li><a href="#leaf_index--intermediate_index">LEAF_INDEX | INTERMEDIATE_INDEX</a></li>
+          </ul>
+        </li>
+        <li><a href="#bloom_chunk">BLOOM_CHUNK</a></li>
+        <li><a href="#trailer">TRAILER</a></li>
+      </ul>
+    </li>
+    <li><a href="#reference">Reference</a></li>
+    <li><a href="#附件">附件</a></li>
+  </ul>
+</nav>
+          </aside>
+        
+        <h1 id="hfile介绍">
+  HFile介绍
+  <a class="heading-link" href="#hfile%e4%bb%8b%e7%bb%8d">
+    <i class="fa fa-link" aria-hidden="true"></i>
+  </a>
+</h1>
+<p>HFile是HBase存储数据的文件组织形式，参考BigTable的SSTable和Hadoop的TFile实现。从HBase开始到现在，HFile经历了三个版本，其中V2在0.92引入，V3在0.98引入。HFileV1版本的在实际使用过程中发现它占用内存多，HFile V2版本针对此进行了优化，HFile V3版本基本和V2版本相同，只是在cell层面添加了Tag数组的支持。</p>
+<h2 id="hfile-v2逻辑结构">
+  HFile V2逻辑结构
+  <a class="heading-link" href="#hfile-v2%e9%80%bb%e8%be%91%e7%bb%93%e6%9e%84">
+    <i class="fa fa-link" aria-hidden="true"></i>
+  </a>
+</h2>
+<p>文件主要分为四个部分：<code>Scanned block section</code>，<code>Non-scanned block section</code>，<code>Opening-time data section</code>和<code>Trailer</code>。如下图所示：</p>
+<p><img src="hfilev2-logic.png" alt="hfilev2"></p>
+<p>其中每个部分的作用如下</p>
+<table>
+<thead>
+<tr>
+<th style="text-align:left">名称</th>
+<th style="text-align:left">说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left">Scanned block section</td>
+<td style="text-align:left">表示顺序扫描HFile时所有的数据块将会被读取，包括DataBlock，Leaf Index Block，Bloom Block</td>
+</tr>
+<tr>
+<td style="text-align:left">Non-scanned block section</td>
+<td style="text-align:left">表示在HFile顺序扫描的时候数据不会被读取，主要包括Meta Block(用来兼容v1，v2后就不再存储数据了)和Intermediate Level Data Index Blocks两部分</td>
+</tr>
+<tr>
+<td style="text-align:left">Load-on-open-section</td>
+<td style="text-align:left">该部分数据在HBase的region server启动时，会被加载到内存中。其中包括FileInfo、Bloom filter block、Data block index和Meta block index。</td>
+</tr>
+<tr>
+<td style="text-align:left">Trailer</td>
+<td style="text-align:left">记录了HFile的基本信息、各个部分的偏移值和寻址信息。</td>
+</tr>
+</tbody>
+</table>
+<h2 id="hfile-v2物理结构">
+  HFile V2物理结构
+  <a class="heading-link" href="#hfile-v2%e7%89%a9%e7%90%86%e7%bb%93%e6%9e%84">
+    <i class="fa fa-link" aria-hidden="true"></i>
+  </a>
+</h2>
+<p><img src="hfilev2-physic.png" alt="hfilev2"></p>
+<p>如上图所示， HFile会被切分为多个大小相等的block块，每个block的大小可以在创建表列簇的时候通过参数<code>blocksize ＝&gt; '65535'</code>进行指定，默认为64k，大号的Block有利于顺序Scan，小号Block利于随机查询，因而需要权衡。</p>
+<p>可以使用下述命令查看实际的一个HFile，具体内容可以参考附件。</p>
+<div class="highlight"><div style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;">
+<table style="border-spacing:0;padding:0;margin:0;border:0;"><tr><td style="vertical-align:top;padding:0;margin:0;border:0;">
+<pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">1
+</span></code></pre></td>
+<td style="vertical-align:top;padding:0;margin:0;border:0;;width:100%">
+<pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>hbase org.apache.hadoop.hbase.io.hfile.HFile -v -p -m -f /hbase/data/default/tmp/bf9e4d84d5b5c58123d2436c0745ac02/cf/d6da722c69a74d75852f87f6c009dacd
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h1 id="hfileblock介绍">
+  HFileBlock介绍
+  <a class="heading-link" href="#hfileblock%e4%bb%8b%e7%bb%8d">
+    <i class="fa fa-link" aria-hidden="true"></i>
+  </a>
+</h1>
+<p>HFileBlock主要分为3部分：Block Header，Block Data和Block Tail。其中，Block Header用来存储元数据，包括<strong>block类型</strong>，压缩block大小，上一个block的偏移量等；而Block Data主要存储具体的数据；Block Tail则主要用来存储校验码。</p>
+<p><img src="HFileBlock.png" alt="HFileBlock"></p>
+<p>HFile中的BlockType总共有如下几种，后面会对几种比较重要的Block详细说明。</p>
+<p><img src="blocktype.png" alt="blocktype"></p>
+<p>(图中META和METABLKc标反了)</p>
+<h2 id="data">
+  DATA
+  <a class="heading-link" href="#data">
+    <i class="fa fa-link" aria-hidden="true"></i>
+  </a>
+</h2>
+<p>DataBlock是HBase中数据存储的最小单元。DataBlock中主要存储用户的KeyValue数据（KeyValue后面一般会跟一个timestamp，图中未标出），而KeyValue结构是HBase存储的核心，每个数据都是以KeyValue结构在HBase中进行存储。KeyValue结构在内存和磁盘中可以表示为下图</p>
+<p><img src="DataBlock.png" alt="DataBlock"></p>
+<p>每个KeyValue都由4个部分构成，分别为key length，value length，key和value。其中key value和value length是两个固定长度的数值，而key是一个复杂的结构，首先是rowkey的长度，接着是rowkey，然后是ColumnFamily的长度，再是ColumnFamily，之后是ColumnQualifier，最后是时间戳和KeyType（keytype有四种类型，分别是Put、Delete、 DeleteColumn和DeleteFamily），value就没有那么复杂，就是一串纯粹的二进制数据。</p>
+<h2 id="root_index--leaf_index--intermediate_index">
+  ROOT_INDEX | LEAF_INDEX | INTERMEDIATE_INDEX
+  <a class="heading-link" href="#root_index--leaf_index--intermediate_index">
+    <i class="fa fa-link" aria-hidden="true"></i>
+  </a>
+</h2>
+<p>HFile中的<strong>index level</strong>是不固定的，根据不同的数据类型和数据大小有不同的选择，主要有两类，一类是single-level（单级索引），另一类是multi-level（多级索引，索引block无法在内存中存放，所以采用多级索引）。</p>
+<p>HFile中的<strong>index chunk</strong>有两大类，分别是root index chunk、nonRoot index chunk。而nonRoot index chunk又分为interMetadiate index chunk和leaf index chunk，但intermetadiate index chunk和leaf index chunk在内存中的分布是一样的。</p>
+<ul>
+<li>对于meta block和bloom block
+采用的索引是single-level形式，只用root index chunk来保存指向block的索引信息（<code>root_index -&gt; xxx_block</code>）</li>
+<li>对于data
+<ul>
+<li>当data block数量较少时，采用的是single level，一般情况下是一级索引(<code>root_index -&gt; data_block</code>)；</li>
+<li>当data block数量较多时，采用的是multi-level，一般情况下是两级索引，使用root index chunk和leaf index chunk来保存索引信息(<code>root_index -&gt; leaf_index -&gt; data_block</code>)；</li>
+<li>当data block数量很多时，采用的是multi-level，一般情况下是三级索引，使用root index chunk、intermetadiate index chunk和leaf index chunk来保存指向数据的索引（<code>root_index -&gt; intermediate_index -&gt; leaf_index-&gt;data_block</code>）。</li>
+</ul>
+</li>
+</ul>
+<h3 id="root_index">
+  ROOT_INDEX
+  <a class="heading-link" href="#root_index">
+    <i class="fa fa-link" aria-hidden="true"></i>
+  </a>
+</h3>
+<p>Root Index Block表示索引树根节点索引块，可以作为bloom的直接索引，也可以作为data索引的根索引。</p>
+<p><img src="root-index-block.png" alt="root index"></p>
+<p>其中Index Entry表示具体的索引对象，每个索引对象由3个字段组成，Block Offset表示索引指向数据块的偏移量，BlockDataSize表示索引指向数据块在磁盘上的大小，BlockKey表示索引指向数据块中的第一个key。除此之外，还有另外3个字段用来记录MidKey的相关信息，MidKey表示HFile所有Data Block中中间的一个Data Block，用于在对HFile进行split操作时，快速定位HFile的中间位置。需要注意的是single-level索引结构和mutil-level结构相比，就只缺少MidKey这三个字段。</p>
+<p>Root Index Block会在HFile解析的时候直接加载到内存中，此处需要注意在Trailer Block中有一个字段为dataIndexCount，就表示此处Index Entry的个数。因为Index Entry并不定长，只有知道Entry的个数才能正确的将所有Index Entry加载到内存。</p>
+<h3 id="leaf_index--intermediate_index">
+  LEAF_INDEX | INTERMEDIATE_INDEX
+  <a class="heading-link" href="#leaf_index--intermediate_index">
+    <i class="fa fa-link" aria-hidden="true"></i>
+  </a>
+</h3>
+<p>当HFile中Data Block越来越多，single-level结构的索引已经不足以支撑所有数据都加载到内存，需要分化为mutil-level结构。mutil-level结构中NonRoot Index Block作为中间层节点或者叶子节点存在，无论是中间节点还是叶子节点，其都拥有相同的结构，如下图所示</p>
+<p><img src="noroot-index-block.png" alt="noroot index"></p>
+<p>和Root Index Block相同，NonRoot Index Block中最核心的字段也是Index Entry，用于指向叶子节点块或者数据块。不同的是，NonRoot Index Block结构中增加了block块的内部索引entry Offset字段，entry Offset表示index Entry在该block中的相对偏移量（相对于第一个index Entry)，用于实现block内的二分查找。所有非根节点索引块，包括Intermediate index block和leaf index block，在其内部定位一个key的具体索引并不是通过遍历实现，而是使用二分查找算法，这样可以更加高效快速地定位到待查找key。</p>
+<h2 id="bloom_chunk">
+  BLOOM_CHUNK
+  <a class="heading-link" href="#bloom_chunk">
+    <i class="fa fa-link" aria-hidden="true"></i>
+  </a>
+</h2>
+<p>Bloom Index Block结构中totalByteSize表示位数组的bit数，numChunks表示Bloom Block的个数，hashCount表示hash函数的个数，hashType表示hash函数的类型，totalKeyCount表示bloom filter当前已经包含的key的数目，totalMaxKeys表示bloom filter当前最多包含的key的数目, Bloom Index Entry对应每一个bloom filter block的索引条目，作为索引分别指向 scanned block section 部分的Bloom Block，Bloom Block中就存储了对应的位数组。</p>
+<p><img src="bloom-chunk.png" alt="bloom chunk"></p>
+<p>Bloom Index Entry的结构见上图左边所示，BlockOffset表示对应Bloom Block在HFile中的偏移量，FirstKey表示对应BloomBlock的第一个Key。根据上文所说，一次get请求进来，首先会根据key在所有的索引条目中进行二分查找，查找到对应的Bloom Index Entry，就可以定位到该key对应的位数组，加载到内存进行过滤判断。</p>
+<h2 id="trailer">
+  TRAILER
+  <a class="heading-link" href="#trailer">
+    <i class="fa fa-link" aria-hidden="true"></i>
+  </a>
+</h2>
+<p>主要记录了HFile的基本信息、各个部分的偏移值和寻址信息，下图为Trailer内存和磁盘中的数据结构，其中只显示了部分核心字段：</p>
+<p><img src="trailer-block.png" alt="trailer block"></p>
+<p>HFile在读取的时候首先会解析Trailer Block并加载到内存，然后再进一步加载LoadOnOpen区的数据。</p>
+<h1 id="reference">
+  Reference
+  <a class="heading-link" href="#reference">
+    <i class="fa fa-link" aria-hidden="true"></i>
+  </a>
+</h1>
+<ul>
+<li><a href="https://issues.apache.org/jira/browse/HBASE-11729">Document HFile v3</a></li>
+<li><a href="https://hbase.apache.org/book.html">HBase Book</a></li>
+<li><a href="http://hbasefly.com/2016/03/25/hbase-hfile">HBase – 存储文件HFile结构解析</a></li>
+<li><a href="http://hbasefly.com/2016/04/03/hbase_hfile_index">HBase – 探索HFile索引机制</a></li>
+<li><a href="https://developer.aliyun.com/article/752817">HBase 加载Hfile时的读取过程</a></li>
+<li><a href="http://www.nosqlnotes.com/technotes/hbase/hfile/">HBase高性能随机查询之道 – HFile原理解析</a></li>
+<li><a href="https://issues.apache.org/jira/browse/HADOOP-3315">HADOOP-3315</a></li>
+</ul>
+<h1 id="附件">
+  附件
+  <a class="heading-link" href="#%e9%99%84%e4%bb%b6">
+    <i class="fa fa-link" aria-hidden="true"></i>
+  </a>
+</h1>
+<div class="highlight"><div style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;">
+<table style="border-spacing:0;padding:0;margin:0;border:0;"><tr><td style="vertical-align:top;padding:0;margin:0;border:0;">
+<pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 1
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 2
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 3
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 4
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 5
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 6
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 7
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 8
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 9
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">10
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">11
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">12
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">13
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">14
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">15
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">16
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">17
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">18
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">19
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">20
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">21
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">22
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">23
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">24
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">25
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">26
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">27
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">28
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">29
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">30
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">31
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">32
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">33
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">34
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">35
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">36
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">37
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">38
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">39
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">40
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">41
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">42
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">43
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">44
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">45
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">46
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">47
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">48
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">49
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">50
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">51
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">52
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">53
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">54
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">55
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">56
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">57
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">58
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">59
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">60
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">61
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">62
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">63
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">64
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">65
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">66
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">67
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">68
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">69
+</span><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">70
+</span></code></pre></td>
+<td style="vertical-align:top;padding:0;margin:0;border:0;;width:100%">
+<pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>li@li-pc: hbase org.apache.hadoop.hbase.io.hfile.HFile -v -p -m -f /hbase/data/default/tmp/bf9e4d84d5b5c58123d2436c0745ac02/cf/d6da722c69a74d75852f87f6c009dacd
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>Scanning -&gt; /hbase/data/default/tmp/bf9e4d84d5b5c58123d2436c0745ac02/cf/d6da722c69a74d75852f87f6c009dacd
+</span></span><span style="display:flex;"><span>K: row01/cf:f1/1616850516066/Put/vlen=5/seqid=4 V: value
+</span></span><span style="display:flex;"><span>K: row02/cf:f1/1616855810928/Put/vlen=7/seqid=8 V: value02
+</span></span><span style="display:flex;"><span>K: row03/cf:f1/1616855815901/Put/vlen=7/seqid=9 V: value03
+</span></span><span style="display:flex;"><span>K: row04/cf:f1/1617116267526/Put/vlen=7/seqid=13 V: value04
+</span></span><span style="display:flex;"><span>K: row05/cf:f1/1617206213608/Put/vlen=7/seqid=18 V: value04
+</span></span><span style="display:flex;"><span>K: row06/cf:f1/1617206237852/Put/vlen=7/seqid=19 V: value04
+</span></span><span style="display:flex;"><span>K: row07/cf:f1/1617206337001/Put/vlen=7/seqid=20 V: value04
+</span></span><span style="display:flex;"><span>K: row08/cf:f1/1617439598102/Put/vlen=7/seqid=24 V: value04
+</span></span><span style="display:flex;"><span>K: row09/cf:f1/1617440409630/Put/vlen=7/seqid=25 V: value04
+</span></span><span style="display:flex;"><span>Block index size as per heapsize: 320
+</span></span><span style="display:flex;"><span>reader=/hbase/data/default/tmp/bf9e4d84d5b5c58123d2436c0745ac02/cf/d6da722c69a74d75852f87f6c009dacd,
+</span></span><span style="display:flex;"><span>    compression=none,
+</span></span><span style="display:flex;"><span>    cacheConf=cacheDataOnRead=false,
+</span></span><span style="display:flex;"><span>    cacheDataOnWrite=false,
+</span></span><span style="display:flex;"><span>    cacheIndexesOnWrite=false,
+</span></span><span style="display:flex;"><span>    cacheBloomsOnWrite=false,
+</span></span><span style="display:flex;"><span>    cacheEvictOnClose=false,
+</span></span><span style="display:flex;"><span>    cacheDataCompressed=false,
+</span></span><span style="display:flex;"><span>    prefetchOnOpen=false,
+</span></span><span style="display:flex;"><span>    firstKey=Optional[row01/cf:f1/1616850516066/Put/seqid=0],
+</span></span><span style="display:flex;"><span>    lastKey=Optional[row09/cf:f1/1617440409630/Put/seqid=0],
+</span></span><span style="display:flex;"><span>    avgKeyLen=21,
+</span></span><span style="display:flex;"><span>    avgValueLen=6,
+</span></span><span style="display:flex;"><span>    entries=9,
+</span></span><span style="display:flex;"><span>    length=5286
+</span></span><span style="display:flex;"><span>Trailer:
+</span></span><span style="display:flex;"><span>    fileinfoOffset=529,
+</span></span><span style="display:flex;"><span>    loadOnOpenDataOffset=421,
+</span></span><span style="display:flex;"><span>    dataIndexCount=1,
+</span></span><span style="display:flex;"><span>    metaIndexCount=0,
+</span></span><span style="display:flex;"><span>    totalUncomressedBytes=5195,
+</span></span><span style="display:flex;"><span>    entryCount=9,
+</span></span><span style="display:flex;"><span>    compressionCodec=NONE,
+</span></span><span style="display:flex;"><span>    uncompressedDataIndexSize=34,
+</span></span><span style="display:flex;"><span>    numDataIndexLevels=1,
+</span></span><span style="display:flex;"><span>    firstDataBlockOffset=0,
+</span></span><span style="display:flex;"><span>    lastDataBlockOffset=0,
+</span></span><span style="display:flex;"><span>    comparatorClassName=org.apache.hadoop.hbase.CellComparatorImpl,
+</span></span><span style="display:flex;"><span>    encryptionKey=NONE,
+</span></span><span style="display:flex;"><span>    majorVersion=3,
+</span></span><span style="display:flex;"><span>    minorVersion=3
+</span></span><span style="display:flex;"><span>Fileinfo:
+</span></span><span style="display:flex;"><span>    BLOOM_FILTER_TYPE = ROW
+</span></span><span style="display:flex;"><span>    COMPACTION_EVENT_KEY = PBUF\x0A 574e0cd2f81942f6b4d6bcca5a1de7bd\x0A 9e99e162bcb7463dafe0e2f2b1a7938c\x0A a945bf413e214c1785706d1615c59eb0
+</span></span><span style="display:flex;"><span>    DELETE_FAMILY_COUNT = 0
+</span></span><span style="display:flex;"><span>    EARLIEST_PUT_TS = 1616850516066
+</span></span><span style="display:flex;"><span>    KEY_VALUE_VERSION = 1
+</span></span><span style="display:flex;"><span>    LAST_BLOOM_KEY = row09
+</span></span><span style="display:flex;"><span>    MAJOR_COMPACTION_KEY = true
+</span></span><span style="display:flex;"><span>    MAX_MEMSTORE_TS_KEY = 25
+</span></span><span style="display:flex;"><span>    MAX_SEQ_ID_KEY = 25
+</span></span><span style="display:flex;"><span>    TIMERANGE = 1616850516066....1617440409630
+</span></span><span style="display:flex;"><span>    hfile.AVG_KEY_LEN = 21
+</span></span><span style="display:flex;"><span>    hfile.AVG_VALUE_LEN = 6
+</span></span><span style="display:flex;"><span>    hfile.CREATE_TIME_TS = 1617447255148
+</span></span><span style="display:flex;"><span>    hfile.LASTKEY = row09/cf:f1/1617440409630/Put/vlen=0/mvcc=0
+</span></span><span style="display:flex;"><span>Mid-key: Optional[row01/cf:f1/1616850516066/Put/seqid=0]
+</span></span><span style="display:flex;"><span>Bloom filter:
+</span></span><span style="display:flex;"><span>    BloomSize: 16
+</span></span><span style="display:flex;"><span>    No of Keys in bloom: 9
+</span></span><span style="display:flex;"><span>    Max Keys for bloom: 13
+</span></span><span style="display:flex;"><span>    Percentage filled: 69%
+</span></span><span style="display:flex;"><span>    Number of chunks: 1
+</span></span><span style="display:flex;"><span>    Comparator: ByteArrayComparator
+</span></span><span style="display:flex;"><span>Delete Family Bloom filter:
+</span></span><span style="display:flex;"><span>    Not present
+</span></span><span style="display:flex;"><span>Scanned kv count -&gt; 9
+</span></span></code></pre></td></tr></table>
+</div>
+</div>
+      </div>
+
+
+      <footer>
+        
+
+
+        
+        
+        
+      </footer>
+    </article>
+
+    
+  </section>
+
+      </div>
+
+      
+  <footer class="footer">
+    <section class="container">
+      
+        <p>I am who i am, the unique fooid</p>
+      
+      
+        ©
+        
+          2021 -
+        
+        2022
+         Acronymor 
+      
+      
+         · 
+        Powered by <a href="https://gohugo.io/">Hugo</a> & <a href="https://github.com/luizdepra/hugo-coder/">Coder</a>.
+      
+      
+    </section>
+  </footer>
+
+
+    </main>
+
+    
+      
+        
+        <script src="/js/dark-mode.min.1d139a81392167c6a37135df59f9fd95747abba988ba33c1a557c573776cb197.js"></script>
+      
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+  </body>
+
+</html>
